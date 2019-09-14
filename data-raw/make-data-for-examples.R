@@ -46,7 +46,8 @@ pbc_mayo <- pbc_mayo %>%
             .funs = list(~ factor(.,
                                   levels = c(0, 1),
                                   labels = c("No", "Yes")))) %>%
-  dplyr::rename(alk_phos = alk.phos)
+  dplyr::rename(alk_phos = alk.phos) %>%
+  tibble::as_tibble()
 
 
 pbc_mayo %>%

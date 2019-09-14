@@ -1,15 +1,33 @@
 Package: tidytableone
-Title: What the Package Does (One Line, Title Case)
+Title: Tidy construction of "Table 1"
 Version: 0.0.0.9000
 Authors@R: 
-    person(given = "First",
-           family = "Last",
+    person(given = "Emile",
+           family = "Latour",
            role = c("aut", "cre"),
-           email = "first.last@example.com",
+           email = "latour@ohsu.edu",
            comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+Description: A tidy approach to creating the "Table 1" of study characteristics common in bimoedical research.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 URL: https://github.com/emilelatour/tidytableone
 BugReports: https://github.com/emilelatour/tidytableone/issues
+Depends: 
+    R (>= 3.2.0)
+ByteCompile: true
+Suggests: 
+    rmarkdown, 
+    roxygen2
+Imports: 
+    dplyr, 
+    ggplot2, 
+    knitr, 
+    magrittr, 
+    purrr, 
+    rlang (>= 0.1.2), 
+    tibble, 
+    tidyr
+RoxygenNote: 6.1.1
+Roxygen: list(markdown = TRUE)
+VignetteBuilder: knitr
