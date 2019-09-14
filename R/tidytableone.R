@@ -19,7 +19,21 @@ if (getRversion() >= "2.15.1") {
   utils::globalVariables(
     c(".",
       "level",
-      "var"
+      "var",
+      "bartlett_test",
+      "check_categorical_test",
+      "chisq_test",
+      "fisher_test",
+      "form",
+      "kruskal_test",
+      "n_level",
+      "oneway_test",
+      "tab",
+      "value",
+      "var_type",
+      "x",
+      "y"
     )
   )
 }
+

@@ -22,10 +22,14 @@ Suggests:
 Imports: 
     dplyr, 
     ggplot2, 
+    forcats, 
+    glue, 
     knitr, 
     magrittr, 
     purrr, 
     rlang (>= 0.1.2), 
+    tableone, 
+    testit, 
     tibble, 
     tidyr
 RoxygenNote: 6.1.1
