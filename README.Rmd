@@ -18,37 +18,74 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of tidytableone is to ...
+The goal of `tidytableone` is to enable a tidy approach to creating the "Table 1" of study characteristics common in bimoedical research.
 
 ## Installation
 
 You can install the released version of tidytableone from [CRAN](https://CRAN.R-project.org) with:
 
 ``` r
-install.packages("tidytableone")
+# install.packages("devtools")
+devtools::install_github("emilelatour/tidytableone)
 ```
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem:
-
+Load the packages for the example
 ```{r example}
-# library(tidytableone)
-## basic example code
+library(tidytableone)
+library(tidyverse)
+library(knitr)
+
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
+Take a glimpse at the data that comes in the `tidytableone` package:
 
-```{r cars}
-summary(cars)
+```{r}
+dplyr::glimpse(pbc_mayo)
 ```
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date.
+Use the main function of this package to make a tidy table one
 
-You can also embed plots, for example:
+```{r}
+tab1 <- tidytableone::create_tidy_table_one(data = pbc_mayo, 
+                                            strata = "trt", 
+                                            .vars = c("time", "status", "trt", "age", "sex", "ascites", "hepato",
+                                                      "spiders", "edema", "bili", "chol", "albumin", "copper", "alk_phos",
+                                                      "ast", "trig", "platelet", "protime", "stage"))
 
-```{r pressure, echo = FALSE}
-plot(pressure)
+
 ```
 
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub!
+Use the `dplyr::glimpse` command to see the tidy table one
+
+```{r}
+dplyr::glimpse(tab1)
+```
+
+Some information is only available for categorical variables and some information for continous variables.
+
+Then with some simple data manipulation we can reshape to make a table one...
+
+```{r}
+tab1 %>% 
+  mutate(strata = forcats::fct_inorder(strata), 
+         n_pct = scales::percent(n_strata / n_level), 
+         mean = scales::number(mean, accuracy = 0.1), 
+         value = dplyr::if_else(mean == "NA", n_pct, mean), 
+         p_value = dplyr::coalesce(oneway_test, chisq_test), 
+         p_value = scales::pvalue(p_value)) %>% 
+  dplyr::distinct(strata, 
+                var, 
+                level, 
+                value, 
+                p_value) %>% 
+  tidyr::spread(., 
+                key = strata, 
+                value = value) %>% 
+  dplyr::select(-p_value, dplyr::everything(), p_value) %>% 
+  knitr::kable()
+  
+```
+
+This is rough, but you get the idea. The plan is to next create a function to make the table based on specifications.
