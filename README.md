@@ -118,7 +118,7 @@ one…
 ``` r
 tab1 %>% 
   mutate(strata = forcats::fct_inorder(strata), 
-         n_pct = scales::percent(n_strata / n_level), 
+         n_pct = scales::percent(n_level / n_strata), 
          mean = scales::number(mean, accuracy = 0.1), 
          value = dplyr::if_else(mean == "NA", n_pct, mean), 
          p_value = dplyr::coalesce(oneway_test, chisq_test), 
@@ -140,34 +140,34 @@ tab1 %>%
 | age       | NA                                                              | 50.7    | 51.4            | 48.6    | 52.9      | 0.018    |
 | albumin   | NA                                                              | 3.5     | 3.5             | 3.5     | 3.4       | 0.874    |
 | alk\_phos | NA                                                              | 1 982.7 | 2 021.3         | 1 943.0 | NaN       | 0.747    |
-| ascites   | No                                                              | 150%    | 110%            | 110%    | Inf       | 0.567    |
-| ascites   | Yes                                                             | 1 740%  | 1 130%          | 1 540%  | Inf       | 0.567    |
-| ascites   | NA                                                              | 390%    | Inf             | Inf     | 100%      | 0.567    |
+| ascites   | No                                                              | 69%     | 91%             | 94%     | 0%        | 0.567    |
+| ascites   | Yes                                                             | 6%      | 9%              | 6%      | 0%        | 0.567    |
+| ascites   | NA                                                              | 25%     | 0%              | 0%      | 100%      | 0.567    |
 | ast       | NA                                                              | 122.6   | 120.2           | 125.0   | NaN       | 0.460    |
 | bili      | NA                                                              | 3.2     | 2.9             | 3.6     | 3.1       | 0.133    |
 | chol      | NA                                                              | 369.5   | 365.0           | 373.9   | NaN       | 0.747    |
 | copper    | NA                                                              | 97.6    | 97.6            | 97.7    | NaN       | 0.999    |
-| edema     | Edema despite diuretic therapy                                  | 2 090%  | 1 580%          | 1 540%  | Inf       | 0.877    |
-| edema     | Edema present without diuretics, or edema resolved by diuretics | 950%    | 990%            | 1 180%  | 710%      | 0.877    |
-| edema     | No edema and no diuretic therapy for edema                      | 120%    | 120%            | 120%    | 120%      | 0.877    |
-| hepato    | No                                                              | 280%    | 190%            | 230%    | Inf       | 0.088    |
-| hepato    | Yes                                                             | 260%    | 220%            | 180%    | Inf       | 0.088    |
-| hepato    | NA                                                              | 390%    | Inf             | Inf     | 100%      | 0.088    |
+| edema     | Edema despite diuretic therapy                                  | 5%      | 6%              | 6%      | 0%        | 0.877    |
+| edema     | Edema present without diuretics, or edema resolved by diuretics | 11%     | 10%             | 8%      | 14%       | 0.877    |
+| edema     | No edema and no diuretic therapy for edema                      | 85%     | 84%             | 85%     | 86%       | 0.877    |
+| hepato    | No                                                              | 36%     | 54%             | 44%     | 0%        | 0.088    |
+| hepato    | Yes                                                             | 38%     | 46%             | 56%     | 0%        | 0.088    |
+| hepato    | NA                                                              | 25%     | 0%              | 0%      | 100%      | 0.088    |
 | platelet  | NA                                                              | 257.0   | 258.8           | 265.2   | 241.7     | 0.554    |
 | protime   | NA                                                              | 10.7    | 10.7            | 10.8    | 10.8      | 0.199    |
-| sex       | Female                                                          | 110%    | 120%            | 110%    | 110%      | 0.421    |
-| sex       | Male                                                            | 950%    | 750%            | 1 030%  | 1 320%    | 0.421    |
-| spiders   | No                                                              | 190%    | 140%            | 140%    | Inf       | 0.985    |
-| spiders   | Yes                                                             | 460%    | 350%            | 340%    | Inf       | 0.985    |
-| spiders   | NA                                                              | 390%    | Inf             | Inf     | 100%      | 0.985    |
-| stage     | 1                                                               | 1 990%  | 1 320%          | 3 850%  | 2 120%    | 0.201    |
-| stage     | 2                                                               | 450%    | 450%            | 480%    | 420%      | 0.201    |
-| stage     | 3                                                               | 270%    | 280%            | 240%    | 300%      | 0.201    |
-| stage     | 4                                                               | 290%    | 290%            | 290%    | 300%      | 0.201    |
-| stage     | NA                                                              | 6 970%  | Inf             | Inf     | 1 770%    | 0.201    |
-| status    | Alive                                                           | 180%    | 190%            | 180%    | 170%      | 0.894    |
-| status    | Dead                                                            | 260%    | 240%            | 260%    | 290%      | 0.894    |
-| status    | Liver transplant                                                | 1 670%  | 1 580%          | 1 710%  | 1 770%    | 0.894    |
+| sex       | Female                                                          | 89%     | 87%             | 90%     | 92%       | 0.421    |
+| sex       | Male                                                            | 11%     | 13%             | 10%     | 8%        | 0.421    |
+| spiders   | No                                                              | 53%     | 72%             | 71%     | 0%        | 0.985    |
+| spiders   | Yes                                                             | 22%     | 28%             | 29%     | 0%        | 0.985    |
+| spiders   | NA                                                              | 25%     | 0%              | 0%      | 100%      | 0.985    |
+| stage     | 1                                                               | 5%      | 8%              | 3%      | 5%        | 0.201    |
+| stage     | 2                                                               | 22%     | 22%             | 21%     | 24%       | 0.201    |
+| stage     | 3                                                               | 37%     | 35%             | 42%     | 33%       | 0.201    |
+| stage     | 4                                                               | 34%     | 35%             | 35%     | 33%       | 0.201    |
+| stage     | NA                                                              | 1%      | 0%              | 0%      | 6%        | 0.201    |
+| status    | Alive                                                           | 56%     | 53%             | 55%     | 60%       | 0.894    |
+| status    | Dead                                                            | 39%     | 41%             | 39%     | 34%       | 0.894    |
+| status    | Liver transplant                                                | 6%      | 6%              | 6%      | 6%        | 0.894    |
 | time      | NA                                                              | 1 917.8 | 2 015.6         | 1 996.9 | 1 657.1   | 0.883    |
 | trig      | NA                                                              | 124.7   | 124.1           | 125.3   | NaN       | 0.886    |
 
