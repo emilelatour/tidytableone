@@ -39,6 +39,7 @@
 #' @importFrom dplyr rename
 #' @importFrom dplyr select
 #' @importFrom dplyr summarise
+#' @importFrom dplyr transmute
 #' @importFrom dplyr ungroup
 #' @importFrom forcats fct_explicit_na
 #' @importFrom glue glue
@@ -299,7 +300,7 @@ create_tidy_table_one <- function(data,
   }
 
 
-  #### Combine results and return --------------------------------
+  #### Combine results --------------------------------
 
   res_stats <- dplyr::bind_rows(con_stats,
                                 cat_stats) %>%
@@ -310,6 +311,46 @@ create_tidy_table_one <- function(data,
     dplyr::left_join(.,
                      smd_res,
                      by = "var")
+
+  #### Arrange results --------------------------------
+
+  var_lvls <- unique(var_info$var)
+
+  level_lvls <- var_info %>%
+    dplyr::transmute(var_level = glue::glue("{var}_{level}")) %>%
+    dplyr::pull()
+
+  if (is.factor(purrr::pluck(data, strata))) {
+    strata_lvls <- c("Overall", levels(purrr::pluck(data, strata)))
+  } else {
+    strata_lvls <- c("Overall", unique(purrr::pluck(data, strata)))
+  }
+
+  res_stats <- res_stats %>%
+    mutate(var = factor(var,
+                        levels = var_lvls),
+           strata = factor(strata,
+                           levels = strata_lvls),
+           var_level = glue::glue("{var}_{level}"),
+           var_level = factor(var_level,
+                              levels = level_lvls)) %>%
+    dplyr::arrange(var, strata, var_level) %>%
+    mutate(level = factor(level)) %>%
+    dplyr::select(-var_level)
+
+
+  #### Add on var_info --------------------------------
+
+  res_stats <- var_info %>%
+    dplyr::select(-level) %>%
+    dplyr::distinct() %>%
+    mutate(var = factor(var,
+                        levels = levels(res_stats$var))) %>%
+    dplyr::left_join(res_stats,
+                     .,
+                     by = "var")
+
+  #### Return results --------------------------------
 
   return(res_stats)
 

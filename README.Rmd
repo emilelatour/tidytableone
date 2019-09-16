@@ -63,7 +63,23 @@ Use the `dplyr::glimpse` command to see the tidy table one
 dplyr::glimpse(tab1)
 ```
 
-Some information is only available for categorical variables and some information for continous variables.
+Some information is only available for categorical variables and some information for continuous variables.
+
+```{r}
+
+tab1 %>% 
+  dplyr::filter(var_type == "categorical") %>% 
+  dplyr::select(strata, var, level:check_categorical_test, smd:var_type)
+
+```
+
+```{r}
+
+tab1 %>% 
+  dplyr::filter(var_type == "continuous") %>% 
+  dplyr::select(strata, var, n:shapiro_test, oneway_test:bartlett_test, smd:var_type)
+
+```
 
 Then with some simple data manipulation we can reshape to make a table one...
 
@@ -76,16 +92,41 @@ tab1 %>%
          p_value = dplyr::coalesce(oneway_test, chisq_test), 
          p_value = scales::pvalue(p_value)) %>% 
   dplyr::distinct(strata, 
-                var, 
-                level, 
-                value, 
-                p_value) %>% 
+                  var, 
+                  level, 
+                  value, 
+                  p_value) %>% 
   tidyr::spread(., 
                 key = strata, 
                 value = value) %>% 
   dplyr::select(-p_value, dplyr::everything(), p_value) %>% 
   knitr::kable()
-  
+
 ```
 
 This is rough, but you get the idea. The plan is to next create a function to make the table based on specifications.
+
+Or possibly with some nesting...
+
+```{r}
+tab1 %>% 
+  tidyr::nest(con_res = c(n:shapiro_test, oneway_test:bartlett_test)) %>% 
+  tidyr::nest(cat_res = c(n_level:check_categorical_test)) %>% 
+  mutate(mean_sd = purrr::map_chr(.x = con_res, 
+                                  .f = ~ paste0(round(.x$mean, 1), 
+                                                " (", 
+                                                round(.x$sd, 1), 
+                                                ")"))) %>% 
+  mutate(n_pct = purrr::map_chr(.x = cat_res, 
+                                .f = ~ tryCatch(suppressWarnings(paste0(.x$n_level, 
+                                                       " (", 
+                                                       scales::percent(.x$n_level / .x$n_strata), 
+                                                       ")")), 
+                                                error = function(err) NA))) %>% 
+  mutate(value = dplyr::if_else(var_type == "continuous", mean_sd, n_pct)) %>% 
+  dplyr::select(-mean_sd, -n_pct, -class)
+
+
+
+```
+

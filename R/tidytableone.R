@@ -31,6 +31,7 @@ if (getRversion() >= "2.15.1") {
       "tab",
       "value",
       "var_type",
+      "var_level",
       "x",
       "y"
     )
