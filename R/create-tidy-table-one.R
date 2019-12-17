@@ -48,6 +48,7 @@
 #' @importFrom purrr map_chr
 #' @importFrom purrr map_dbl
 #' @importFrom purrr map2
+#' @importFrom nortest ad.test
 #' @importFrom purrr pluck
 #' @importFrom rlang ensym
 #' @importFrom stats as.formula
@@ -87,6 +88,7 @@
 #'   \item{cv}{Coefficient of variation}
 #'   \item{shapiro_test}{Shapiro-Wilkes test: p-value}
 #'   \item{ks_test}{Kolmogorov-Smirnov test: p-value}
+#'   \item{ad_test}{Anderson-Darling test for normality: p-value}
 #'   \item{level}{Level of the variable}
 #'   \item{n_level}{Total number in the variable's group}
 #'   \item{n_strata}{Total number in the variable group and strata}
@@ -240,7 +242,8 @@ create_tidy_table_one <- function(data,
               p100 = max(value, na.rm = TRUE),
               cv = sd / mean,
               shapiro_test = calc_shapiro_test(var = value),
-              ks_test = calc_ks_test(var = value)) %>%
+              ks_test = calc_ks_test(var = value),
+              ad_test = calc_ad_test(var = value)) %>%
     ungroup() %>%
     mutate(!! strata_sym := as.character(!! strata_sym))
 
@@ -268,7 +271,8 @@ create_tidy_table_one <- function(data,
               p100 = max(value, na.rm = TRUE),
               cv = sd / mean,
               shapiro_test = calc_shapiro_test(var = value),
-              ks_test = calc_ks_test(var = value)) %>%
+              ks_test = calc_ks_test(var = value),
+              ad_test = calc_ad_test(var = value)) %>%
     ungroup() %>%
     mutate(!! strata_sym := "Overall") %>%
     dplyr::select(!! strata_sym, dplyr::everything())
@@ -401,7 +405,19 @@ calc_shapiro_test <- function(var) {
 ## Kolmogorov-Smirnov Tests ----------------
 
 calc_ks_test <- function(var) {
-  tryCatch(ks.test(var, "pnorm")[["p.value"]],
+  tryCatch(ks.test(unique(var), "pnorm")[["p.value"]],
+           error = function(err) NA)
+}
+
+## anderson-darling test ----------------
+
+# The K-S test is not suitable when estimating the parameters from the data. You
+# can use the following code, which relies on the Anderson-Darling test for
+# normality, and does not require you to supply the mean and the stddev. This
+# test is stronger in accuracy than the Lilliefors test.
+
+calc_ad_test <- function(var) {
+  tryCatch(nortest::ad.test(var)[["p.value"]],
            error = function(err) NA)
 }
 

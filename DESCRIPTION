@@ -27,6 +27,7 @@ Imports:
     glue, 
     knitr, 
     magrittr, 
+    nortest,
     purrr, 
     rlang (>= 0.1.2), 
     tableone, 

@@ -39,6 +39,7 @@ A tibble with the following results
 \item{cv}{Coefficient of variation}
 \item{shapiro_test}{Shapiro-Wilkes test: p-value}
 \item{ks_test}{Kolmogorov-Smirnov test: p-value}
+\item{ad_test}{Anderson-Darling test for normality: p-value}
 \item{level}{Level of the variable}
 \item{n_level}{Total number in the variable's group}
 \item{n_strata}{Total number in the variable group and strata}
