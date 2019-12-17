@@ -26,6 +26,7 @@ if (getRversion() >= "2.15.1") {
       "fisher_test",
       "form",
       "kruskal_test",
+      "levene_test",
       "n_level",
       "oneway_test",
       "tab",

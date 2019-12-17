@@ -4,8 +4,7 @@
 \alias{create_tidy_table_one}
 \title{Tidy table one}
 \usage{
-create_tidy_table_one(data, strata = NULL, .vars,
-  na_level = "(Missing)", ...)
+create_tidy_table_one(data, strata = NULL, .vars, na_level = "(Missing)", ...)
 }
 \arguments{
 \item{data}{A data frame or tibble containing the varibales to be summarized.}
@@ -39,6 +38,7 @@ A tibble with the following results
 \item{p100}{Maximum}
 \item{cv}{Coefficient of variation}
 \item{shapiro_test}{Shapiro-Wilkes test: p-value}
+\item{ks_test}{Kolmogorov-Smirnov test: p-value}
 \item{level}{Level of the variable}
 \item{n_level}{Total number in the variable's group}
 \item{n_strata}{Total number in the variable group and strata}
@@ -48,6 +48,7 @@ A tibble with the following results
 \item{oneway_test}{Oneway anova test: p-value, equivalent to t-test when only 2 groups}
 \item{kruskal_test}{Kruskal-Wallis Rank Sum Test: p-value, equivalent to Mann-Whitney U test when only 2 groups}
 \item{bartlett_test}{Bartlett's test for homogeneity of variances: p-value}
+\item{levene_test}{Levene's test for homogeneity of variances: p-value}
 \item{smd}{Standarized mean difference}
 }
 }

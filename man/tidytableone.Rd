@@ -3,7 +3,6 @@
 \docType{package}
 \name{tidytableone}
 \alias{tidytableone}
-\alias{tidytableone-package}
 \title{tidytableone: Tidy construction of "Table 1"}
 \description{
 A tidy approach to creating the "Table 1" of study characteristics common in

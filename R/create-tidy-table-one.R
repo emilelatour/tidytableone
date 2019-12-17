@@ -22,6 +22,7 @@
 #'   variable, if any exist.
 #' @param ... Additonal arguments. Not used.
 #'
+#' @importFrom car leveneTest
 #' @importFrom dplyr bind_rows
 #' @importFrom dplyr count
 #' @importFrom dplyr count
@@ -54,6 +55,7 @@
 #' @importFrom stats chisq.test
 #' @importFrom stats fisher.test
 #' @importFrom stats kruskal.test
+#' @importFrom stats ks.test
 #' @importFrom stats oneway.test
 #' @importFrom stats quantile
 #' @importFrom stats sd
@@ -84,6 +86,7 @@
 #'   \item{p100}{Maximum}
 #'   \item{cv}{Coefficient of variation}
 #'   \item{shapiro_test}{Shapiro-Wilkes test: p-value}
+#'   \item{ks_test}{Kolmogorov-Smirnov test: p-value}
 #'   \item{level}{Level of the variable}
 #'   \item{n_level}{Total number in the variable's group}
 #'   \item{n_strata}{Total number in the variable group and strata}
@@ -93,6 +96,7 @@
 #'   \item{oneway_test}{Oneway anova test: p-value, equivalent to t-test when only 2 groups}
 #'   \item{kruskal_test}{Kruskal-Wallis Rank Sum Test: p-value, equivalent to Mann-Whitney U test when only 2 groups}
 #'   \item{bartlett_test}{Bartlett's test for homogeneity of variances: p-value}
+#'   \item{levene_test}{Levene's test for homogeneity of variances: p-value}
 #'   \item{smd}{Standarized mean difference}
 #' }
 #' @export
@@ -235,8 +239,8 @@ create_tidy_table_one <- function(data,
               p75 = quantile(value, probs = 0.75, na.rm = TRUE),
               p100 = max(value, na.rm = TRUE),
               cv = sd / mean,
-              shapiro_test = tryCatch(shapiro.test(value)[["p.value"]],
-                                      error = function(err) NA)) %>%
+              shapiro_test = calc_shapiro_test(var = value),
+              ks_test = calc_ks_test(var = value)) %>%
     ungroup() %>%
     mutate(!! strata_sym := as.character(!! strata_sym))
 
@@ -263,8 +267,8 @@ create_tidy_table_one <- function(data,
               p75 = quantile(value, probs = 0.75, na.rm = TRUE),
               p100 = max(value, na.rm = TRUE),
               cv = sd / mean,
-              shapiro_test = tryCatch(shapiro.test(value)[["p.value"]],
-                                      error = function(err) NA)) %>%
+              shapiro_test = calc_shapiro_test(var = value),
+              ks_test = calc_ks_test(var = value)) %>%
     ungroup() %>%
     mutate(!! strata_sym := "Overall") %>%
     dplyr::select(!! strata_sym, dplyr::everything())
@@ -387,6 +391,20 @@ get_smd <- function(data,
 
 }
 
+## shapiro test ----------------
+
+calc_shapiro_test <- function(var) {
+  tryCatch(shapiro.test(var)[["p.value"]],
+           error = function(err) NA)
+}
+
+## Kolmogorov-Smirnov Tests ----------------
+
+calc_ks_test <- function(var) {
+  tryCatch(ks.test(var)[["p.value"]],
+           error = function(err) NA)
+}
+
 
 ## oneway test ----------------
 
@@ -418,6 +436,16 @@ calc_bartlett_test <- function(data, form) {
   bartlett.test(formula = as.formula(form),
                 data = data) %>%
     purrr::pluck(., "p.value")
+
+}
+
+## levene test ----------------
+
+calc_levene_test <- function(data, form) {
+
+  car::leveneTest(as.formula(form),
+                  data = data) %>%
+    purrr::pluck(., "Pr(>F)", 1)
 
 }
 
@@ -506,6 +534,10 @@ calc_con_htest <- function(data, strata, .vars) {
            bartlett_test =
              purrr::map_dbl(.x = form,
                             .f = ~ calc_bartlett_test(data = data,
-                                                      form = .x))) %>%
-    dplyr::select(var, oneway_test, kruskal_test, bartlett_test)
+                                                      form = .x)),
+           levene_test =
+             purrr::map_dbl(.x = form,
+                            .f = ~ calc_levene_test(data = data,
+                                                    form = .x))) %>%
+    dplyr::select(var, oneway_test, kruskal_test, bartlett_test, levene_test)
 }
