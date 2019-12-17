@@ -401,7 +401,7 @@ calc_shapiro_test <- function(var) {
 ## Kolmogorov-Smirnov Tests ----------------
 
 calc_ks_test <- function(var) {
-  tryCatch(ks.test(var)[["p.value"]],
+  tryCatch(ks.test(var, "pnorm")[["p.value"]],
            error = function(err) NA)
 }
 
