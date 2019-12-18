@@ -103,9 +103,10 @@ unequal_variance_levene <- table_one %>%
 #### Chi-square is suspect --------------------------------
 
 doubtful_chisq_test <- table_one %>%
-  dplyr::filter(check_categorical_test != "ok" |
-                  check_categorical_test == "warning" |
-                  !is.na(check_categorical_test)) %>%
+  # dplyr::filter(check_categorical_test != "ok" |
+  #                 check_categorical_test == "warning" |
+  #                 !is.na(check_categorical_test)) %>%
+  dplyr::filter(check_categorical_test == "warning") %>%
   dplyr::filter(stringr::str_detect(var_type,
                                     pattern = paste(c("Categorical",
                                                       "categorical"),
