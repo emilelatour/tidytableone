@@ -103,6 +103,7 @@ unequal_variance_levene <- table_one %>%
 
 doubtful_chisq_test <- table_one %>%
   dplyr::filter(check_categorical_test != "ok" |
+                  check_categorical_test == "warning" |
                   !is.na(check_categorical_test)) %>%
   dplyr::filter(var_type == "Categorical") %>%
   dplyr::distinct(var) %>%
