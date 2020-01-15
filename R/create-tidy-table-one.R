@@ -120,7 +120,7 @@
 #' tab2 <- create_tidy_table_one(data = diamonds,
 #'                       strata = "cut",
 #'                       .vars = c("carat",
-#'                                 "cut",
+#'                                 # "cut",  # Don't have to include the strata variable
 #'                                 "color",
 #'                                 "clarity",
 #'                                 "depth",
@@ -182,7 +182,8 @@ create_tidy_table_one <- function(data,
   #### Categorical stats --------------------------------
 
   suppressWarnings(cat_strata <- data %>%
-                     dplyr::select(dplyr::one_of(cat_vars)) %>%
+                     dplyr::select(!! strata_sym,
+                                   dplyr::one_of(cat_vars)) %>%
                      # tidyr::pivot_longer(data = .,
                      #                     cols = !! strata_sym,
                      #                     names_to = "var",
@@ -217,9 +218,9 @@ create_tidy_table_one <- function(data,
 
   #### Continuous stats --------------------------------
 
-
   con_strata <- data %>%
-    dplyr::select(!! strata_sym, dplyr::one_of(con_vars)) %>%
+    dplyr::select(!! strata_sym,
+                  dplyr::one_of(con_vars)) %>%
     # tidyr::pivot_longer(data = .,
     #                     cols = !! strata_sym,
     #                     names_to = "var",

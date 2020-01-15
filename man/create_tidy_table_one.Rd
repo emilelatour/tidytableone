@@ -75,7 +75,7 @@ library(ggplot2)  # diamonds data set
 tab2 <- create_tidy_table_one(data = diamonds,
                       strata = "cut",
                       .vars = c("carat",
-                                "cut",
+                                # "cut",  # Don't have to include the strata variable
                                 "color",
                                 "clarity",
                                 "depth",
