@@ -1,7 +1,7 @@
 #' tidytableone: Tidy construction of "Table 1"
 #'
 #' A tidy approach to creating the "Table 1" of study characteristics common in
-#' bimoedical research.
+#' biomedical research.
 #'
 #' @examples
 #' # Example usage:
