@@ -4,7 +4,8 @@
 \name{pbc_mayo}
 \alias{pbc_mayo}
 \title{Mayo Clinic Primary Biliary Cirrhosis Data}
-\format{A tibble with 418 observations on 20 variables.
+\format{
+A tibble with 418 observations on 20 variables.
 \describe{
 \item{id}{Patient ID}
 \item{time}{Number of days between registration and the earlier of death, transplantion, or study analysis time in July, 1986}
@@ -26,7 +27,8 @@
 \item{platelet}{Platelets per cubic ml/1000}
 \item{protime}{Standardised blood clotting time}
 \item{stage}{Histologic stage of disease}
-}}
+}
+}
 \source{
 Therneau and P Grambsch (2000), Modeling Survival Data: Extending the Cox Model, Springer-Verlag, New York. ISBN: 0-387-98784-3.
 }
