@@ -184,6 +184,9 @@ create_tidy_table_one <- function(data,
     dplyr::pull(var) %>%
     unique()
 
+  cat_vars <- cat_vars[!cat_vars %in% strata]
+  con_vars <- con_vars[!con_vars %in% strata]
+
 
   if (length(cat_vars) > 0 & length(con_vars) > 0) {
 
