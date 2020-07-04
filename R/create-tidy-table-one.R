@@ -32,6 +32,7 @@
 #' @importFrom dplyr group_by
 #' @importFrom dplyr left_join
 #' @importFrom dplyr mutate
+#' @importFrom dplyr mutate_if
 #' @importFrom dplyr n
 #' @importFrom dplyr n_distinct
 #' @importFrom dplyr one_of
@@ -140,6 +141,11 @@ create_tidy_table_one <- function(data,
     stop("Currently, the function only works when a strata is given.")
   }
 
+  data <- data %>%
+    dplyr::mutate_if(.tbl = .,
+                     .predicate = ~ ("ordered" %in% class(.)),
+                     .funs = ~ factor(., ordered = FALSE))
+
 
   strata_sym <- rlang::ensym(strata)
 
@@ -179,190 +185,639 @@ create_tidy_table_one <- function(data,
     unique()
 
 
-  #### Categorical stats --------------------------------
+  if (length(cat_vars) > 0 & length(con_vars) > 0) {
 
-  suppressWarnings(cat_strata <- data %>%
-                     dplyr::select(!! strata_sym,
-                                   dplyr::one_of(cat_vars)) %>%
-                     # tidyr::pivot_longer(data = .,
-                     #                     cols = !! strata_sym,
-                     #                     names_to = "var",
-                     #                     values_to = "level") %>%
-                     tidyr::gather(data = .,
-                                   key = "var",
-                                   value = "level",
-                                   - !! strata_sym) %>%
-                     dplyr::count(!! strata_sym, var, level,
-                                  name = "n_level",
-                                  .drop = FALSE) %>%
-                     group_by(var) %>%
-                     tidyr::complete(!! strata_sym, level,
-                                     fill = list(n_level = 0)) %>%
-                     group_by(!! strata_sym, var) %>%
-                     mutate(n_strata = sum(n_level, na.rm = TRUE)) %>%
-                     ungroup() %>%
-                     dplyr::select(!! strata_sym, dplyr::everything()) %>%
-                     mutate(!! strata_sym := as.character(!! strata_sym)) )
+    #### Categorical stats --------------------------------
 
-  cat_overall <- cat_strata %>%
-    dplyr::group_by(var, level) %>%
-    mutate(n_level = sum(n_level, na.rm = TRUE)) %>%
-    group_by(!! strata_sym, var) %>%
-    mutate(n_strata = sum(n_level, na.rm = TRUE)) %>%
-    ungroup() %>%
-    mutate(!! strata_sym := "Overall") %>%
-    dplyr::distinct()
+    suppressWarnings(cat_strata <- data %>%
+                       dplyr::select(!! strata_sym,
+                                     dplyr::one_of(cat_vars)) %>%
+                       tidyr::pivot_longer(data = .,
+                                           cols = - !! strata_sym,
+                                           names_to = "var",
+                                           values_to = "level") %>%
+                       # tidyr::gather(data = .,
+                       #               key = "var",
+                       #               value = "level",
+                       #               - !! strata_sym) %>%
+                       dplyr::count(!! strata_sym, var, level,
+                                    name = "n_level",
+                                    .drop = FALSE) %>%
+                       group_by(var) %>%
+                       tidyr::complete(!! strata_sym, level,
+                                       fill = list(n_level = 0)) %>%
+                       group_by(!! strata_sym, var) %>%
+                       mutate(n_strata = sum(n_level, na.rm = TRUE)) %>%
+                       ungroup() %>%
+                       dplyr::select(!! strata_sym, dplyr::everything()) %>%
+                       mutate(!! strata_sym := as.character(!! strata_sym)) )
 
-  cat_stats <- dplyr::bind_rows(cat_overall,
-                                cat_strata)
+    cat_overall <- cat_strata %>%
+      dplyr::group_by(var, level) %>%
+      mutate(n_level = sum(n_level, na.rm = TRUE)) %>%
+      group_by(!! strata_sym, var) %>%
+      mutate(n_strata = sum(n_level, na.rm = TRUE)) %>%
+      ungroup() %>%
+      mutate(!! strata_sym := "Overall") %>%
+      dplyr::distinct()
 
-  #### Continuous stats --------------------------------
+    cat_stats <- dplyr::bind_rows(cat_overall,
+                                  cat_strata)
 
-  con_strata <- data %>%
-    dplyr::select(!! strata_sym,
-                  dplyr::one_of(con_vars)) %>%
-    # tidyr::pivot_longer(data = .,
-    #                     cols = !! strata_sym,
-    #                     names_to = "var",
-    #                     values_to = "value") %>%
-    tidyr::gather(data = .,
-                  key = "var",
-                  value = "value",
-                  - !! strata_sym) %>%
-    group_by(!! strata_sym, var) %>%
-    summarise(n = dplyr::n(),
-              n_distinct = dplyr::n_distinct(value),
-              complete = sum(!is.na(value)),
-              missing = sum(is.na(value)),
-              mean = mean(value, na.rm = TRUE),
-              sd = sd(value, na.rm = TRUE),
-              p0 = min(value, na.rm = TRUE),
-              p25 = quantile(value, probs = 0.25, na.rm = TRUE),
-              p50 = quantile(value, probs = 0.50, na.rm = TRUE),
-              p75 = quantile(value, probs = 0.75, na.rm = TRUE),
-              p100 = max(value, na.rm = TRUE),
-              cv = sd / mean,
-              shapiro_test = calc_shapiro_test(var = value),
-              ks_test = calc_ks_test(var = value),
-              ad_test = calc_ad_test(var = value)) %>%
-    ungroup() %>%
-    mutate(!! strata_sym := as.character(!! strata_sym))
+    #### Continuous stats --------------------------------
 
-  con_overall <- data %>%
-    dplyr::select(!! strata_sym, dplyr::one_of(con_vars)) %>%
-    # tidyr::pivot_longer(data = .,
-    #                     cols = !! strata_sym,
-    #                     names_to = "var",
-    #                     values_to = "value") %>%
-    tidyr::gather(data = .,
-                  key = "var",
-                  value = "value",
-                  - !! strata_sym) %>%
-    group_by(var) %>%
-    summarise(n = dplyr::n(),
-              n_distinct = dplyr::n_distinct(value),
-              complete = sum(!is.na(value)),
-              missing = sum(is.na(value)),
-              mean = mean(value, na.rm = TRUE),
-              sd = sd(value, na.rm = TRUE),
-              p0 = min(value, na.rm = TRUE),
-              p25 = quantile(value, probs = 0.25, na.rm = TRUE),
-              p50 = quantile(value, probs = 0.50, na.rm = TRUE),
-              p75 = quantile(value, probs = 0.75, na.rm = TRUE),
-              p100 = max(value, na.rm = TRUE),
-              cv = sd / mean,
-              shapiro_test = calc_shapiro_test(var = value),
-              ks_test = calc_ks_test(var = value),
-              ad_test = calc_ad_test(var = value)) %>%
-    ungroup() %>%
-    mutate(!! strata_sym := "Overall") %>%
-    dplyr::select(!! strata_sym, dplyr::everything())
+    con_strata <- data %>%
+      dplyr::select(!! strata_sym,
+                    dplyr::one_of(con_vars)) %>%
+      tidyr::pivot_longer(data = .,
+                          cols = - !! strata_sym,
+                          names_to = "var",
+                          values_to = "value") %>%
+      # tidyr::gather(data = .,
+      #               key = "var",
+      #               value = "value",
+      #               - !! strata_sym) %>%
+      group_by(!! strata_sym, var) %>%
+      summarise(n = dplyr::n(),
+                n_distinct = dplyr::n_distinct(value),
+                complete = sum(!is.na(value)),
+                missing = sum(is.na(value)),
+                mean = mean(value, na.rm = TRUE),
+                sd = sd(value, na.rm = TRUE),
+                p0 = min(value, na.rm = TRUE),
+                p25 = quantile(value, probs = 0.25, na.rm = TRUE),
+                p50 = quantile(value, probs = 0.50, na.rm = TRUE),
+                p75 = quantile(value, probs = 0.75, na.rm = TRUE),
+                p100 = max(value, na.rm = TRUE),
+                cv = sd / mean,
+                shapiro_test = calc_shapiro_test(var = value),
+                ks_test = calc_ks_test(var = value),
+                ad_test = calc_ad_test(var = value)) %>%
+      ungroup() %>%
+      mutate(!! strata_sym := as.character(!! strata_sym))
 
-
-  con_stats <- dplyr::bind_rows(con_overall,
-                                con_strata)
+    con_overall <- data %>%
+      dplyr::select(!! strata_sym, dplyr::one_of(con_vars)) %>%
+      tidyr::pivot_longer(data = .,
+                          cols = - !! strata_sym,
+                          names_to = "var",
+                          values_to = "value") %>%
+      # tidyr::gather(data = .,
+      #               key = "var",
+      #               value = "value",
+      #               - !! strata_sym) %>%
+      group_by(var) %>%
+      summarise(n = dplyr::n(),
+                n_distinct = dplyr::n_distinct(value),
+                complete = sum(!is.na(value)),
+                missing = sum(is.na(value)),
+                mean = mean(value, na.rm = TRUE),
+                sd = sd(value, na.rm = TRUE),
+                p0 = min(value, na.rm = TRUE),
+                p25 = quantile(value, probs = 0.25, na.rm = TRUE),
+                p50 = quantile(value, probs = 0.50, na.rm = TRUE),
+                p75 = quantile(value, probs = 0.75, na.rm = TRUE),
+                p100 = max(value, na.rm = TRUE),
+                cv = sd / mean,
+                shapiro_test = calc_shapiro_test(var = value),
+                ks_test = calc_ks_test(var = value),
+                ad_test = calc_ad_test(var = value)) %>%
+      ungroup() %>%
+      mutate(!! strata_sym := "Overall") %>%
+      dplyr::select(!! strata_sym, dplyr::everything())
 
 
-  #### Calc SMD --------------------------------
+    con_stats <- dplyr::bind_rows(con_overall,
+                                  con_strata)
 
-  smd_res <- get_smd(data = df_omit_na_strata,
-                     strata = strata,
-                     .vars = .vars)
 
-  # 10: In StdDiff(variable = var, group = strataVar) :
-  # Variable has only NA's in at least one stratum. na.rm turned off.
+    #### Calc SMD --------------------------------
 
-  #### Hypothesis tests --------------------------------
+    smd_res <- get_smd(data = df_omit_na_strata,
+                       strata = strata,
+                       .vars = .vars)
 
-  if(!is.null(strata)) {
+    # 10: In StdDiff(variable = var, group = strataVar) :
+    # Variable has only NA's in at least one stratum. na.rm turned off.
 
-    htest_res <- dplyr::bind_rows(
-      calc_cat_htest(data = df_omit_na_strata,
-                     strata = strata,
-                     .vars = cat_vars),
+    #### Hypothesis tests --------------------------------
 
-      calc_con_htest(data = df_omit_na_strata,
-                     strata = strata,
-                     .vars = con_vars)
-    )
+    if(!is.null(strata)) {
+
+      htest_res <- dplyr::bind_rows(
+        calc_cat_htest(data = df_omit_na_strata,
+                       strata = strata,
+                       .vars = cat_vars),
+
+        calc_con_htest(data = df_omit_na_strata,
+                       strata = strata,
+                       .vars = con_vars)
+      )
+
+    }
+
+
+    #### Combine results --------------------------------
+
+    res_stats <- dplyr::bind_rows(con_stats,
+                                  cat_stats) %>%
+      dplyr::left_join(.,
+                       htest_res,
+                       by = "var") %>%
+      dplyr::rename("strata" = !! strata_sym) %>%
+      dplyr::left_join(.,
+                       smd_res,
+                       by = "var")
+
+    #### Arrange results --------------------------------
+
+    var_lvls <- unique(var_info$var)
+
+    level_lvls <- var_info %>%
+      dplyr::transmute(var_level = glue::glue("{var}_{level}")) %>%
+      dplyr::pull()
+
+    if (is.factor(purrr::pluck(data, strata))) {
+      strata_lvls <- c("Overall", levels(purrr::pluck(data, strata)))
+    } else {
+      strata_lvls <- c("Overall", unique(purrr::pluck(data, strata)))
+    }
+
+    res_stats <- res_stats %>%
+      mutate(var = factor(var,
+                          levels = var_lvls),
+             strata = factor(strata,
+                             levels = strata_lvls),
+             var_level = glue::glue("{var}_{level}"),
+             var_level = factor(var_level,
+                                levels = level_lvls)) %>%
+      dplyr::arrange(var, strata, var_level) %>%
+      mutate(level = factor(level)) %>%
+      dplyr::select(-var_level)
+
+
+    #### Add on var_info --------------------------------
+
+    res_stats <- var_info %>%
+      dplyr::select(-level) %>%
+      dplyr::distinct() %>%
+      mutate(var = factor(var,
+                          levels = levels(res_stats$var))) %>%
+      dplyr::left_join(res_stats,
+                       .,
+                       by = "var")
+
+    #### Return results --------------------------------
+
+    return(res_stats)
+
+  } else if (length(cat_vars) > 0) {
+
+    #### Categorical stats --------------------------------
+
+    suppressWarnings(cat_strata <- data %>%
+                       dplyr::select(!! strata_sym,
+                                     dplyr::one_of(cat_vars)) %>%
+                       tidyr::pivot_longer(data = .,
+                                           cols = - !! strata_sym,
+                                           names_to = "var",
+                                           values_to = "level") %>%
+                       # tidyr::gather(data = .,
+                       #               key = "var",
+                       #               value = "level",
+                       #               - !! strata_sym) %>%
+                       dplyr::count(!! strata_sym, var, level,
+                                    name = "n_level",
+                                    .drop = FALSE) %>%
+                       group_by(var) %>%
+                       tidyr::complete(!! strata_sym, level,
+                                       fill = list(n_level = 0)) %>%
+                       group_by(!! strata_sym, var) %>%
+                       mutate(n_strata = sum(n_level, na.rm = TRUE)) %>%
+                       ungroup() %>%
+                       dplyr::select(!! strata_sym, dplyr::everything()) %>%
+                       mutate(!! strata_sym := as.character(!! strata_sym)) )
+
+    cat_overall <- cat_strata %>%
+      dplyr::group_by(var, level) %>%
+      mutate(n_level = sum(n_level, na.rm = TRUE)) %>%
+      group_by(!! strata_sym, var) %>%
+      mutate(n_strata = sum(n_level, na.rm = TRUE)) %>%
+      ungroup() %>%
+      mutate(!! strata_sym := "Overall") %>%
+      dplyr::distinct()
+
+    cat_stats <- dplyr::bind_rows(cat_overall,
+                                  cat_strata)
+
+
+    #### Calc SMD --------------------------------
+
+    smd_res <- get_smd(data = df_omit_na_strata,
+                       strata = strata,
+                       .vars = .vars)
+
+    # 10: In StdDiff(variable = var, group = strataVar) :
+    # Variable has only NA's in at least one stratum. na.rm turned off.
+
+    #### Hypothesis tests --------------------------------
+
+    if(!is.null(strata)) {
+
+      htest_res <- dplyr::bind_rows(
+        calc_cat_htest(data = df_omit_na_strata,
+                       strata = strata,
+                       .vars = cat_vars)
+      )
+
+    }
+
+
+    #### Combine results --------------------------------
+
+    res_stats <- cat_stats %>%
+      dplyr::left_join(.,
+                       htest_res,
+                       by = "var") %>%
+      dplyr::rename("strata" = !! strata_sym) %>%
+      dplyr::left_join(.,
+                       smd_res,
+                       by = "var")
+
+    #### Arrange results --------------------------------
+
+    var_lvls <- unique(var_info$var)
+
+    level_lvls <- var_info %>%
+      dplyr::transmute(var_level = glue::glue("{var}_{level}")) %>%
+      dplyr::pull()
+
+    if (is.factor(purrr::pluck(data, strata))) {
+      strata_lvls <- c("Overall", levels(purrr::pluck(data, strata)))
+    } else {
+      strata_lvls <- c("Overall", unique(purrr::pluck(data, strata)))
+    }
+
+    res_stats <- res_stats %>%
+      mutate(var = factor(var,
+                          levels = var_lvls),
+             strata = factor(strata,
+                             levels = strata_lvls),
+             var_level = glue::glue("{var}_{level}"),
+             var_level = factor(var_level,
+                                levels = level_lvls)) %>%
+      dplyr::arrange(var, strata, var_level) %>%
+      mutate(level = factor(level)) %>%
+      dplyr::select(-var_level)
+
+
+    #### Add on var_info --------------------------------
+
+    res_stats <- var_info %>%
+      dplyr::select(-level) %>%
+      dplyr::distinct() %>%
+      mutate(var = factor(var,
+                          levels = levels(res_stats$var))) %>%
+      dplyr::left_join(res_stats,
+                       .,
+                       by = "var")
+
+    #### Return results --------------------------------
+
+    return(res_stats)
+
+  } else if (length(con_vars) > 0) {
+
+    #### Continuous stats --------------------------------
+
+    con_strata <- data %>%
+      dplyr::select(!! strata_sym,
+                    dplyr::one_of(con_vars)) %>%
+      tidyr::pivot_longer(data = .,
+                          cols = - !! strata_sym,
+                          names_to = "var",
+                          values_to = "value") %>%
+      # tidyr::gather(data = .,
+      #               key = "var",
+      #               value = "value",
+      #               - !! strata_sym) %>%
+      group_by(!! strata_sym, var) %>%
+      summarise(n = dplyr::n(),
+                n_distinct = dplyr::n_distinct(value),
+                complete = sum(!is.na(value)),
+                missing = sum(is.na(value)),
+                mean = mean(value, na.rm = TRUE),
+                sd = sd(value, na.rm = TRUE),
+                p0 = min(value, na.rm = TRUE),
+                p25 = quantile(value, probs = 0.25, na.rm = TRUE),
+                p50 = quantile(value, probs = 0.50, na.rm = TRUE),
+                p75 = quantile(value, probs = 0.75, na.rm = TRUE),
+                p100 = max(value, na.rm = TRUE),
+                cv = sd / mean,
+                shapiro_test = calc_shapiro_test(var = value),
+                ks_test = calc_ks_test(var = value),
+                ad_test = calc_ad_test(var = value)) %>%
+      ungroup() %>%
+      mutate(!! strata_sym := as.character(!! strata_sym))
+
+    con_overall <- data %>%
+      dplyr::select(!! strata_sym, dplyr::one_of(con_vars)) %>%
+      tidyr::pivot_longer(data = .,
+                          cols = - !! strata_sym,
+                          names_to = "var",
+                          values_to = "value") %>%
+      # tidyr::gather(data = .,
+      #               key = "var",
+      #               value = "value",
+      #               - !! strata_sym) %>%
+      group_by(var) %>%
+      summarise(n = dplyr::n(),
+                n_distinct = dplyr::n_distinct(value),
+                complete = sum(!is.na(value)),
+                missing = sum(is.na(value)),
+                mean = mean(value, na.rm = TRUE),
+                sd = sd(value, na.rm = TRUE),
+                p0 = min(value, na.rm = TRUE),
+                p25 = quantile(value, probs = 0.25, na.rm = TRUE),
+                p50 = quantile(value, probs = 0.50, na.rm = TRUE),
+                p75 = quantile(value, probs = 0.75, na.rm = TRUE),
+                p100 = max(value, na.rm = TRUE),
+                cv = sd / mean,
+                shapiro_test = calc_shapiro_test(var = value),
+                ks_test = calc_ks_test(var = value),
+                ad_test = calc_ad_test(var = value)) %>%
+      ungroup() %>%
+      mutate(!! strata_sym := "Overall") %>%
+      dplyr::select(!! strata_sym, dplyr::everything())
+
+
+    con_stats <- dplyr::bind_rows(con_overall,
+                                  con_strata)
+
+
+    #### Calc SMD --------------------------------
+
+    smd_res <- get_smd(data = df_omit_na_strata,
+                       strata = strata,
+                       .vars = .vars)
+
+    # 10: In StdDiff(variable = var, group = strataVar) :
+    # Variable has only NA's in at least one stratum. na.rm turned off.
+
+    #### Hypothesis tests --------------------------------
+
+    if(!is.null(strata)) {
+
+      htest_res <- dplyr::bind_rows(
+        calc_con_htest(data = df_omit_na_strata,
+                       strata = strata,
+                       .vars = con_vars)
+      )
+
+    }
+
+
+    #### Combine results --------------------------------
+
+    res_stats <- con_stats %>%
+      dplyr::left_join(.,
+                       htest_res,
+                       by = "var") %>%
+      dplyr::rename("strata" = !! strata_sym) %>%
+      dplyr::left_join(.,
+                       smd_res,
+                       by = "var")
+
+    #### Arrange results --------------------------------
+
+    var_lvls <- unique(var_info$var)
+
+    level_lvls <- var_info %>%
+      dplyr::transmute(var_level = glue::glue("{var}_{level}")) %>%
+      dplyr::pull()
+
+    if (is.factor(purrr::pluck(data, strata))) {
+      strata_lvls <- c("Overall", levels(purrr::pluck(data, strata)))
+    } else {
+      strata_lvls <- c("Overall", unique(purrr::pluck(data, strata)))
+    }
+
+    res_stats <- res_stats %>%
+      mutate(var = factor(var,
+                          levels = var_lvls),
+             strata = factor(strata,
+                             levels = strata_lvls),
+             var_level = glue::glue("{var}_{level}"),
+             var_level = factor(var_level,
+                                levels = level_lvls)) %>%
+      dplyr::arrange(var, strata, var_level) %>%
+      mutate(level = factor(level)) %>%
+      dplyr::select(-var_level)
+
+
+    #### Add on var_info --------------------------------
+
+    res_stats <- var_info %>%
+      dplyr::select(-level) %>%
+      dplyr::distinct() %>%
+      mutate(var = factor(var,
+                          levels = levels(res_stats$var))) %>%
+      dplyr::left_join(res_stats,
+                       .,
+                       by = "var")
+
+    #### Return results --------------------------------
+
+    return(res_stats)
 
   }
 
 
-  #### Combine results --------------------------------
 
-  res_stats <- dplyr::bind_rows(con_stats,
-                                cat_stats) %>%
-    dplyr::left_join(.,
-                     htest_res,
-                     by = "var") %>%
-    dplyr::rename("strata" = !! strata_sym) %>%
-    dplyr::left_join(.,
-                     smd_res,
-                     by = "var")
-
-  #### Arrange results --------------------------------
-
-  var_lvls <- unique(var_info$var)
-
-  level_lvls <- var_info %>%
-    dplyr::transmute(var_level = glue::glue("{var}_{level}")) %>%
-    dplyr::pull()
-
-  if (is.factor(purrr::pluck(data, strata))) {
-    strata_lvls <- c("Overall", levels(purrr::pluck(data, strata)))
-  } else {
-    strata_lvls <- c("Overall", unique(purrr::pluck(data, strata)))
-  }
-
-  res_stats <- res_stats %>%
-    mutate(var = factor(var,
-                        levels = var_lvls),
-           strata = factor(strata,
-                           levels = strata_lvls),
-           var_level = glue::glue("{var}_{level}"),
-           var_level = factor(var_level,
-                              levels = level_lvls)) %>%
-    dplyr::arrange(var, strata, var_level) %>%
-    mutate(level = factor(level)) %>%
-    dplyr::select(-var_level)
-
-
-  #### Add on var_info --------------------------------
-
-  res_stats <- var_info %>%
-    dplyr::select(-level) %>%
-    dplyr::distinct() %>%
-    mutate(var = factor(var,
-                        levels = levels(res_stats$var))) %>%
-    dplyr::left_join(res_stats,
-                     .,
-                     by = "var")
-
-  #### Return results --------------------------------
-
-  return(res_stats)
-
+  #   #### Categorical stats --------------------------------
+  #
+  #   suppressWarnings(cat_strata <- data %>%
+  #                      dplyr::select(!! strata_sym,
+  #                                    dplyr::one_of(cat_vars)) %>%
+  #                      # tidyr::pivot_longer(data = .,
+  #                      #                     cols = - !! strata_sym,
+  #                      #                     names_to = "var",
+  #                      #                     values_to = "level") %>%
+  #                      tidyr::gather(data = .,
+  #                                    key = "var",
+  #                                    value = "level",
+  #                                    - !! strata_sym) %>%
+  #                      dplyr::count(!! strata_sym, var, level,
+  #                                   name = "n_level",
+  #                                   .drop = FALSE) %>%
+  #                      group_by(var) %>%
+  #                      tidyr::complete(!! strata_sym, level,
+  #                                      fill = list(n_level = 0)) %>%
+  #                      group_by(!! strata_sym, var) %>%
+  #                      mutate(n_strata = sum(n_level, na.rm = TRUE)) %>%
+  #                      ungroup() %>%
+  #                      dplyr::select(!! strata_sym, dplyr::everything()) %>%
+  #                      mutate(!! strata_sym := as.character(!! strata_sym)) )
+  #
+  #   cat_overall <- cat_strata %>%
+  #     dplyr::group_by(var, level) %>%
+  #     mutate(n_level = sum(n_level, na.rm = TRUE)) %>%
+  #     group_by(!! strata_sym, var) %>%
+  #     mutate(n_strata = sum(n_level, na.rm = TRUE)) %>%
+  #     ungroup() %>%
+  #     mutate(!! strata_sym := "Overall") %>%
+  #     dplyr::distinct()
+  #
+  #   cat_stats <- dplyr::bind_rows(cat_overall,
+  #                                 cat_strata)
+  #
+  #   #### Continuous stats --------------------------------
+  #
+  #   con_strata <- data %>%
+  #     dplyr::select(!! strata_sym,
+  #                   dplyr::one_of(con_vars)) %>%
+  #     # tidyr::pivot_longer(data = .,
+  #     #                     cols = - !! strata_sym,
+  #     #                     names_to = "var",
+  #     #                     values_to = "value") %>%
+  #     tidyr::gather(data = .,
+  #                   key = "var",
+  #                   value = "value",
+  #                   - !! strata_sym) %>%
+  #     group_by(!! strata_sym, var) %>%
+  #     summarise(n = dplyr::n(),
+  #               n_distinct = dplyr::n_distinct(value),
+  #               complete = sum(!is.na(value)),
+  #               missing = sum(is.na(value)),
+  #               mean = mean(value, na.rm = TRUE),
+  #               sd = sd(value, na.rm = TRUE),
+  #               p0 = min(value, na.rm = TRUE),
+  #               p25 = quantile(value, probs = 0.25, na.rm = TRUE),
+  #               p50 = quantile(value, probs = 0.50, na.rm = TRUE),
+  #               p75 = quantile(value, probs = 0.75, na.rm = TRUE),
+  #               p100 = max(value, na.rm = TRUE),
+  #               cv = sd / mean,
+  #               shapiro_test = calc_shapiro_test(var = value),
+  #               ks_test = calc_ks_test(var = value),
+  #               ad_test = calc_ad_test(var = value)) %>%
+  #     ungroup() %>%
+  #     mutate(!! strata_sym := as.character(!! strata_sym))
+  #
+  #   con_overall <- data %>%
+  #     dplyr::select(!! strata_sym, dplyr::one_of(con_vars)) %>%
+  #     # tidyr::pivot_longer(data = .,
+  #     #                     cols = - !! strata_sym,
+  #     #                     names_to = "var",
+  #     #                     values_to = "value") %>%
+  #     tidyr::gather(data = .,
+  #                   key = "var",
+  #                   value = "value",
+  #                   - !! strata_sym) %>%
+  #     group_by(var) %>%
+  #     summarise(n = dplyr::n(),
+  #               n_distinct = dplyr::n_distinct(value),
+  #               complete = sum(!is.na(value)),
+  #               missing = sum(is.na(value)),
+  #               mean = mean(value, na.rm = TRUE),
+  #               sd = sd(value, na.rm = TRUE),
+  #               p0 = min(value, na.rm = TRUE),
+  #               p25 = quantile(value, probs = 0.25, na.rm = TRUE),
+  #               p50 = quantile(value, probs = 0.50, na.rm = TRUE),
+  #               p75 = quantile(value, probs = 0.75, na.rm = TRUE),
+  #               p100 = max(value, na.rm = TRUE),
+  #               cv = sd / mean,
+  #               shapiro_test = calc_shapiro_test(var = value),
+  #               ks_test = calc_ks_test(var = value),
+  #               ad_test = calc_ad_test(var = value)) %>%
+  #     ungroup() %>%
+  #     mutate(!! strata_sym := "Overall") %>%
+  #     dplyr::select(!! strata_sym, dplyr::everything())
+  #
+  #
+  #   con_stats <- dplyr::bind_rows(con_overall,
+  #                                 con_strata)
+  #
+  #
+  #   #### Calc SMD --------------------------------
+  #
+  #   smd_res <- get_smd(data = df_omit_na_strata,
+  #                      strata = strata,
+  #                      .vars = .vars)
+  #
+  #   # 10: In StdDiff(variable = var, group = strataVar) :
+  #   # Variable has only NA's in at least one stratum. na.rm turned off.
+  #
+  #   #### Hypothesis tests --------------------------------
+  #
+  #   if(!is.null(strata)) {
+  #
+  #     htest_res <- dplyr::bind_rows(
+  #       calc_cat_htest(data = df_omit_na_strata,
+  #                      strata = strata,
+  #                      .vars = cat_vars),
+  #
+  #       calc_con_htest(data = df_omit_na_strata,
+  #                      strata = strata,
+  #                      .vars = con_vars)
+  #     )
+  #
+  #   }
+  #
+  #
+  #   #### Combine results --------------------------------
+  #
+  #   res_stats <- dplyr::bind_rows(con_stats,
+  #                                 cat_stats) %>%
+  #     dplyr::left_join(.,
+  #                      htest_res,
+  #                      by = "var") %>%
+  #     dplyr::rename("strata" = !! strata_sym) %>%
+  #     dplyr::left_join(.,
+  #                      smd_res,
+  #                      by = "var")
+  #
+  #   #### Arrange results --------------------------------
+  #
+  #   var_lvls <- unique(var_info$var)
+  #
+  #   level_lvls <- var_info %>%
+  #     dplyr::transmute(var_level = glue::glue("{var}_{level}")) %>%
+  #     dplyr::pull()
+  #
+  #   if (is.factor(purrr::pluck(data, strata))) {
+  #     strata_lvls <- c("Overall", levels(purrr::pluck(data, strata)))
+  #   } else {
+  #     strata_lvls <- c("Overall", unique(purrr::pluck(data, strata)))
+  #   }
+  #
+  #   res_stats <- res_stats %>%
+  #     mutate(var = factor(var,
+  #                         levels = var_lvls),
+  #            strata = factor(strata,
+  #                            levels = strata_lvls),
+  #            var_level = glue::glue("{var}_{level}"),
+  #            var_level = factor(var_level,
+  #                               levels = level_lvls)) %>%
+  #     dplyr::arrange(var, strata, var_level) %>%
+  #     mutate(level = factor(level)) %>%
+  #     dplyr::select(-var_level)
+  #
+  #
+  #   #### Add on var_info --------------------------------
+  #
+  #   res_stats <- var_info %>%
+  #     dplyr::select(-level) %>%
+  #     dplyr::distinct() %>%
+  #     mutate(var = factor(var,
+  #                         levels = levels(res_stats$var))) %>%
+  #     dplyr::left_join(res_stats,
+  #                      .,
+  #                      by = "var")
+  #
+  #   #### Return results --------------------------------
+  #
+  #   return(res_stats)
+  #
 }
 
 
@@ -558,3 +1013,5 @@ calc_con_htest <- function(data, strata, .vars) {
                                                     form = .x))) %>%
     dplyr::select(var, oneway_test, kruskal_test, bartlett_test, levene_test)
 }
+
+
