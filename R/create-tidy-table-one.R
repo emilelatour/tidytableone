@@ -608,6 +608,7 @@ create_tidy_table_one <- function(data,
     res_stats <- res_stats %>%
       mutate(var = factor(var,
                           levels = var_lvls),
+             level = NA_character_,
              strata = factor(strata,
                              levels = strata_lvls),
              var_level = glue::glue("{var}_{level}"),
@@ -615,7 +616,8 @@ create_tidy_table_one <- function(data,
                                 levels = level_lvls)) %>%
       dplyr::arrange(var, strata, var_level) %>%
       mutate(level = factor(level)) %>%
-      dplyr::select(-var_level)
+      dplyr::select(-var_level,
+                    -level)
 
 
     #### Add on var_info --------------------------------
