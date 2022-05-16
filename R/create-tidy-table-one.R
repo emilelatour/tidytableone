@@ -887,18 +887,11 @@ calc_ad_test <- function(var) {
 
 calc_oneway_test <- function(data, form, var.equal = FALSE) {
 
-  tryCatch(
-    {oneway.test(formula = as.formula(form),
-              data = data,
-              var.equal = var.equal) %>%
-    purrr::pluck(., "p.value")}
-    ,
-    error = function(c) NA,
-    warning = function(c) NA,
-    message = function(c) NA
-
-
-  )
+  tryCatch(oneway.test(formula = as.formula(form),
+                       data = data,
+                       var.equal = var.equal) %>%
+             purrr::pluck(., "p.value"),
+           error = function(err) NA)
 
 
 
@@ -909,9 +902,9 @@ calc_oneway_test <- function(data, form, var.equal = FALSE) {
 
 calc_kruskal_test <- function(data, form) {
 
-  kruskal.test(formula = as.formula(form),
-               data = data) %>%
-    purrr::pluck(., "p.value")
+  tryCatch(kruskal.test(formula = as.formula(form), data = data) %>%
+             purrr::pluck(., "p.value"),
+           error = function(err) NA)
 
 }
 
@@ -920,9 +913,9 @@ calc_kruskal_test <- function(data, form) {
 
 calc_bartlett_test <- function(data, form) {
 
-  bartlett.test(formula = as.formula(form),
-                data = data) %>%
-    purrr::pluck(., "p.value")
+  tryCatch(bartlett.test(formula = as.formula(form), data = data) %>%
+             purrr::pluck(., "p.value"),
+           error = function(err) NA)
 
 }
 
@@ -930,9 +923,9 @@ calc_bartlett_test <- function(data, form) {
 
 calc_levene_test <- function(data, form) {
 
-  car::leveneTest(as.formula(form),
-                  data = data) %>%
-    purrr::pluck(., "Pr(>F)", 1)
+  tryCatch(car::leveneTest(as.formula(form), data = data) %>%
+             purrr::pluck(., "Pr(>F)", 1),
+           error = function(err) NA)
 
 }
 
