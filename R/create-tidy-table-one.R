@@ -3,7 +3,6 @@
 # Add a row to output for N
 # incloude missing strata?
 # name for missing level?
-# Add arguments for equal variance, continutiy correction, simuate p-value
 
 #' @title
 #' Tidy table one
@@ -95,7 +94,8 @@
 #'   \item{level}{Level of the variable}
 #'   \item{n_level}{Total number in the variable's group}
 #'   \item{n_strata}{Total number in the variable group and strata}
-#'   \item{chisq_test}{Chi square test: p-value}
+#'   \item{chisq_test}{Chi square test: p-value, with continuity correction}
+#'   \item{chisq_test_no_correction}{Chi square test: p-value, without continuity correction}
 #'   \item{chisq_test_simulated}{Chi square test: p-value: simulated p-value}
 #'   \item{fisher_test}{Fisher's exact test: p-value}
 #'   \item{fisher_test_simulated}{Fisher's exact test: simulated p-value}
@@ -1012,7 +1012,24 @@ calc_chisq_test <- function(tab,
 
 }
 
-## calc_chisq_test ----------------
+## calc_chisq_test (no correction) ----------------
+
+calc_chisq_test_no_correct <- function(tab,
+                            correct = FALSE,
+                            simulate.p.value = FALSE,
+                            B = 2000) {
+
+  tryCatch(chisq.test(tab,
+                      correct = correct,
+                      simulate.p.value = simulate.p.value,
+                      B = B)  %>%
+             purrr::pluck(., "p.value"),
+           error = function(err) NA)
+
+}
+
+
+## calc_chisq_test (simluated p) ----------------
 
 calc_chisq_test_sim_p <- function(tab,
                                   correct = TRUE,
@@ -1045,6 +1062,8 @@ calc_cat_htest <- function(data, strata, .vars, b_replicates) {
                              .f = ~ table(.x, .y)),
            chisq_test = purrr::map_dbl(.x = tab,
                                        .f = ~ calc_chisq_test(.x)),
+           chisq_test_no_correction = purrr::map_dbl(.x = tab,
+                                       .f = ~ calc_chisq_test_no_correct(.x)),
            chisq_test_simulated = purrr::map_dbl(.x = tab,
                                                  .f = ~ calc_chisq_test_sim_p(.x,
                                                                               B = b_replicates)),
@@ -1058,6 +1077,8 @@ calc_cat_htest <- function(data, strata, .vars, b_replicates) {
                                                    .f = ~ cat_check(.x))) %>%
     dplyr::select(var,
                   chisq_test,
+                  chisq_test_no_correction,
+                  chisq_test_simulated,
                   fisher_test,
                   fisher_test_simulated,
                   check_categorical_test)

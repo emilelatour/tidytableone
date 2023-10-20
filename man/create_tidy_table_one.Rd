@@ -53,7 +53,8 @@ A tibble with the following results
 \item{level}{Level of the variable}
 \item{n_level}{Total number in the variable's group}
 \item{n_strata}{Total number in the variable group and strata}
-\item{chisq_test}{Chi square test: p-value}
+\item{chisq_test}{Chi square test: p-value, with continuity correction}
+\item{chisq_test_no_correction}{Chi square test: p-value, without continuity correction}
 \item{chisq_test_simulated}{Chi square test: p-value: simulated p-value}
 \item{fisher_test}{Fisher's exact test: p-value}
 \item{fisher_test_simulated}{Fisher's exact test: simulated p-value}
