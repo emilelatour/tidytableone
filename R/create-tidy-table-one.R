@@ -20,8 +20,8 @@
 #'   empty, then all variables in the given data frame are used.
 #' @param na_level Character string of the text to replace `NA` in the strata
 #'   variable, if any exist.
-#' @param b_replicates For Fisher's exact test with Monte Carlo test. an integer
-#'   specifying the number of replicates used in the Monte Carlo test.
+#' @param b_replicates an integer specifying the number of replicates used in
+#'   the Monte Carlo test for Fisher's Exact test and Chi-square test.
 #' @param ... Additional arguments. Not used.
 #'
 #' @importFrom car leveneTest
@@ -96,6 +96,7 @@
 #'   \item{n_level}{Total number in the variable's group}
 #'   \item{n_strata}{Total number in the variable group and strata}
 #'   \item{chisq_test}{Chi square test: p-value}
+#'   \item{chisq_test_simulated}{Chi square test: p-value: simulated p-value}
 #'   \item{fisher_test}{Fisher's exact test: p-value}
 #'   \item{fisher_test_simulated}{Fisher's exact test: simulated p-value}
 #'   \item{check_categorical_test}{Is Chi square OK? Consider Fisher}
@@ -418,6 +419,10 @@ create_tidy_table_one <- function(data,
 
     cat_stats <- dplyr::bind_rows(cat_overall,
                                   cat_strata)
+
+    # Calc percentage
+    cat_stats <- cat_stats |>
+      mutate(pct = n_level / n_strata)
 
 
     #### Calc SMD --------------------------------
@@ -1007,6 +1012,22 @@ calc_chisq_test <- function(tab,
 
 }
 
+## calc_chisq_test ----------------
+
+calc_chisq_test_sim_p <- function(tab,
+                                  correct = TRUE,
+                                  simulate.p.value = TRUE,
+                                  B = 2000) {
+
+  tryCatch(chisq.test(tab,
+                      correct = correct,
+                      simulate.p.value = simulate.p.value,
+                      B = B)  %>%
+             purrr::pluck(., "p.value"),
+           error = function(err) NA)
+
+}
+
 
 ## calc_cat_htest ----------------
 
@@ -1024,6 +1045,10 @@ calc_cat_htest <- function(data, strata, .vars, b_replicates) {
                              .f = ~ table(.x, .y)),
            chisq_test = purrr::map_dbl(.x = tab,
                                        .f = ~ calc_chisq_test(.x)),
+           chisq_test_simulated = purrr::map_dbl(.x = tab,
+                                                 .f = ~ calc_chisq_test_sim_p(.x,
+                                                                              B = b_replicates)),
+
            fisher_test = purrr::map_dbl(.x = tab,
                                         .f = ~ calc_fisher_test(.x)),
            fisher_test_simulated = purrr::map_dbl(.x = tab,

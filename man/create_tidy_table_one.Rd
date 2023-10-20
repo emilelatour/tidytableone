@@ -25,8 +25,8 @@ empty, then all variables in the given data frame are used.}
 \item{na_level}{Character string of the text to replace \code{NA} in the strata
 variable, if any exist.}
 
-\item{b_replicates}{For Fisher's exact test with Monte Carlo test. an integer
-specifying the number of replicates used in the Monte Carlo test.}
+\item{b_replicates}{an integer specifying the number of replicates used in
+the Monte Carlo test for Fisher's Exact test and Chi-square test.}
 
 \item{...}{Additional arguments. Not used.}
 }
@@ -54,6 +54,7 @@ A tibble with the following results
 \item{n_level}{Total number in the variable's group}
 \item{n_strata}{Total number in the variable group and strata}
 \item{chisq_test}{Chi square test: p-value}
+\item{chisq_test_simulated}{Chi square test: p-value: simulated p-value}
 \item{fisher_test}{Fisher's exact test: p-value}
 \item{fisher_test_simulated}{Fisher's exact test: simulated p-value}
 \item{check_categorical_test}{Is Chi square OK? Consider Fisher}

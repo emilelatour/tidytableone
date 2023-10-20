@@ -29,6 +29,7 @@ if (getRversion() >= "2.15.1") {
       "kruskal_test",
       "levene_test",
       "n_level",
+      "n_strata",
       "oneway_test",
       "oneway_test_unequal_var",
       "oneway_test_equal_var",
