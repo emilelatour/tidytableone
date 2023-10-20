@@ -233,6 +233,10 @@ create_tidy_table_one <- function(data,
     cat_stats <- dplyr::bind_rows(cat_overall,
                                   cat_strata)
 
+    # Calc percentage
+    cat_stats <- cat_stats |>
+      mutate(pct = n_level / n_strata)
+
     #### Continuous stats --------------------------------
 
     con_strata <- data %>%
