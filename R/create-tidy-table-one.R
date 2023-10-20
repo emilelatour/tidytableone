@@ -96,7 +96,8 @@
 #'   \item{chisq_test}{Chi square test: p-value}
 #'   \item{fisher_test}{Fisher's exact test: p-value}
 #'   \item{check_categorical_test}{Is Chi square OK? Consider Fisher}
-#'   \item{oneway_test}{Oneway anova test: p-value, equivalent to t-test when only 2 groups}
+#'   \item{oneway_test_unequal_var}{Oneway anova test: p-value, equivalent to t-test when only 2 groups, unequal variances}
+#'   \item{oneway_test_equal_var}{Oneway anova test: p-value, equivalent to t-test when only 2 groups, equal variances}
 #'   \item{kruskal_test}{Kruskal-Wallis Rank Sum Test: p-value, equivalent to Mann-Whitney U test when only 2 groups}
 #'   \item{bartlett_test}{Bartlett's test for homogeneity of variances: p-value}
 #'   \item{levene_test}{Levene's test for homogeneity of variances: p-value}
@@ -883,9 +884,24 @@ calc_ad_test <- function(var) {
 }
 
 
-## oneway test ----------------
+## oneway test (unequal variances) ----------------
 
-calc_oneway_test <- function(data, form, var.equal = FALSE) {
+calc_oneway_test_unequal <- function(data, form, var.equal = FALSE) {
+
+  tryCatch(oneway.test(formula = as.formula(form),
+                       data = data,
+                       var.equal = var.equal) %>%
+             purrr::pluck(., "p.value"),
+           error = function(err) NA)
+
+
+
+}
+
+
+## oneway test (equal variances) ----------------
+
+calc_oneway_test_equal <- function(data, form, var.equal = TRUE) {
 
   tryCatch(oneway.test(formula = as.formula(form),
                        data = data,
@@ -1003,9 +1019,13 @@ calc_con_htest <- function(data, strata, .vars) {
   tibble::tibble(strata = strata,
                  var = .vars) %>%
     mutate(form = glue::glue("{var} ~ {strata}")) %>%
-    mutate(oneway_test =
+    mutate(oneway_test_unequal_var =
              purrr::map_dbl(.x = form,
-                            .f = ~ calc_oneway_test(data = data,
+                            .f = ~ calc_oneway_test_unequal(data = data,
+                                                    form = .x)),
+           oneway_test_equal_var =
+             purrr::map_dbl(.x = form,
+                            .f = ~ calc_oneway_test_equal(data = data,
                                                     form = .x)),
            kruskal_test =
              purrr::map_dbl(.x = form,
@@ -1019,7 +1039,12 @@ calc_con_htest <- function(data, strata, .vars) {
              purrr::map_dbl(.x = form,
                             .f = ~ calc_levene_test(data = data,
                                                     form = .x))) %>%
-    dplyr::select(var, oneway_test, kruskal_test, bartlett_test, levene_test)
+    dplyr::select(var,
+                  oneway_test_unequal_var,
+                  oneway_test_equal_var,
+                  kruskal_test,
+                  bartlett_test,
+                  levene_test)
 }
 
 

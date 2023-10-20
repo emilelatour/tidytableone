@@ -46,7 +46,8 @@ A tibble with the following results
 \item{chisq_test}{Chi square test: p-value}
 \item{fisher_test}{Fisher's exact test: p-value}
 \item{check_categorical_test}{Is Chi square OK? Consider Fisher}
-\item{oneway_test}{Oneway anova test: p-value, equivalent to t-test when only 2 groups}
+\item{oneway_test_unequal_var}{Oneway anova test: p-value, equivalent to t-test when only 2 groups, unequal variances}
+\item{oneway_test_equal_var}{Oneway anova test: p-value, equivalent to t-test when only 2 groups, equal variances}
 \item{kruskal_test}{Kruskal-Wallis Rank Sum Test: p-value, equivalent to Mann-Whitney U test when only 2 groups}
 \item{bartlett_test}{Bartlett's test for homogeneity of variances: p-value}
 \item{levene_test}{Levene's test for homogeneity of variances: p-value}
