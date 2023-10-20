@@ -10,17 +10,19 @@
 #'
 #' @description
 #' Creates a tidy data frame of the results that can go into a "Table 1" of
-#' summary descriptive statistics of a study sample. Inpiration for this is owed
+#' summary descriptive statistics of a study sample. Inspiration for this is owed
 #' to the `tableone` package by Kazuki Yoshida.
 #'
-#' @param data A data frame or tibble containing the varibales to be summarized.
+#' @param data A data frame or tibble containing the variables to be summarized.
 #' @param strata Character vector of the stratifying (grouping) variable.
 #'   **Currently required**
 #' @param .vars Character vector of the variable names to be summarized. If
 #'   empty, then all variables in the given data frame are used.
 #' @param na_level Character string of the text to replace `NA` in the strata
 #'   variable, if any exist.
-#' @param ... Additonal arguments. Not used.
+#' @param b_replicates For Fisher's exact test with Monte Carlo test. an integer
+#'   specifying the number of replicates used in the Monte Carlo test.
+#' @param ... Additional arguments. Not used.
 #'
 #' @importFrom car leveneTest
 #' @importFrom dplyr bind_rows
@@ -95,6 +97,7 @@
 #'   \item{n_strata}{Total number in the variable group and strata}
 #'   \item{chisq_test}{Chi square test: p-value}
 #'   \item{fisher_test}{Fisher's exact test: p-value}
+#'   \item{fisher_test_simulated}{Fisher's exact test: simulated p-value}
 #'   \item{check_categorical_test}{Is Chi square OK? Consider Fisher}
 #'   \item{oneway_test_unequal_var}{Oneway anova test: p-value, equivalent to t-test when only 2 groups, unequal variances}
 #'   \item{oneway_test_equal_var}{Oneway anova test: p-value, equivalent to t-test when only 2 groups, equal variances}
@@ -135,7 +138,8 @@
 create_tidy_table_one <- function(data,
                                   strata = NULL,
                                   .vars,
-                                  na_level = "(Missing)", ...) {
+                                  na_level = "(Missing)",
+                                  b_replicates = 2000, ...) {
 
 
   if (is.null(strata)) {
@@ -311,7 +315,8 @@ create_tidy_table_one <- function(data,
       htest_res <- dplyr::bind_rows(
         calc_cat_htest(data = df_omit_na_strata,
                        strata = strata,
-                       .vars = cat_vars),
+                       .vars = cat_vars,
+                       b_replicates = b_replicates),
 
         calc_con_htest(data = df_omit_na_strata,
                        strata = strata,
@@ -971,6 +976,21 @@ calc_fisher_test <- function(tab,
 }
 
 
+## calc_fisher_test, simulate p-value ----------------
+
+calc_fisher_test_sim_p <- function(tab,
+                                   simulate.p.value = TRUE,
+                                   B = 2000) {
+  tryCatch(fisher.test(tab,
+                       alternative = "two.sided",
+                       conf.int = FALSE,
+                       simulate.p.value = simulate.p.value,
+                       B = B) %>%
+             purrr::pluck(., "p.value"),
+           error = function(err) NA)
+}
+
+
 ## calc_chisq_test ----------------
 
 calc_chisq_test <- function(tab,
@@ -990,7 +1010,7 @@ calc_chisq_test <- function(tab,
 
 ## calc_cat_htest ----------------
 
-calc_cat_htest <- function(data, strata, .vars) {
+calc_cat_htest <- function(data, strata, .vars, b_replicates) {
 
   tibble::tibble(strata = strata,
                  var = .vars) %>%
@@ -1006,9 +1026,16 @@ calc_cat_htest <- function(data, strata, .vars) {
                                        .f = ~ calc_chisq_test(.x)),
            fisher_test = purrr::map_dbl(.x = tab,
                                         .f = ~ calc_fisher_test(.x)),
+           fisher_test_simulated = purrr::map_dbl(.x = tab,
+                                                  .f = ~ calc_fisher_test_sim_p(.x,
+                                                                                B = b_replicates)),
            check_categorical_test = purrr::map_chr(.x = tab,
                                                    .f = ~ cat_check(.x))) %>%
-    dplyr::select(var, chisq_test, fisher_test, check_categorical_test)
+    dplyr::select(var,
+                  chisq_test,
+                  fisher_test,
+                  fisher_test_simulated,
+                  check_categorical_test)
 }
 
 
@@ -1022,11 +1049,11 @@ calc_con_htest <- function(data, strata, .vars) {
     mutate(oneway_test_unequal_var =
              purrr::map_dbl(.x = form,
                             .f = ~ calc_oneway_test_unequal(data = data,
-                                                    form = .x)),
+                                                            form = .x)),
            oneway_test_equal_var =
              purrr::map_dbl(.x = form,
                             .f = ~ calc_oneway_test_equal(data = data,
-                                                    form = .x)),
+                                                          form = .x)),
            kruskal_test =
              purrr::map_dbl(.x = form,
                             .f = ~ calc_kruskal_test(data = data,

@@ -4,10 +4,17 @@
 \alias{create_tidy_table_one}
 \title{Tidy table one}
 \usage{
-create_tidy_table_one(data, strata = NULL, .vars, na_level = "(Missing)", ...)
+create_tidy_table_one(
+  data,
+  strata = NULL,
+  .vars,
+  na_level = "(Missing)",
+  b_replicates = 2000,
+  ...
+)
 }
 \arguments{
-\item{data}{A data frame or tibble containing the varibales to be summarized.}
+\item{data}{A data frame or tibble containing the variables to be summarized.}
 
 \item{strata}{Character vector of the stratifying (grouping) variable.
 \strong{Currently required}}
@@ -18,7 +25,10 @@ empty, then all variables in the given data frame are used.}
 \item{na_level}{Character string of the text to replace \code{NA} in the strata
 variable, if any exist.}
 
-\item{...}{Additonal arguments. Not used.}
+\item{b_replicates}{For Fisher's exact test with Monte Carlo test. an integer
+specifying the number of replicates used in the Monte Carlo test.}
+
+\item{...}{Additional arguments. Not used.}
 }
 \value{
 A tibble with the following results
@@ -45,6 +55,7 @@ A tibble with the following results
 \item{n_strata}{Total number in the variable group and strata}
 \item{chisq_test}{Chi square test: p-value}
 \item{fisher_test}{Fisher's exact test: p-value}
+\item{fisher_test_simulated}{Fisher's exact test: simulated p-value}
 \item{check_categorical_test}{Is Chi square OK? Consider Fisher}
 \item{oneway_test_unequal_var}{Oneway anova test: p-value, equivalent to t-test when only 2 groups, unequal variances}
 \item{oneway_test_equal_var}{Oneway anova test: p-value, equivalent to t-test when only 2 groups, equal variances}
@@ -56,7 +67,7 @@ A tibble with the following results
 }
 \description{
 Creates a tidy data frame of the results that can go into a "Table 1" of
-summary descriptive statistics of a study sample. Inpiration for this is owed
+summary descriptive statistics of a study sample. Inspiration for this is owed
 to the \code{tableone} package by Kazuki Yoshida.
 }
 \examples{

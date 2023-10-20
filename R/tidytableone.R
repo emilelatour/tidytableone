@@ -24,6 +24,7 @@ if (getRversion() >= "2.15.1") {
       "check_categorical_test",
       "chisq_test",
       "fisher_test",
+      "fisher_test_simulated",
       "form",
       "kruskal_test",
       "levene_test",
