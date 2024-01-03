@@ -29,6 +29,7 @@ adorn_tidytableone(
   monte_carlo_p = NULL,
   show_test = FALSE,
   show_smd = FALSE,
+  use_labels = TRUE,
   ...
 )
 }
@@ -90,7 +91,9 @@ small) numbers and add a prefix. See \code{?scales:number} for more information.
 
 \item{show_test}{Logical, if FALSE, the names of the test are omitted from the table.}
 
-\item{show_smd}{Logical, if FALSE, Standardized Mean Differences (SMD) are not inlcuded}
+\item{show_smd}{Logical, if FALSE, Standardized Mean Differences (SMD) are not included.}
+
+\item{use_labels}{Logical, if TRUE, labels are used instead of variable names.}
 
 \item{...}{Additional arguments. Not used.}
 }

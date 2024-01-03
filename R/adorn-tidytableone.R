@@ -40,7 +40,8 @@
 #' @param no_cont_correction String vector of variable names to assume continuity correction.
 #' @param monte_carlo_p String vector of variable names to simulate p-values.
 #' @param show_test Logical, if FALSE, the names of the test are omitted from the table.
-#' @param show_smd Logical, if FALSE, Standardized Mean Differences (SMD) are not inlcuded
+#' @param show_smd Logical, if FALSE, Standardized Mean Differences (SMD) are not included.
+#' @param use_labels Logical, if TRUE, labels are used instead of variable names.
 #' @param ... Additional arguments. Not used.
 #'
 #' @importFrom dplyr across
@@ -142,10 +143,19 @@ adorn_tidytableone <- function(tidy_t1,
                                no_cont_correction = NULL,
                                monte_carlo_p = NULL,
                                show_test = FALSE,
-                               show_smd = FALSE, ...) {
+                               show_smd = FALSE,
+                               use_labels = TRUE, ...) {
 
   # Silence no visible binding for global variable
-  p_value <- test <- smd <- NULL
+  p_value <- test <- smd <- label <- NULL
+
+
+  #### get variable labels --------------------------------
+
+  var_lbls <- tidy_t1 |>
+    dplyr::select(var, label) |>
+    dplyr::distinct() |>
+    mutate(label = dplyr::if_else(is.na(label), var, label))
 
   #### Get the stats --------------------------------
 
@@ -297,6 +307,20 @@ adorn_tidytableone <- function(tidy_t1,
                                                      tab_smd = tab_smd)) |>
     dplyr::mutate(dplyr::across(.cols = dplyr::everything(),
                                 .fns = ~ dplyr::if_else(is.na(.), "", .)))
+
+
+  #### Apply labels --------------------------------
+
+  if (use_labels) {
+
+    adorned_tidy_t1 <- adorned_tidy_t1 |>
+      dplyr::left_join(var_lbls,
+                       by = "var") |>
+      mutate(label = dplyr::if_else(is.na(label), "", label),
+             var = label) |>
+      dplyr::select(-label)
+
+  }
 
 
   #### Return table --------------------------------
