@@ -44,7 +44,7 @@
 #' @importFrom dplyr summarise
 #' @importFrom dplyr transmute
 #' @importFrom dplyr ungroup
-#' @importFrom forcats fct_explicit_na
+#' @importFrom forcats fct_na_value_to_level
 #' @importFrom glue glue
 #' @importFrom purrr map
 #' @importFrom purrr map_chr
@@ -161,8 +161,8 @@ create_tidy_table_one <- function(data,
       dplyr::filter(!is.na(!! strata_sym))
 
     data <- data %>%
-      mutate(!! strata_sym := forcats::fct_explicit_na(!! strata_sym,
-                                                       na_level = na_level))
+      mutate(!! strata_sym := forcats::fct_na_value_to_level(!! strata_sym,
+                                                             level = na_level))
   } else {
 
     df_omit_na_strata <- data
