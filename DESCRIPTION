@@ -30,6 +30,7 @@ Imports:
     nortest,
     purrr, 
     rlang (>= 0.1.2), 
+    scales, 
     stringr, 
     tableone, 
     testit, 
