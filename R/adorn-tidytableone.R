@@ -144,6 +144,9 @@ adorn_tidytableone <- function(tidy_t1,
                                show_test = FALSE,
                                show_smd = FALSE, ...) {
 
+  # Silence no visible binding for global variable
+  p_value <- test <- smd <- NULL
+
   #### Get the stats --------------------------------
 
   tab_stats <- make_t1_pretty(t1 = tidy_t1,
@@ -316,6 +319,9 @@ build_tab1 <- function(tab_var,
                        show_smd = FALSE,
                        tab_smd) {
 
+  # Silence no visible binding for global variable
+  p_value <- test <- smd <- NULL
+
   p_i <- tab_pvals |>
     dplyr::filter(var == tab_var) |>
     dplyr::pull(p_value)
@@ -424,8 +430,10 @@ make_t1_pretty <- function(t1,
                            scale_cut = NULL,
                            con_trim = TRUE,
                            cat_trim = FALSE,
-                           show_pct = TRUE, ...
-) {
+                           show_pct = TRUE, ...) {
+
+  # Silence no visible binding for global variable
+  glue_formula <- pct <- cv <- strata <- glue_formula2 <- NULL
 
   # Percentage suffix
   if (show_pct) {
