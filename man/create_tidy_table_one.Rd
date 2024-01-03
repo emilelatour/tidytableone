@@ -7,7 +7,7 @@
 create_tidy_table_one(
   data,
   strata = NULL,
-  .vars,
+  vars,
   na_level = "(Missing)",
   b_replicates = 2000,
   ...
@@ -19,7 +19,7 @@ create_tidy_table_one(
 \item{strata}{Character vector of the stratifying (grouping) variable.
 \strong{Currently required}}
 
-\item{.vars}{Character vector of the variable names to be summarized. If
+\item{vars}{Character vector of the variable names to be summarized. If
 empty, then all variables in the given data frame are used.}
 
 \item{na_level}{Character string of the text to replace \code{NA} in the strata
@@ -77,7 +77,7 @@ library(dplyr)
 
 tab1 <- create_tidy_table_one(data = pbc_mayo,
                       strata = "trt",
-                      .vars = c("time", "status", "trt", "age", "sex", "ascites", "hepato",
+                      vars = c("time", "status", "trt", "age", "sex", "ascites", "hepato",
                                 "spiders", "edema", "bili", "chol", "albumin", "copper", "alk_phos",
                                 "ast", "trig", "platelet", "protime", "stage"))
 
@@ -88,7 +88,7 @@ library(ggplot2)  # diamonds data set
 
 tab2 <- create_tidy_table_one(data = diamonds,
                       strata = "cut",
-                      .vars = c("carat",
+                      vars = c("carat",
                                 # "cut",  # Don't have to include the strata variable
                                 "color",
                                 "clarity",

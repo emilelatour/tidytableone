@@ -15,7 +15,7 @@
 #' @param data A data frame or tibble containing the variables to be summarized.
 #' @param strata Character vector of the stratifying (grouping) variable.
 #'   **Currently required**
-#' @param .vars Character vector of the variable names to be summarized. If
+#' @param vars Character vector of the variable names to be summarized. If
 #'   empty, then all variables in the given data frame are used.
 #' @param na_level Character string of the text to replace `NA` in the strata
 #'   variable, if any exist.
@@ -114,7 +114,7 @@
 #'
 #' tab1 <- create_tidy_table_one(data = pbc_mayo,
 #'                       strata = "trt",
-#'                       .vars = c("time", "status", "trt", "age", "sex", "ascites", "hepato",
+#'                       vars = c("time", "status", "trt", "age", "sex", "ascites", "hepato",
 #'                                 "spiders", "edema", "bili", "chol", "albumin", "copper", "alk_phos",
 #'                                 "ast", "trig", "platelet", "protime", "stage"))
 #'
@@ -125,7 +125,7 @@
 #'
 #' tab2 <- create_tidy_table_one(data = diamonds,
 #'                       strata = "cut",
-#'                       .vars = c("carat",
+#'                       vars = c("carat",
 #'                                 # "cut",  # Don't have to include the strata variable
 #'                                 "color",
 #'                                 "clarity",
@@ -138,7 +138,7 @@
 
 create_tidy_table_one <- function(data,
                                   strata = NULL,
-                                  .vars,
+                                  vars,
                                   na_level = "(Missing)",
                                   b_replicates = 2000, ...) {
 
@@ -169,8 +169,8 @@ create_tidy_table_one <- function(data,
 
   }
 
-  if (missing(.vars)) {
-    .vars <- names(data)
+  if (missing(vars)) {
+    vars <- names(data)
   }
 
 
@@ -178,7 +178,7 @@ create_tidy_table_one <- function(data,
   #### Get variable info --------------------------------
 
   var_info <- get_var_info(data = data,
-                           .vars = .vars)
+                           .vars = vars)
 
   cat_vars <- var_info %>%
     dplyr::filter(var_type == "categorical") %>%
@@ -308,7 +308,7 @@ create_tidy_table_one <- function(data,
 
     smd_res <- get_smd(data = df_omit_na_strata,
                        strata = strata,
-                       .vars = .vars)
+                       vars = vars)
 
     # 10: In StdDiff(variable = var, group = strataVar) :
     # Variable has only NA's in at least one stratum. na.rm turned off.
@@ -320,12 +320,12 @@ create_tidy_table_one <- function(data,
       htest_res <- dplyr::bind_rows(
         calc_cat_htest(data = df_omit_na_strata,
                        strata = strata,
-                       .vars = cat_vars,
+                       vars = cat_vars,
                        b_replicates = b_replicates),
 
         calc_con_htest(data = df_omit_na_strata,
                        strata = strata,
-                       .vars = con_vars)
+                       vars = con_vars)
       )
 
     }
@@ -433,7 +433,7 @@ create_tidy_table_one <- function(data,
 
     smd_res <- get_smd(data = df_omit_na_strata,
                        strata = strata,
-                       .vars = .vars)
+                       vars = vars)
 
     # 10: In StdDiff(variable = var, group = strataVar) :
     # Variable has only NA's in at least one stratum. na.rm turned off.
@@ -445,7 +445,7 @@ create_tidy_table_one <- function(data,
       htest_res <- dplyr::bind_rows(
         calc_cat_htest(data = df_omit_na_strata,
                        strata = strata,
-                       .vars = cat_vars)
+                       vars = cat_vars)
       )
 
     }
@@ -577,7 +577,7 @@ create_tidy_table_one <- function(data,
 
     smd_res <- get_smd(data = df_omit_na_strata,
                        strata = strata,
-                       .vars = .vars)
+                       vars = vars)
 
     # 10: In StdDiff(variable = var, group = strataVar) :
     # Variable has only NA's in at least one stratum. na.rm turned off.
@@ -589,7 +589,7 @@ create_tidy_table_one <- function(data,
       htest_res <- dplyr::bind_rows(
         calc_con_htest(data = df_omit_na_strata,
                        strata = strata,
-                       .vars = con_vars)
+                       vars = con_vars)
       )
 
     }
@@ -762,7 +762,7 @@ create_tidy_table_one <- function(data,
   #
   #   smd_res <- get_smd(data = df_omit_na_strata,
   #                      strata = strata,
-  #                      .vars = .vars)
+  #                      vars = vars)
   #
   #   # 10: In StdDiff(variable = var, group = strataVar) :
   #   # Variable has only NA's in at least one stratum. na.rm turned off.
@@ -774,11 +774,11 @@ create_tidy_table_one <- function(data,
   #     htest_res <- dplyr::bind_rows(
   #       calc_cat_htest(data = df_omit_na_strata,
   #                      strata = strata,
-  #                      .vars = cat_vars),
+  #                      vars = cat_vars),
   #
   #       calc_con_htest(data = df_omit_na_strata,
   #                      strata = strata,
-  #                      .vars = con_vars)
+  #                      vars = con_vars)
   #     )
   #
   #   }
@@ -849,16 +849,16 @@ create_tidy_table_one <- function(data,
 
 get_smd <- function(data,
                     strata = NULL,
-                    .vars) {
+                    vars) {
 
   if (is.null(strata)) {
 
-    tibble::tibble(var = .vars,
+    tibble::tibble(var = vars,
                    smm = NA_real_)
 
   } else {
 
-    tableone::CreateTableOne(vars = .vars,
+    tableone::CreateTableOne(vars = vars,
                              strata = strata,
                              data = data) %>%
       tableone::ExtractSmd(.) %>%
@@ -1019,9 +1019,9 @@ calc_chisq_test <- function(tab,
 ## calc_chisq_test (no correction) ----------------
 
 calc_chisq_test_no_correct <- function(tab,
-                            correct = FALSE,
-                            simulate.p.value = FALSE,
-                            B = 2000) {
+                                       correct = FALSE,
+                                       simulate.p.value = FALSE,
+                                       B = 2000) {
 
   tryCatch(chisq.test(tab,
                       correct = correct,
@@ -1052,10 +1052,10 @@ calc_chisq_test_sim_p <- function(tab,
 
 ## calc_cat_htest ----------------
 
-calc_cat_htest <- function(data, strata, .vars, b_replicates) {
+calc_cat_htest <- function(data, strata, vars, b_replicates) {
 
   tibble::tibble(strata = strata,
-                 var = .vars) %>%
+                 var = vars) %>%
     mutate(x = purrr::map(.x = strata,
                           .f = ~ purrr::pluck(data, .x)),
            y = purrr::map(.x = var,
@@ -1067,7 +1067,7 @@ calc_cat_htest <- function(data, strata, .vars, b_replicates) {
            chisq_test = purrr::map_dbl(.x = tab,
                                        .f = ~ calc_chisq_test(.x)),
            chisq_test_no_correction = purrr::map_dbl(.x = tab,
-                                       .f = ~ calc_chisq_test_no_correct(.x)),
+                                                     .f = ~ calc_chisq_test_no_correct(.x)),
            chisq_test_simulated = purrr::map_dbl(.x = tab,
                                                  .f = ~ calc_chisq_test_sim_p(.x,
                                                                               B = b_replicates)),
@@ -1091,10 +1091,10 @@ calc_cat_htest <- function(data, strata, .vars, b_replicates) {
 
 ## calc_con_htest ----------------
 
-calc_con_htest <- function(data, strata, .vars) {
+calc_con_htest <- function(data, strata, vars) {
 
   tibble::tibble(strata = strata,
-                 var = .vars) %>%
+                 var = vars) %>%
     mutate(form = glue::glue("{var} ~ {strata}")) %>%
     mutate(oneway_test_unequal_var =
              purrr::map_dbl(.x = form,
