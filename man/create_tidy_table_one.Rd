@@ -64,7 +64,7 @@ A tibble with the following results
 \item{kruskal_test}{Kruskal-Wallis Rank Sum Test: p-value, equivalent to Mann-Whitney U test when only 2 groups}
 \item{bartlett_test}{Bartlett's test for homogeneity of variances: p-value}
 \item{levene_test}{Levene's test for homogeneity of variances: p-value}
-\item{smd}{Standarized mean difference}
+\item{smd}{Standarized mean difference for all pairwise comparisons}
 }
 }
 \description{

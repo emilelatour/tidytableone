@@ -105,7 +105,7 @@
 #'   \item{kruskal_test}{Kruskal-Wallis Rank Sum Test: p-value, equivalent to Mann-Whitney U test when only 2 groups}
 #'   \item{bartlett_test}{Bartlett's test for homogeneity of variances: p-value}
 #'   \item{levene_test}{Levene's test for homogeneity of variances: p-value}
-#'   \item{smd}{Standarized mean difference}
+#'   \item{smd}{Standarized mean difference for all pairwise comparisons}
 #' }
 #' @export
 #'
@@ -176,6 +176,10 @@ create_tidy_table_one <- function(data,
 
 
   #### Get variable info --------------------------------
+
+  var_lbls <- tibble::tibble(var = names(data)) |>
+    mutate(label = purrr::map_chr(.x = data[, var],
+                                  .f = ~ get_var_labels(x = .x)))
 
   var_info <- get_var_info(data = data,
                            .vars = vars)
@@ -381,6 +385,10 @@ create_tidy_table_one <- function(data,
                        .,
                        by = "var")
 
+    res_stats <- res_stats |>
+      dplyr::left_join(var_lbls,
+                       by = "var")
+
     #### Return results --------------------------------
 
     return(res_stats)
@@ -498,6 +506,10 @@ create_tidy_table_one <- function(data,
                           levels = levels(res_stats$var))) %>%
       dplyr::left_join(res_stats,
                        .,
+                       by = "var")
+
+    res_stats <- res_stats |>
+      dplyr::left_join(var_lbls,
                        by = "var")
 
     #### Return results --------------------------------
@@ -644,6 +656,10 @@ create_tidy_table_one <- function(data,
                           levels = levels(res_stats$var))) %>%
       dplyr::left_join(res_stats,
                        .,
+                       by = "var")
+
+    res_stats <- res_stats |>
+      dplyr::left_join(var_lbls,
                        by = "var")
 
     #### Return results --------------------------------
@@ -1172,3 +1188,19 @@ custom_max <- function(x, na.rm = TRUE) {
     max(x, na.rm = na.rm)
   }
 }
+
+
+get_var_labels <- function(x) {
+
+  x_lbl <- attr(x,
+                which = "label",
+                exact = TRUE)
+
+  if (is.null(x_lbl)) {
+    NA_character_
+  } else {
+    x_lbl
+  }
+
+}
+
