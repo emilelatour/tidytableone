@@ -257,7 +257,7 @@ create_tidy_table_one <- function(data,
                 missing = sum(is.na(value)),
                 mean = mean(value, na.rm = TRUE),
                 sd = sd(value, na.rm = TRUE),
-                p0 = min(value, na.rm = TRUE),
+                p0 = custom_min(value, na.rm = TRUE),
                 p25 = quantile(value, probs = 0.25, na.rm = TRUE),
                 p50 = quantile(value, probs = 0.50, na.rm = TRUE),
                 p75 = quantile(value, probs = 0.75, na.rm = TRUE),
@@ -286,7 +286,7 @@ create_tidy_table_one <- function(data,
                 missing = sum(is.na(value)),
                 mean = mean(value, na.rm = TRUE),
                 sd = sd(value, na.rm = TRUE),
-                p0 = min(value, na.rm = TRUE),
+                p0 = custom_min(value, na.rm = TRUE),
                 p25 = quantile(value, probs = 0.25, na.rm = TRUE),
                 p50 = quantile(value, probs = 0.50, na.rm = TRUE),
                 p75 = quantile(value, probs = 0.75, na.rm = TRUE),
@@ -526,7 +526,7 @@ create_tidy_table_one <- function(data,
                 missing = sum(is.na(value)),
                 mean = mean(value, na.rm = TRUE),
                 sd = sd(value, na.rm = TRUE),
-                p0 = min(value, na.rm = TRUE),
+                p0 = custom_min(value, na.rm = TRUE),
                 p25 = quantile(value, probs = 0.25, na.rm = TRUE),
                 p50 = quantile(value, probs = 0.50, na.rm = TRUE),
                 p75 = quantile(value, probs = 0.75, na.rm = TRUE),
@@ -555,7 +555,7 @@ create_tidy_table_one <- function(data,
                 missing = sum(is.na(value)),
                 mean = mean(value, na.rm = TRUE),
                 sd = sd(value, na.rm = TRUE),
-                p0 = min(value, na.rm = TRUE),
+                p0 = custom_min(value, na.rm = TRUE),
                 p25 = quantile(value, probs = 0.25, na.rm = TRUE),
                 p50 = quantile(value, probs = 0.50, na.rm = TRUE),
                 p75 = quantile(value, probs = 0.75, na.rm = TRUE),
@@ -1125,3 +1125,27 @@ calc_con_htest <- function(data, strata, vars) {
 }
 
 
+## custom_min ----------------
+
+custom_min <- function(x, na.rm = TRUE) {
+
+  if (is.integer(x)) {
+
+    dflt_miss <- NA_integer_
+
+  } else if (is.numeric(x)) {
+
+    dflt_miss <- NA_real_
+
+  } else {
+
+    dflt_miss <- Inf
+
+  }
+
+  if (length(x) > 0) {
+    min(x, na.rm = na.rm)
+  } else {
+    dflt_miss
+  }
+}
