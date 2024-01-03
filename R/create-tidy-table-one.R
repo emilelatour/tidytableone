@@ -269,7 +269,8 @@ create_tidy_table_one <- function(data,
                 cv = sd / mean,
                 shapiro_test = calc_shapiro_test(var = value),
                 ks_test = calc_ks_test(var = value),
-                ad_test = calc_ad_test(var = value)) %>%
+                ad_test = calc_ad_test(var = value),
+                .groups = "drop") %>%
       ungroup() %>%
       mutate(!! strata_sym := as.character(!! strata_sym))
 
@@ -298,7 +299,8 @@ create_tidy_table_one <- function(data,
                 cv = sd / mean,
                 shapiro_test = calc_shapiro_test(var = value),
                 ks_test = calc_ks_test(var = value),
-                ad_test = calc_ad_test(var = value)) %>%
+                ad_test = calc_ad_test(var = value),
+                .groups = "drop") %>%
       ungroup() %>%
       mutate(!! strata_sym := "Overall") %>%
       dplyr::select(!! strata_sym, dplyr::everything())
@@ -546,7 +548,8 @@ create_tidy_table_one <- function(data,
                 cv = sd / mean,
                 shapiro_test = calc_shapiro_test(var = value),
                 ks_test = calc_ks_test(var = value),
-                ad_test = calc_ad_test(var = value)) %>%
+                ad_test = calc_ad_test(var = value),
+                .groups = "drop") %>%
       ungroup() %>%
       mutate(!! strata_sym := as.character(!! strata_sym))
 
@@ -575,7 +578,8 @@ create_tidy_table_one <- function(data,
                 cv = sd / mean,
                 shapiro_test = calc_shapiro_test(var = value),
                 ks_test = calc_ks_test(var = value),
-                ad_test = calc_ad_test(var = value)) %>%
+                ad_test = calc_ad_test(var = value),
+                .groups = "drop") %>%
       ungroup() %>%
       mutate(!! strata_sym := "Overall") %>%
       dplyr::select(!! strata_sym, dplyr::everything())
