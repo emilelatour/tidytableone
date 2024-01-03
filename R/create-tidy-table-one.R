@@ -261,7 +261,7 @@ create_tidy_table_one <- function(data,
                 p25 = quantile(value, probs = 0.25, na.rm = TRUE),
                 p50 = quantile(value, probs = 0.50, na.rm = TRUE),
                 p75 = quantile(value, probs = 0.75, na.rm = TRUE),
-                p100 = max(value, na.rm = TRUE),
+                p100 = custom_max(value, na.rm = TRUE),
                 cv = sd / mean,
                 shapiro_test = calc_shapiro_test(var = value),
                 ks_test = calc_ks_test(var = value),
@@ -290,7 +290,7 @@ create_tidy_table_one <- function(data,
                 p25 = quantile(value, probs = 0.25, na.rm = TRUE),
                 p50 = quantile(value, probs = 0.50, na.rm = TRUE),
                 p75 = quantile(value, probs = 0.75, na.rm = TRUE),
-                p100 = max(value, na.rm = TRUE),
+                p100 = custom_max(value, na.rm = TRUE),
                 cv = sd / mean,
                 shapiro_test = calc_shapiro_test(var = value),
                 ks_test = calc_ks_test(var = value),
@@ -530,7 +530,7 @@ create_tidy_table_one <- function(data,
                 p25 = quantile(value, probs = 0.25, na.rm = TRUE),
                 p50 = quantile(value, probs = 0.50, na.rm = TRUE),
                 p75 = quantile(value, probs = 0.75, na.rm = TRUE),
-                p100 = max(value, na.rm = TRUE),
+                p100 = custom_max(value, na.rm = TRUE),
                 cv = sd / mean,
                 shapiro_test = calc_shapiro_test(var = value),
                 ks_test = calc_ks_test(var = value),
@@ -559,7 +559,7 @@ create_tidy_table_one <- function(data,
                 p25 = quantile(value, probs = 0.25, na.rm = TRUE),
                 p50 = quantile(value, probs = 0.50, na.rm = TRUE),
                 p75 = quantile(value, probs = 0.75, na.rm = TRUE),
-                p100 = max(value, na.rm = TRUE),
+                p100 = custom_max(value, na.rm = TRUE),
                 cv = sd / mean,
                 shapiro_test = calc_shapiro_test(var = value),
                 ks_test = calc_ks_test(var = value),
@@ -1125,7 +1125,7 @@ calc_con_htest <- function(data, strata, vars) {
 }
 
 
-## custom_min ----------------
+## custom_min custom_max----------------
 
 custom_min <- function(x, na.rm = TRUE) {
 
@@ -1143,9 +1143,32 @@ custom_min <- function(x, na.rm = TRUE) {
 
   }
 
-  if (length(x) > 0) {
-    min(x, na.rm = na.rm)
-  } else {
+  if (all(is.na(x))) {
     dflt_miss
+  } else {
+    min(x, na.rm = na.rm)
+  }
+}
+
+custom_max <- function(x, na.rm = TRUE) {
+
+  if (is.integer(x)) {
+
+    dflt_miss <- NA_integer_
+
+  } else if (is.numeric(x)) {
+
+    dflt_miss <- NA_real_
+
+  } else {
+
+    dflt_miss <- Inf
+
+  }
+
+  if (all(is.na(x))) {
+    dflt_miss
+  } else {
+    max(x, na.rm = na.rm)
   }
 }
