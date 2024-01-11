@@ -160,11 +160,16 @@ create_tidy_table_one <- function(data,
 
   if (is.null(strata)) {
     # stop("Currently, the function only works when a strata is given.")
-    create_tidy_table_one_no_strata(data = data,
-                                    strata = NULL,
-                                    vars = vars,
-                                    na_level = na_level,
-                                    b_replicates = b_replicates, ...)
+    res_stats <- create_tidy_table_one_no_strata(data = data,
+                                                 strata = NULL,
+                                                 vars = vars,
+                                                 na_level = na_level,
+                                                 b_replicates = b_replicates, ...)
+
+    #### Return results --------------------------------
+
+    return(res_stats)
+
   }
 
   data <- data %>%
