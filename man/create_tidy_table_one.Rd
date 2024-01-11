@@ -16,8 +16,7 @@ create_tidy_table_one(
 \arguments{
 \item{data}{A data frame or tibble containing the variables to be summarized.}
 
-\item{strata}{Character vector of the stratifying (grouping) variable.
-\strong{Currently required}}
+\item{strata}{Character vector of the stratifying (grouping) variable.}
 
 \item{vars}{Character vector of the variable names to be summarized. If
 empty, then all variables in the given data frame are used.}
@@ -76,10 +75,26 @@ to the \code{tableone} package by Kazuki Yoshida.
 library(dplyr)
 
 tab1 <- create_tidy_table_one(data = pbc_mayo,
-                      strata = "trt",
-                      vars = c("time", "status", "trt", "age", "sex", "ascites", "hepato",
-                                "spiders", "edema", "bili", "chol", "albumin", "copper", "alk_phos",
-                                "ast", "trig", "platelet", "protime", "stage"))
+                              strata = "trt",
+                              vars = c("time",
+                                       "status",
+                                       "trt",
+                                       "age",
+                                       "sex",
+                                       "ascites",
+                                       "hepato",
+                                       "spiders",
+                                       "edema",
+                                       "bili",
+                                       "chol",
+                                       "albumin",
+                                       "copper",
+                                       "alk_phos",
+                                       "ast",
+                                       "trig",
+                                       "platelet",
+                                       "protime",
+                                       "stage"))
 
 dplyr::glimpse(tab1)
 
@@ -87,14 +102,15 @@ dplyr::glimpse(tab1)
 library(ggplot2)  # diamonds data set
 
 tab2 <- create_tidy_table_one(data = diamonds,
-                      strata = "cut",
-                      vars = c("carat",
-                                # "cut",  # Don't have to include the strata variable
-                                "color",
-                                "clarity",
-                                "depth",
-                                "table",
-                                "price"))
+                              strata = "cut",
+                              vars = c("carat",
+                                       # Don't have to include the strata variable
+                                       # "cut",
+                                       "color",
+                                       "clarity",
+                                       "depth",
+                                       "table",
+                                       "price"))
 
 dplyr::glimpse(tab2)
 }
