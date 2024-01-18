@@ -153,7 +153,7 @@ adorn_tidytableone <- function(tidy_t1,
   #### get variable labels --------------------------------
 
   var_lbls <- tidy_t1 |>
-    dplyr::select(var, label) |>
+    dplyr::select(var, var_type, label) |>
     dplyr::distinct() |>
     mutate(label = dplyr::if_else(is.na(label), var, label))
 
@@ -316,11 +316,33 @@ adorn_tidytableone <- function(tidy_t1,
     adorned_tidy_t1 <- adorned_tidy_t1 |>
       dplyr::left_join(var_lbls,
                        by = "var") |>
-      mutate(label = dplyr::if_else(is.na(label), "", label),
-             var = label) |>
-      dplyr::select(-label)
+      dplyr::mutate(label = dplyr::if_else(is.na(label), "", label),
+                    var = label)
+
+  } else {
+
+    adorned_tidy_t1 <- adorned_tidy_t1 |>
+      dplyr::left_join(var_lbls,
+                       by = "var")
 
   }
+
+
+  adorned_tidy_t1 <- adorned_tidy_t1 |>
+    tidyr::fill(var_type,
+                .direction = "down") |>
+    mutate(level = dplyr::if_else(level == "" & var_type == "continuous",
+                                  glue_formula,
+                                  level),
+           glue_formula = dplyr::if_else(glue_formula == "", NA_character_, glue_formula)) |>
+    tidyr::fill(glue_formula,
+                .direction = "up") |>
+    dplyr::mutate(var = dplyr::if_else(var_type == "categorical" & var != "",
+                                       glue::glue("{var}, {glue_formula}"),
+                                       var)) |>
+    dplyr::select(-glue_formula,
+                  -var_type,
+                  -label)
 
 
   #### Return table --------------------------------
