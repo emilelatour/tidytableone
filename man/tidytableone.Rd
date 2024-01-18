@@ -2,6 +2,7 @@
 % Please edit documentation in R/tidytableone.R
 \docType{package}
 \name{tidytableone}
+\alias{tidytableone-package}
 \alias{tidytableone}
 \title{tidytableone: Tidy construction of "Table 1"}
 \description{
@@ -11,5 +12,17 @@ biomedical research.
 \examples{
 # Example usage:
 library(tidytableone)
+
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/emilelatour/tidytableone}
+  \item Report bugs at \url{https://github.com/emilelatour/tidytableone/issues}
+}
+
+}
+\author{
+\strong{Maintainer}: Emile Latour \email{latour@ohsu.edu} (\href{https://orcid.org/YOUR-ORCID-ID}{ORCID})
 
 }

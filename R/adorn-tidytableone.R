@@ -147,7 +147,7 @@ adorn_tidytableone <- function(tidy_t1,
                                use_labels = TRUE, ...) {
 
   # Silence no visible binding for global variable
-  p_value <- test <- smd <- label <- NULL
+  p_value <- test <- smd <- label <- glue_formula <- NULL
 
 
   #### get variable labels --------------------------------
