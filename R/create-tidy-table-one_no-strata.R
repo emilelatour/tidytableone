@@ -141,7 +141,7 @@ create_tidy_table_one_no_strata <- function(data,
 
 
   if (!is.null(strata)) {
-    stop("Strata mus be NULL for create_tidy_table_one_no_stata.")
+    stop("Strata must be NULL for create_tidy_table_one_no_stata.")
   }
 
   data <- data |>
