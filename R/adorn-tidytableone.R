@@ -42,6 +42,9 @@
 #' @param show_test Logical, if FALSE, the names of the test are omitted from the table.
 #' @param show_smd Logical, if FALSE, Standardized Mean Differences (SMD) are not included.
 #' @param use_labels Logical, if TRUE, labels are used instead of variable names.
+#' @param combine_level_col Combines the `var` and `level` columns into one instead
+#'   of two. HTML won't recognize the extra spaces when printing, but you can
+#'   used `flextable::padding` to indent the right rows in that column later.
 #' @param ... Additional arguments. Not used.
 #'
 #' @importFrom dplyr across
@@ -144,7 +147,8 @@ adorn_tidytableone <- function(tidy_t1,
                                monte_carlo_p = NULL,
                                show_test = FALSE,
                                show_smd = FALSE,
-                               use_labels = TRUE, ...) {
+                               use_labels = TRUE,
+                               combine_level_col = TRUE, ...) {
 
   # Silence no visible binding for global variable
   p_value <- test <- smd <- label <- glue_formula <- NULL
@@ -345,11 +349,20 @@ adorn_tidytableone <- function(tidy_t1,
                   -label)
 
 
+  #### Combine var and level columns --------------------------------
+
+  if (combine_level_col) {
+
+    adorned_tidy_t1 <- adorned_tidy_t1 |>
+      mutate(var = glue::glue("{var}  {level}")) |>
+      dplyr::select(-level)
+
+  }
+
+
   #### Return table --------------------------------
 
   return(adorned_tidy_t1)
-
-
 
 
 

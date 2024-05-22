@@ -404,6 +404,14 @@ create_tidy_table_one <- function(data,
       dplyr::left_join(var_lbls,
                        by = "var")
 
+
+    #### Arrange  --------------------------------
+
+    res_stats <- res_stats |>
+      mutate(var = factor(var, level = vars)) |>
+      dplyr::arrange(var, strata, level)
+
+
     #### Return results --------------------------------
 
     return(res_stats)
@@ -522,6 +530,14 @@ create_tidy_table_one <- function(data,
     res_stats <- res_stats |>
       dplyr::left_join(var_lbls,
                        by = "var")
+
+
+    #### Arrange  --------------------------------
+
+    res_stats <- res_stats |>
+      mutate(var = factor(var, level = vars)) |>
+      dplyr::arrange(var, strata, level)
+
 
     #### Return results --------------------------------
 
@@ -666,6 +682,14 @@ create_tidy_table_one <- function(data,
     res_stats <- res_stats |>
       dplyr::left_join(var_lbls,
                        by = "var")
+
+
+    #### Arrange  --------------------------------
+
+    res_stats <- res_stats |>
+      mutate(var = factor(var, level = vars)) |>
+      dplyr::arrange(var, strata, level)
+
 
     #### Return results --------------------------------
 

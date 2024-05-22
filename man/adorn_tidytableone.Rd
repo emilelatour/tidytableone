@@ -30,6 +30,7 @@ adorn_tidytableone(
   show_test = FALSE,
   show_smd = FALSE,
   use_labels = TRUE,
+  combine_level_col = TRUE,
   ...
 )
 }
@@ -94,6 +95,10 @@ small) numbers and add a prefix. See \code{?scales:number} for more information.
 \item{show_smd}{Logical, if FALSE, Standardized Mean Differences (SMD) are not included.}
 
 \item{use_labels}{Logical, if TRUE, labels are used instead of variable names.}
+
+\item{combine_level_col}{Combines the \code{var} and \code{level} columns into one instead
+of two. HTML won't recognize the extra spaces when printing, but you can
+used \code{flextable::padding} to indent the right rows in that column later.}
 
 \item{...}{Additional arguments. Not used.}
 }

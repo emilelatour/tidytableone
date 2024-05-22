@@ -32,6 +32,7 @@
 #' @importFrom dplyr n_distinct
 #' @importFrom dplyr one_of
 #' @importFrom dplyr pull
+#' @importFrom dplyr relocate
 #' @importFrom dplyr rename
 #' @importFrom dplyr rename
 #' @importFrom dplyr select
@@ -156,6 +157,10 @@ create_tidy_table_one_no_strata <- function(data,
 
   #### Get variable info --------------------------------
 
+  var_lbls <- tibble::tibble(var = names(data)) |>
+    mutate(label = purrr::map_chr(.x = data[, var],
+                                  .f = ~ get_var_labels(x = .x)))
+
   var_info <- get_var_info(data = data,
                            .vars = vars)
 
@@ -264,9 +269,27 @@ create_tidy_table_one_no_strata <- function(data,
                        .,
                        by = "var")
 
+    res_stats <- res_stats |>
+      dplyr::left_join(var_lbls,
+                       by = "var")
+
+    #### Arrange  --------------------------------
+
+    res_stats <- res_stats |>
+      mutate(var = factor(var, level = vars)) |>
+      dplyr::arrange(var, level)
+
+
     #### Return results --------------------------------
 
+    res_stats <- res_stats |>
+      dplyr::relocate(class,
+                      var_type,
+                      label,
+                      .after = dplyr::everything())
+
     return(res_stats)
+
 
   } else if (length(cat_vars) > 0) {
 
@@ -336,7 +359,25 @@ create_tidy_table_one_no_strata <- function(data,
                        .,
                        by = "var")
 
+    res_stats <- res_stats |>
+      dplyr::left_join(var_lbls,
+                       by = "var")
+
+
+    #### Arrange  --------------------------------
+
+    res_stats <- res_stats |>
+      mutate(var = factor(var, level = vars)) |>
+      dplyr::arrange(var, level)
+
+
     #### Return results --------------------------------
+
+    res_stats <- res_stats |>
+      dplyr::relocate(class,
+                      var_type,
+                      label,
+                      .after = dplyr::everything())
 
     return(res_stats)
 
@@ -401,7 +442,25 @@ create_tidy_table_one_no_strata <- function(data,
                        .,
                        by = "var")
 
+    res_stats <- res_stats |>
+      dplyr::left_join(var_lbls,
+                       by = "var")
+
+
+    #### Arrange  --------------------------------
+
+    res_stats <- res_stats |>
+      mutate(var = factor(var, level = vars)) |>
+      dplyr::arrange(var, level)
+
+
     #### Return results --------------------------------
+
+    res_stats <- res_stats |>
+      dplyr::relocate(class,
+                      var_type,
+                      label,
+                      .after = dplyr::everything())
 
     return(res_stats)
 

@@ -36,6 +36,6 @@ Imports:
     testit, 
     tibble, 
     tidyr (>= 1.1.0)
-RoxygenNote: 7.3.0
+RoxygenNote: 7.3.1
 Roxygen: list(markdown = TRUE)
 VignetteBuilder: knitr
