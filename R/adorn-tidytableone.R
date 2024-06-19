@@ -419,7 +419,10 @@ adorn_tidytableone <- function(tidy_t1,
     dplyr::select(var,
                   dplyr::everything())
 
+  empty_row <- tibble::as_tibble(lapply(top_row, function(x) ""))
+
   adorned_tidy_t1 <- top_row |>
+    dplyr::bind_rows(empty_row) |>
     dplyr::bind_rows(adorned_tidy_t1)
 
 

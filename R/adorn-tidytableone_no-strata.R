@@ -267,7 +267,10 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
                                     scale_cut = NULL,
                                     trim = FALSE))
 
+  empty_row <- tibble::as_tibble(lapply(top_row, function(x) ""))
+
   adorned_tidy_t1 <- top_row |>
+    dplyr::bind_rows(empty_row) |>
     dplyr::bind_rows(adorned_tidy_t1)
 
   #### Return table --------------------------------
