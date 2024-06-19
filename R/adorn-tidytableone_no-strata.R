@@ -255,7 +255,7 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
     dplyr::distinct(n) |>
     dplyr::filter(!is.na(n)) |>
     dplyr::rename(Overall = n) |>
-    mutate(Overall = scales::number(x = Oveall,
+    mutate(Overall = scales::number(x = Overall,
                                     accuracy = 1.0,
                                     scale = 1,
                                     prefix = "",
