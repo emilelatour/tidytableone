@@ -123,70 +123,35 @@
 #'                    nonnormal = check_tests$non_normal_shapiro)
 
 
-adorn_tidytableone <- function(tidy_t1,
-                               default_continuous = "{mean} ({sd})",
-                               default_categorical = "{n} ({p})",
-                               fmt_vars = NULL,
-                               con_accuracy = 0.1,
-                               cat_accuracy = 0.1,
-                               p_accuracy = 0.001,
-                               prefix = "",
-                               suffix = "",
-                               big_mark = "",
-                               decimal_mark = ".",
-                               style_positive = c("none", "plus"),
-                               style_negative = c("hyphen", "minus", "parens"),
-                               scale_cut = NULL,
-                               con_trim = TRUE,
-                               cat_trim = FALSE,
-                               show_pct = TRUE,
-                               exact = NULL,
-                               nonnormal = NULL,
-                               equal_variance = NULL,
-                               no_cont_correction = NULL,
-                               monte_carlo_p = NULL,
-                               show_test = FALSE,
-                               show_smd = FALSE,
-                               use_labels = TRUE,
-                               combine_level_col = TRUE, ...) {
+adorn_tidytableone_no_strata <- function(tidy_t1,
+                                         default_continuous = "{mean} ({sd})",
+                                         default_categorical = "{n} ({p})",
+                                         fmt_vars = NULL,
+                                         con_accuracy = 0.1,
+                                         cat_accuracy = 0.1,
+                                         p_accuracy = 0.001,
+                                         prefix = "",
+                                         suffix = "",
+                                         big_mark = "",
+                                         decimal_mark = ".",
+                                         style_positive = c("none", "plus"),
+                                         style_negative = c("hyphen", "minus", "parens"),
+                                         scale_cut = NULL,
+                                         con_trim = TRUE,
+                                         cat_trim = FALSE,
+                                         show_pct = TRUE,
+                                         exact = NULL,
+                                         nonnormal = NULL,
+                                         equal_variance = NULL,
+                                         no_cont_correction = NULL,
+                                         monte_carlo_p = NULL,
+                                         show_test = FALSE,
+                                         show_smd = FALSE,
+                                         use_labels = TRUE,
+                                         combine_level_col = TRUE, ...) {
 
   # Silence no visible binding for global variable
-  p_value <- test <- smd <- label <- glue_formula <- NULL
-
-  if (!"strata" %in% names(tidy_t1)) {
-    # stop("Currently, the function only works when a strata is given.")
-    res_stats <- adorn_tidytableone_no_strata(tidy_t1 = tidy_t1,
-                                              default_continuous = default_continuous,
-                                              default_categorical = default_categorical,
-                                              fmt_vars = fmt_vars,
-                                              con_accuracy = con_accuracy,
-                                              cat_accuracy = cat_accuracy,
-                                              p_accuracy = p_accuracy,
-                                              prefix = prefix,
-                                              suffix = suffix,
-                                              big_mark = big_mark,
-                                              decimal_mark = decimal_mark,
-                                              style_positive = style_positive,
-                                              style_negative = style_negative,
-                                              scale_cut = scale_cut,
-                                              con_trim = con_trim,
-                                              cat_trim = cat_trim,
-                                              show_pct = show_pct,
-                                              exact = exact,
-                                              nonnormal = nonnormal,
-                                              equal_variance = equal_variance,
-                                              no_cont_correction = no_cont_correction,
-                                              monte_carlo_p = monte_carlo_p,
-                                              show_test = show_test,
-                                              show_smd = show_smd,
-                                              use_labels = use_labels,
-                                              combine_level_col = combine_level_col, ...)
-
-    #### Return results --------------------------------
-
-    return(res_stats)
-
-  }
+  label <- glue_formula <- NULL
 
 
   #### get variable labels --------------------------------
@@ -198,135 +163,22 @@ adorn_tidytableone <- function(tidy_t1,
 
   #### Get the stats --------------------------------
 
-  tab_stats <- make_t1_pretty(t1 = tidy_t1,
-                              default_continuous = default_continuous,
-                              default_categorical = default_categorical,
-                              fmt_vars = fmt_vars,
-                              con_accuracy = con_accuracy,
-                              cat_accuracy = cat_accuracy,
-                              prefix = prefix,
-                              suffix = suffix,
-                              big_mark = big_mark,
-                              decimal_mark = decimal_mark,
-                              style_positive = style_positive[[1]],
-                              style_negative = style_negative[[1]],
-                              scale_cut = scale_cut,
-                              con_trim = con_trim,
-                              cat_trim = cat_trim,
-                              show_pct = show_pct)
-
-  #### Get the p-values --------------------------------
-
-  if (any(tidy_t1$var_type == "continuous") & any(tidy_t1$var_type == "categorical")) {
-
-    tab_pvals <- tidy_t1 |>
-      dplyr::distinct(var,
-                      var_type,
-                      chisq_test,
-                      chisq_test_no_correction,
-                      chisq_test_simulated,
-                      fisher_test,
-                      fisher_test_simulated,
-                      oneway_test_unequal_var,
-                      oneway_test_equal_var,
-                      kruskal_test) |>
-      mutate(p_value = dplyr::case_when(
-        var_type == "continuous" & var %in% nonnormal ~ kruskal_test,
-        var_type == "continuous" & var %in% equal_variance ~ oneway_test_equal_var,
-        var_type == "continuous"  ~ oneway_test_unequal_var,
-        var_type == "categorical" & var %in% exact & var %in% monte_carlo_p ~ fisher_test_simulated,
-        var_type == "categorical" & var %in% exact ~ fisher_test,
-        var_type == "categorical" & var %in% no_cont_correction ~ chisq_test_no_correction,
-        var_type == "categorical" & var %in% monte_carlo_p ~ chisq_test_simulated,
-        var_type == "categorical" ~ chisq_test,
-        TRUE ~ NA_real_),
-        test = dplyr::case_when(
-          var_type == "continuous" & var %in% nonnormal ~ "Kruskal-Wallis Rank Sum Test",
-          var_type == "continuous" & var %in% equal_variance ~ "Oneway test, equal variance",
-          var_type == "continuous"  ~ "Oneway test, unequal variance",
-          var_type == "categorical" & var %in% exact & var %in% monte_carlo_p ~ "Fisher's Exact Test, simuation",
-          var_type == "categorical" & var %in% exact ~ "Fisher's Exact Test",
-          var_type == "categorical" & var %in% no_cont_correction ~ "Chi-squared Test, no continuity correction",
-          var_type == "categorical" & var %in% monte_carlo_p ~ "Chi-squared Test, simulation",
-          var_type == "categorical" ~ "Chi-squared Test, with continuty correction",
-          TRUE ~ NA_character_),
-        p_value = scales::pvalue(p_value,
-                                 accuracy = p_accuracy,
-                                 decimal.mark = ".",
-                                 prefix = NULL,
-                                 add_p = FALSE)) |>
-      dplyr::select(var,
-                    p_value,
-                    test)
-
-  } else if (any(tidy_t1$var_type == "continuous")) {
-
-    tab_pvals <- tidy_t1 |>
-      dplyr::distinct(var,
-                      var_type,
-                      oneway_test_unequal_var,
-                      oneway_test_equal_var,
-                      kruskal_test) |>
-      mutate(p_value = dplyr::case_when(
-        var_type == "continuous" & var %in% nonnormal ~ kruskal_test,
-        var_type == "continuous" & var %in% equal_variance ~ oneway_test_equal_var,
-        var_type == "continuous"  ~ oneway_test_unequal_var,
-        TRUE ~ NA_real_),
-        test = dplyr::case_when(
-          var_type == "continuous" & var %in% nonnormal ~ "Kruskal-Wallis Rank Sum Test",
-          var_type == "continuous" & var %in% equal_variance ~ "Oneway test, equal variance",
-          var_type == "continuous"  ~ "Oneway test, unequal variance",
-          TRUE ~ NA_character_),
-        p_value = scales::pvalue(p_value,
-                                 accuracy = p_accuracy,
-                                 decimal.mark = ".",
-                                 prefix = NULL,
-                                 add_p = FALSE)) |>
-      dplyr::select(var,
-                    p_value,
-                    test)
-
-  } else if (any(tidy_t1$var_type == "categorical")) {
-
-    tab_pvals <- tidy_t1 |>
-      dplyr::distinct(var,
-                      var_type,
-                      chisq_test,
-                      chisq_test_no_correction,
-                      chisq_test_simulated,
-                      fisher_test,
-                      fisher_test_simulated) |>
-      mutate(p_value = dplyr::case_when(
-        var_type == "categorical" & var %in% exact & var %in% monte_carlo_p ~ fisher_test_simulated,
-        var_type == "categorical" & var %in% exact ~ fisher_test,
-        var_type == "categorical" & var %in% no_cont_correction ~ chisq_test_no_correction,
-        var_type == "categorical" & var %in% monte_carlo_p ~ chisq_test_simulated,
-        var_type == "categorical" ~ chisq_test,
-        TRUE ~ NA_real_),
-        test = dplyr::case_when(
-          var_type == "categorical" & var %in% exact & var %in% monte_carlo_p ~ "Fisher's Exact Test, simuation",
-          var_type == "categorical" & var %in% exact ~ "Fisher's Exact Test",
-          var_type == "categorical" & var %in% no_cont_correction ~ "Chi-squared Test, no continuity correction",
-          var_type == "categorical" & var %in% monte_carlo_p ~ "Chi-squared Test, simulation",
-          var_type == "categorical" ~ "Chi-squared Test, with continuty correction",
-          TRUE ~ NA_character_),
-        p_value = scales::pvalue(p_value,
-                                 accuracy = p_accuracy,
-                                 decimal.mark = ".",
-                                 prefix = NULL,
-                                 add_p = FALSE)) |>
-      dplyr::select(var,
-                    p_value,
-                    test)
-  }
-
-  #### Get the SMD --------------------------------
-
-  tab_smd <- tidy_t1 |>
-    dplyr::distinct(var, smd) |>
-    mutate(smd = scales::number(smd,
-                                accuracy = p_accuracy,
-                                decimal.mark = "."))
+  tab_stats <- make_t1_pretty_no_strata(t1 = tidy_t1,
+                                        default_continuous = default_continuous,
+                                        default_categorical = default_categorical,
+                                        fmt_vars = fmt_vars,
+                                        con_accuracy = con_accuracy,
+                                        cat_accuracy = cat_accuracy,
+                                        prefix = prefix,
+                                        suffix = suffix,
+                                        big_mark = big_mark,
+                                        decimal_mark = decimal_mark,
+                                        style_positive = style_positive[[1]],
+                                        style_negative = style_negative[[1]],
+                                        scale_cut = scale_cut,
+                                        con_trim = con_trim,
+                                        cat_trim = cat_trim,
+                                        show_pct = show_pct)
 
 
 
@@ -338,12 +190,8 @@ adorn_tidytableone <- function(tidy_t1,
 
 
   adorned_tidy_t1 <- purrr::map_df(.x = tab_vars,
-                                   .f = ~ build_tab1(tab_var = .x,
-                                                     tab_pvals = tab_pvals,
-                                                     tab_stats = tab_stats,
-                                                     show_test = show_test,
-                                                     show_smd = show_smd,
-                                                     tab_smd = tab_smd)) |>
+                                   .f = ~ build_tab1_no_strata(tab_var = .x,
+                                                               tab_stats = tab_stats)) |>
     dplyr::mutate(dplyr::across(.cols = dplyr::everything(),
                                 .fns = ~ dplyr::if_else(is.na(.), "", .)))
 
@@ -395,10 +243,14 @@ adorn_tidytableone <- function(tidy_t1,
   }
 
 
+  #### Rename column --------------------------------
+
+  adorned_tidy_t1 <- adorned_tidy_t1 |>
+    dplyr::rename(Overall = glue_formula2)
+
   #### Return table --------------------------------
 
   return(adorned_tidy_t1)
-
 
 
 }
@@ -406,101 +258,24 @@ adorn_tidytableone <- function(tidy_t1,
 
 #### Build tab1 --------------------------------
 
-build_tab1 <- function(tab_var,
-                       tab_pvals,
-                       tab_stats,
-                       show_test = FALSE,
-                       show_smd = FALSE,
-                       tab_smd) {
-
-  # Silence no visible binding for global variable
-  p_value <- test <- smd <- NULL
-
-  p_i <- tab_pvals |>
-    dplyr::filter(var == tab_var) |>
-    dplyr::pull(p_value)
+build_tab1_no_strata <- function(tab_var,
+                                 tab_stats) {
 
   s_i <- tab_stats |>
     dplyr::filter(var == tab_var) |>
     dplyr::select(-var,
                   -var_type) |>
-    mutate(var = NA_character_,
-           p_value = NA_character_)
+    mutate(var = NA_character_)
 
-  t_i <- tab_pvals |>
-    dplyr::filter(var == tab_var) |>
-    dplyr::pull(test)
 
-  smd_i <- tab_smd |>
-    dplyr::filter(var == tab_var) |>
-    dplyr::pull(smd)
-
-  res <- tibble::tibble(var = tab_var,
-                        p_value = p_i,
-                        test = t_i,
-                        smd = smd_i) |>
+  res <- tibble::tibble(var = tab_var) |>
     dplyr::bind_rows(s_i) |>
     dplyr::select(var,
-                  dplyr::everything(),
-                  -p_value,
-                  -test,
-                  -smd,
-                  p_value,
-                  test,
-                  smd) |>
+                  dplyr::everything()) |>
     dplyr::add_row()
 
 
-  if (!show_test) {
 
-    res <- res |>
-      dplyr::select(-test)
-
-  }
-
-  if (!show_smd) {
-
-    res <- res |>
-      dplyr::select(-smd)
-
-  }
-
-
-  # if (show_test) {
-  #
-  #   t_i <- tab_pvals |>
-  #     dplyr::filter(var == tab_var) |>
-  #     dplyr::pull(test)
-  #
-  #   res <- tibble(var = tab_var,
-  #                 p_value = p_i,
-  #                 test = t_i)
-  #
-  #   res <- res |>
-  #     dplyr::bind_rows(s_i) |>
-  #     dplyr::select(var,
-  #                   dplyr::everything(),
-  #                   -p_value,
-  #                   -test,
-  #                   p_value,
-  #                   test) |>
-  #     dplyr::add_row()
-  #
-  #
-  # } else {
-  #   res <- tibble(var = tab_var,
-  #                 p_value = p_i)
-  #
-  #
-  #   res <- res |>
-  #     dplyr::bind_rows(s_i) |>
-  #     dplyr::select(var,
-  #                   dplyr::everything(),
-  #                   -p_value,
-  #                   p_value) |>
-  #     dplyr::add_row()
-  #
-  # }
 
   return(res)
 
@@ -509,22 +284,22 @@ build_tab1 <- function(tab_var,
 
 #### Make t1 pretty --------------------------------
 
-make_t1_pretty <- function(t1,
-                           default_continuous = "{mean} ({sd})",
-                           default_categorical = "{n} ({p})",
-                           fmt_vars = NULL,
-                           con_accuracy = 0.1,
-                           cat_accuracy = 0.1,
-                           prefix = "",
-                           suffix = "",
-                           big_mark = "",
-                           decimal_mark = ".",
-                           style_positive = "none",
-                           style_negative = "hyphen",
-                           scale_cut = NULL,
-                           con_trim = TRUE,
-                           cat_trim = FALSE,
-                           show_pct = TRUE, ...) {
+make_t1_pretty_no_strata <- function(t1,
+                                     default_continuous = "{mean} ({sd})",
+                                     default_categorical = "{n} ({p})",
+                                     fmt_vars = NULL,
+                                     con_accuracy = 0.1,
+                                     cat_accuracy = 0.1,
+                                     prefix = "",
+                                     suffix = "",
+                                     big_mark = "",
+                                     decimal_mark = ".",
+                                     style_positive = "none",
+                                     style_negative = "hyphen",
+                                     scale_cut = NULL,
+                                     con_trim = TRUE,
+                                     cat_trim = FALSE,
+                                     show_pct = TRUE, ...) {
 
   # Silence no visible binding for global variable
   glue_formula <- pct <- cv <- strata <- glue_formula2 <- NULL
@@ -657,21 +432,17 @@ make_t1_pretty <- function(t1,
   }
 
 
-
   t1 |>
     dplyr::left_join(formula_for_table,
                      by = c("var",
                             "var_type")) |>
     dplyr::rowwise() |>
     mutate(glue_formula2 = glue::glue(glue_formula)) |>
-    dplyr::select(strata,
-                  var,
+    dplyr::select(var,
                   level,
                   var_type,
                   glue_formula,
                   glue_formula2) |>
-    tidyr::pivot_wider(names_from = strata,
-                       values_from = glue_formula2) |>
     tidyr::separate_longer_delim(cols = c(-var, -var_type),
                                  delim = "\n") |>
     # Replace labels for stats
@@ -699,5 +470,8 @@ make_t1_pretty <- function(t1,
            glue_formula = stringr::str_replace(glue_formula,
                                                pattern = "\\{pct\\}",
                                                replacement = "%"))
+
+
+
 
 }
