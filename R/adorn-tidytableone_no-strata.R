@@ -248,6 +248,28 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
   adorned_tidy_t1 <- adorned_tidy_t1 |>
     dplyr::rename(Overall = glue_formula2)
 
+
+  #### Top row (n) --------------------------------
+
+  top_row <- tidy_t1 |>
+    dplyr::distinct(n) |>
+    dplyr::filter(!is.na(n)) |>
+    dplyr::rename(Overall = n) |>
+    mutate(Overall = scales::number(x = Oveall,
+                                    accuracy = 1.0,
+                                    scale = 1,
+                                    prefix = "",
+                                    suffix = "",
+                                    big.mark = "",
+                                    decimal.mark = ".",
+                                    style_positive = "none",
+                                    style_negative = "hyphen",
+                                    scale_cut = NULL,
+                                    trim = FALSE))
+
+  adorned_tidy_t1 <- top_row |>
+    dplyr::bind_rows(adorned_tidy_t1)
+
   #### Return table --------------------------------
 
   return(adorned_tidy_t1)

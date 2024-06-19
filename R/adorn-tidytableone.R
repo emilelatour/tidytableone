@@ -395,6 +395,34 @@ adorn_tidytableone <- function(tidy_t1,
   }
 
 
+  #### Top row (n) --------------------------------
+
+  top_row <- tidy_t1 |>
+    dplyr::distinct(strata,
+                    n) |>
+    dplyr::filter(!is.na(n)) |>
+    mutate(n = scales::number(x = n,
+                              accuracy = 1.0,
+                              scale = 1,
+                              prefix = "",
+                              suffix = "",
+                              big.mark = "",
+                              decimal.mark = ".",
+                              style_positive = "none",
+                              style_negative = "hyphen",
+                              scale_cut = NULL,
+                              trim = FALSE)) |>
+    tidyr::pivot_wider(names_from = strata,
+                       values_from = n) |>
+    mutate(var = "n",
+           p_value = "") |>
+    dplyr::select(var,
+                  dplyr::everything())
+
+  adorned_tidy_t1 <- top_row |>
+    dplyr::bind_rows(adorned_tidy_t1)
+
+
   #### Return table --------------------------------
 
   return(adorned_tidy_t1)
