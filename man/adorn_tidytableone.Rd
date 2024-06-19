@@ -31,6 +31,7 @@ adorn_tidytableone(
   show_smd = FALSE,
   use_labels = TRUE,
   combine_level_col = TRUE,
+  missing = "ifany",
   ...
 )
 }
@@ -99,6 +100,11 @@ small) numbers and add a prefix. See \code{?scales:number} for more information.
 \item{combine_level_col}{Combines the \code{var} and \code{level} columns into one instead
 of two. HTML won't recognize the extra spaces when printing, but you can
 used \code{flextable::padding} to indent the right rows in that column later.}
+
+\item{missing}{Indicates whether to include counts of NA values in the table.
+Allowed values are "no" (never display NA values), "ifany" (only display if
+any NA values), and "always" (includes NA count row for all variables).
+Default is "ifany".}
 
 \item{...}{Additional arguments. Not used.}
 }

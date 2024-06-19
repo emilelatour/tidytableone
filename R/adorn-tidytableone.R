@@ -45,6 +45,10 @@
 #' @param combine_level_col Combines the `var` and `level` columns into one instead
 #'   of two. HTML won't recognize the extra spaces when printing, but you can
 #'   used `flextable::padding` to indent the right rows in that column later.
+#' @param missing Indicates whether to include counts of NA values in the table.
+#'   Allowed values are "no" (never display NA values), "ifany" (only display if
+#'   any NA values), and "always" (includes NA count row for all variables).
+#'   Default is "ifany".
 #' @param ... Additional arguments. Not used.
 #'
 #' @importFrom dplyr across
@@ -148,7 +152,8 @@ adorn_tidytableone <- function(tidy_t1,
                                show_test = FALSE,
                                show_smd = FALSE,
                                use_labels = TRUE,
-                               combine_level_col = TRUE, ...) {
+                               combine_level_col = TRUE,
+                               missing = "ifany", ...) {
 
   # Silence no visible binding for global variable
   p_value <- test <- smd <- label <- glue_formula <- NULL
@@ -213,7 +218,8 @@ adorn_tidytableone <- function(tidy_t1,
                               scale_cut = scale_cut,
                               con_trim = con_trim,
                               cat_trim = cat_trim,
-                              show_pct = show_pct)
+                              show_pct = show_pct,
+                              missing = missing)
 
   #### Get the p-values --------------------------------
 
@@ -569,7 +575,8 @@ make_t1_pretty <- function(t1,
                            scale_cut = NULL,
                            con_trim = TRUE,
                            cat_trim = FALSE,
-                           show_pct = TRUE, ...) {
+                           show_pct = TRUE,
+                           missing = "ifany", ...) {
 
   # Silence no visible binding for global variable
   glue_formula <- pct <- cv <- strata <- glue_formula2 <- NULL
@@ -703,7 +710,7 @@ make_t1_pretty <- function(t1,
 
 
 
-  t1 |>
+  t1 <- t1 |>
     dplyr::left_join(formula_for_table,
                      by = c("var",
                             "var_type")) |>
@@ -744,5 +751,88 @@ make_t1_pretty <- function(t1,
            glue_formula = stringr::str_replace(glue_formula,
                                                pattern = "\\{pct\\}",
                                                replacement = "%"))
+
+
+
+  #### Handle NAs --------------------------------
+
+
+
+  if (missing == "no") {
+
+    # Missing == "no"
+    t1 <- t1 |>
+      dplyr::filter(!(is.na(level) & var_type == "categorical"))
+
+  } else if (missing == "ifany") {
+
+    # Missing == "ifany"
+    n_missing <- t1 |>
+      dplyr::filter(any(missing > 0) | is.na(level)) |>
+      mutate(n = dplyr::coalesce(n, n_strata),
+             missing = dplyr::coalesce(missing, n_level)) |>
+      dplyr::select(strata, var, n, missing) |>
+      mutate(pct = missing / n,
+             pct = scales::percent(x = pct,
+                                   accuracy = cat_accuracy,
+                                   scale = 100,
+                                   prefix = prefix,
+                                   suffix = pct_suffix,
+                                   big.mark = big_mark,
+                                   decimal.mark = decimal_mark,
+                                   style_positive = style_positive,
+                                   style_negative = style_negative,
+                                   scale_cut = scale_cut,
+                                   trim = cat_trim),
+             n_missing = glue::glue("{missing} ({pct})")) |>
+      dplyr::select(strata,
+                    n_missing) |>
+      tidyr::pivot_wider(names_from = strata,
+                         values_from = n_missing)
+
+    t1 <- t1 |>
+      dplyr::bind_rows(n_missing)
+
+  } else if (missing == "always") {
+
+    # Missing == "always"
+    n_missing <- t1 |>
+      mutate(n_level = dplyr::if_else(is.na(level), n_level, 0),
+             n = dplyr::coalesce(n, n_strata),
+             missing = dplyr::coalesce(missing, n_level)) |>
+      group_by(strata,
+               n) |>
+      summarise(missing = sum(missing, na.rm = TRUE),
+                .groups = "drop") |>
+      mutate(pct = missing / n,
+             pct = scales::percent(x = pct,
+                                   accuracy = cat_accuracy,
+                                   scale = 100,
+                                   prefix = prefix,
+                                   suffix = pct_suffix,
+                                   big.mark = big_mark,
+                                   decimal.mark = decimal_mark,
+                                   style_positive = style_positive,
+                                   style_negative = style_negative,
+                                   scale_cut = scale_cut,
+                                   trim = cat_trim),
+             n_missing = glue::glue("{missing} ({pct})")) |>
+      dplyr::select(strata,
+                    n_missing) |>
+      tidyr::pivot_wider(names_from = strata,
+                         values_from = n_missing)
+
+    t1 <- t1 |>
+      dplyr::bind_rows(n_missing)
+
+  } else {
+
+    t1 <- t1
+  }
+
+
+
+  return(t1)
+
 
 }

@@ -687,7 +687,7 @@ create_tidy_table_one <- function(data,
     #### Arrange  --------------------------------
 
     res_stats <- res_stats |>
-      mutate(var = factor(var, level = vars)) |>
+      mutate(var = factor(var, levels = vars)) |>
       dplyr::arrange(var, strata, level)
 
 
