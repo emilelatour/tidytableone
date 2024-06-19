@@ -265,7 +265,10 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
                                     style_positive = "none",
                                     style_negative = "hyphen",
                                     scale_cut = NULL,
-                                    trim = FALSE))
+                                    trim = FALSE)) |>
+    mutate(var = "n") |>
+    dplyr::select(var,
+                  dplyr::everything())
 
   empty_row <- tibble::as_tibble(lapply(top_row, function(x) ""))
 

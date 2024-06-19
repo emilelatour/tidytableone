@@ -428,8 +428,22 @@ adorn_tidytableone <- function(tidy_t1,
 
   #### Return table --------------------------------
 
-  return(adorned_tidy_t1)
+  if (show_test == TRUE) {
 
+    adorned_tidy_t1 <- adorned_tidy_t1 |>
+      mutate(test = tidyr::replace_na(test, ""))
+
+  }
+
+  if (show_smd == FALSE) {
+
+    adorned_tidy_t1 <- adorned_tidy_t1 |>
+      mutate(smd = tidyr::replace_na(smd, ""))
+
+  }
+
+
+  return(adorned_tidy_t1)
 
 
 }
