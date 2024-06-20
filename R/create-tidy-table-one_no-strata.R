@@ -192,12 +192,15 @@ create_tidy_table_one_no_strata <- function(data,
         tidyr::complete(level,
                         fill = list(n_level = 0)) |>
         mutate(n_strata = sum(n_level, na.rm = TRUE)) |>
+        mutate(n_level_valid = dplyr::if_else(is.na(level), NA_integer_, n_level),
+               n_strata_valid = sum(n_level_valid, na.rm = TRUE)) |>
         ungroup()
     )
 
     # Calc percentage
     cat_stats <- cat_stats |>
-      mutate(pct = n_level / n_strata)
+      mutate(pct = n_level / n_strata,
+             pct_valid = n_level_valid / n_strata_valid)
 
     #### Continuous stats --------------------------------
 
@@ -308,12 +311,15 @@ create_tidy_table_one_no_strata <- function(data,
         tidyr::complete(level,
                         fill = list(n_level = 0)) |>
         mutate(n_strata = sum(n_level, na.rm = TRUE)) |>
+        mutate(n_level_valid = dplyr::if_else(is.na(level), NA_integer_, n_level),
+               n_strata_valid = sum(n_level_valid, na.rm = TRUE)) |>
         ungroup()
     )
 
     # Calc percentage
     cat_stats <- cat_stats |>
-      mutate(pct = n_level / n_strata)
+      mutate(pct = n_level / n_strata,
+             pct_valid = n_level_valid / n_strata_valid)
 
 
     #### Calc SMD --------------------------------
@@ -467,3 +473,4 @@ create_tidy_table_one_no_strata <- function(data,
   }
 
 }
+

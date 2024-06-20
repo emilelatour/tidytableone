@@ -241,16 +241,20 @@ create_tidy_table_one <- function(data,
                        tidyr::complete(!! strata_sym, level,
                                        fill = list(n_level = 0)) %>%
                        group_by(!! strata_sym, var) %>%
-                       mutate(n_strata = sum(n_level, na.rm = TRUE)) %>%
+                       mutate(n_strata = sum(n_level, na.rm = TRUE),
+                              n_level_valid = dplyr::if_else(is.na(level), NA_integer_, n_level),
+                              n_strata_valid = sum(n_level_valid, na.rm = TRUE)) %>%
                        ungroup() %>%
                        dplyr::select(!! strata_sym, dplyr::everything()) %>%
                        mutate(!! strata_sym := as.character(!! strata_sym)) )
 
     cat_overall <- cat_strata %>%
       dplyr::group_by(var, level) %>%
-      mutate(n_level = sum(n_level, na.rm = TRUE)) %>%
+      mutate(n_level = sum(n_level, na.rm = TRUE),
+             n_level_valid = dplyr::if_else(is.na(level), NA_integer_, n_level)) %>%
       group_by(!! strata_sym, var) %>%
-      mutate(n_strata = sum(n_level, na.rm = TRUE)) %>%
+      mutate(n_strata = sum(n_level, na.rm = TRUE),
+             n_strata_valid = sum(n_level_valid, na.rm = TRUE)) %>%
       ungroup() %>%
       mutate(!! strata_sym := "Overall") %>%
       dplyr::distinct()
@@ -260,7 +264,8 @@ create_tidy_table_one <- function(data,
 
     # Calc percentage
     cat_stats <- cat_stats |>
-      mutate(pct = n_level / n_strata)
+      mutate(pct = n_level / n_strata,
+             pct_valid = n_level_valid / n_strata_valid)
 
     #### Continuous stats --------------------------------
 
@@ -434,16 +439,20 @@ create_tidy_table_one <- function(data,
                        tidyr::complete(!! strata_sym, level,
                                        fill = list(n_level = 0)) %>%
                        group_by(!! strata_sym, var) %>%
-                       mutate(n_strata = sum(n_level, na.rm = TRUE)) %>%
+                       mutate(n_strata = sum(n_level, na.rm = TRUE),
+                              n_level_valid = dplyr::if_else(is.na(level), NA_integer_, n_level),
+                              n_strata_valid = sum(n_level_valid, na.rm = TRUE)) %>%
                        ungroup() %>%
                        dplyr::select(!! strata_sym, dplyr::everything()) %>%
                        mutate(!! strata_sym := as.character(!! strata_sym)) )
 
     cat_overall <- cat_strata %>%
       dplyr::group_by(var, level) %>%
-      mutate(n_level = sum(n_level, na.rm = TRUE)) %>%
+      mutate(n_level = sum(n_level, na.rm = TRUE),
+             n_level_valid = dplyr::if_else(is.na(level), NA_integer_, n_level)) %>%
       group_by(!! strata_sym, var) %>%
-      mutate(n_strata = sum(n_level, na.rm = TRUE)) %>%
+      mutate(n_strata = sum(n_level, na.rm = TRUE),
+             n_strata_valid = sum(n_level_valid, na.rm = TRUE)) %>%
       ungroup() %>%
       mutate(!! strata_sym := "Overall") %>%
       dplyr::distinct()
@@ -453,7 +462,8 @@ create_tidy_table_one <- function(data,
 
     # Calc percentage
     cat_stats <- cat_stats |>
-      mutate(pct = n_level / n_strata)
+      mutate(pct = n_level / n_strata,
+             pct_valid = n_level_valid / n_strata_valid)
 
 
     #### Calc SMD --------------------------------

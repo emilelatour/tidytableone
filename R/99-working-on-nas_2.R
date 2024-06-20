@@ -242,10 +242,10 @@
 #     c("", sub("<", "&lt;", format.pval(p, digits=3, eps=0.001)))
 #   }
 #
-#   pbc_mayo2 |>
-#     mutate(trt = forcats::fct_na_value_to_level(trt,
-#                                                 level = "(Missing)")) %>%
-#     table1::table1(~ time + stage | trt, data = ., overall = F, extra.col=list(`P-value`=pvalue))
+  # pbc_mayo2 |>
+  #   mutate(trt = forcats::fct_na_value_to_level(trt,
+  #                                               level = "(Missing)")) %>%
+  #   table1::table1(~ time + stage | trt, data = ., overall = F, extra.col=list(`P-value`=pvalue))
 #
 #
 #   pbc_mayo2 |>
@@ -256,3 +256,19 @@
 #     lamisc::gt_print()
 #
 #
+
+
+  # pbc_mayo2 |>
+  #   mutate(trt = forcats::fct_na_value_to_level(trt,
+  #                                               level = "(Missing)")) |>
+  #   dplyr::select(trt,
+  #                 time,
+  #                 stage) |>
+  #   gtsummary::tbl_summary(by = trt,
+  #                          missing = "always",
+  #                          statistic = list(
+  #                            gtsummary::all_continuous() ~ "{mean} ({sd})",
+  #                            gtsummary::all_categorical() ~ "{n} / {N} ({p}%)"
+  #                          )) %>%
+  # gtsummary::add_p(pvalue_fun = ~ gtsummary::style_pvalue(.x, digits = 3),
+  #                  test = list(gtsummary::all_continuous() ~ "aov", gtsummary::all_categorical() ~ "chisq.test"))
