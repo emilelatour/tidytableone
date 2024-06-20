@@ -702,11 +702,54 @@ make_t1_pretty <- function(t1,
 
   #### Make the pretty t1 --------------------------------
 
-
-  if (any(t1$var_type == "categorical")) {
+  if (any(t1$var_type == "continuous") & any(t1$var_type == "categorical")) {
 
     pretty_t1 <- t1 |>
-      # dplyr::filter(var == "status") |>
+      mutate(pct = n_level / n_strata) |>
+      # Format counts for strata
+      mutate(dplyr::across(.cols = c(n_level,
+                                     n_strata),
+                           .fns = ~ scales::number(x = .,
+                                                   accuracy = 1.0,
+                                                   scale = 1,
+                                                   prefix = "",
+                                                   suffix = "",
+                                                   big.mark = "",
+                                                   decimal.mark = ".",
+                                                   style_positive = "none",
+                                                   style_negative = "hyphen",
+                                                   scale_cut = NULL,
+                                                   trim = FALSE))) |>
+      # Format categorical Percentages
+      mutate(pct = scales::percent(x = pct,
+                                   accuracy = cat_accuracy,
+                                   scale = 100,
+                                   prefix = prefix,
+                                   suffix = pct_suffix,
+                                   big.mark = big_mark,
+                                   decimal.mark = decimal_mark,
+                                   style_positive = style_positive,
+                                   style_negative = style_negative,
+                                   scale_cut = scale_cut,
+                                   trim = cat_trim)) |>
+      # Format for continuous data
+      mutate(dplyr::across(.cols = c(mean:cv),
+                           .fns = ~ scales::number(x = .,
+                                                   accuracy = con_accuracy,
+                                                   scale = 1,
+                                                   prefix = prefix,
+                                                   suffix = suffix,
+                                                   big.mark = big_mark,
+                                                   decimal.mark = decimal_mark,
+                                                   style_positive = style_positive,
+                                                   style_negative = style_negative,
+                                                   scale_cut = scale_cut,
+                                                   trim = con_trim)))
+
+
+  } else if (any(t1$var_type == "categorical")) {
+
+    pretty_t1 <- t1 |>
       mutate(pct = n_level / n_strata) |>
       # Format counts for strata
       mutate(dplyr::across(.cols = c(n_level,
@@ -734,9 +777,8 @@ make_t1_pretty <- function(t1,
                                    style_negative = style_negative,
                                    scale_cut = scale_cut,
                                    trim = cat_trim))
-  }
 
-  if (any(t1$var_type == "continuous")) {
+  } else if (any(t1$var_type == "continuous")) {
 
     # Format continuous stats: mean, sd, median, etc.
     pretty_t1 <- t1 |>
@@ -754,7 +796,6 @@ make_t1_pretty <- function(t1,
                                                    trim = con_trim)))
 
   }
-
 
   if (!any(names(pretty_t1) == "level")) {
 
