@@ -455,9 +455,30 @@ create_tidy_table_one_no_strata <- function(data,
 
     #### Arrange  --------------------------------
 
-    res_stats <- res_stats |>
-      mutate(var = factor(var, levels = vars)) |>
-      dplyr::arrange(var, level)
+    if (any(res_stats$var_type == "continuous") & any(res_stats$var_type == "categorical")) {
+
+      res_stats <- res_stats |>
+        mutate(var = factor(var,
+                            levels = vars)) |>
+        dplyr::arrange(var, strata, level)
+
+    } else if (any(res_stats$var_type == "continuous")) {
+
+      res_stats <- res_stats |>
+        mutate(var = factor(var,
+                            levels = vars)) |>
+        dplyr::arrange(var, strata)
+
+
+    } else if (any(res_stats$var_type == "categorical")) {
+
+      res_stats <- res_stats |>
+        mutate(var = factor(var,
+                            levels = vars)) |>
+        dplyr::arrange(var, strata, level)
+
+
+    }
 
 
     #### Return results --------------------------------
