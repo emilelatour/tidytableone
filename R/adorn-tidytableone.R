@@ -651,7 +651,7 @@ make_t1_pretty <- function(t1,
 
   if (any(t1$var_type == "categorical")) {
 
-    t1 <- t1 |>
+    pretty_t1 <- t1 |>
       # dplyr::filter(var == "status") |>
       mutate(pct = n_level / n_strata) |>
       # Format counts for strata
@@ -685,7 +685,7 @@ make_t1_pretty <- function(t1,
   if (any(t1$var_type == "continuous")) {
 
     # Format continuous stats: mean, sd, median, etc.
-    t1 <- t1 |>
+    pretty_t1 <- t1 |>
       mutate(dplyr::across(.cols = c(mean:cv),
                            .fns = ~ scales::number(x = .,
                                                    accuracy = con_accuracy,
@@ -702,15 +702,15 @@ make_t1_pretty <- function(t1,
   }
 
 
-  if (!any(names(t1) == "level")) {
+  if (!any(names(pretty_t1) == "level")) {
 
-    t1 <- t1 |>
+    pretty_t1 <- pretty_t1 |>
       mutate(level = "")
   }
 
 
 
-  t1 <- t1 |>
+  pretty_t1 <- pretty_t1 |>
     dplyr::left_join(formula_for_table,
                      by = c("var",
                             "var_type")) |>
@@ -756,83 +756,140 @@ make_t1_pretty <- function(t1,
 
   #### Handle NAs --------------------------------
 
+  # if (missing == "no") {
+  #
+  #   # Missing == "no"
+  #   pretty_t1 <- pretty_t1 |>
+  #     dplyr::filter(!(is.na(level) & var_type == "categorical"))
+  #
+  # } else if (missing == "ifany") {
+  #
+  #   # Missing == "ifany"
+  #
+  #   if (any(t1$var_type == "categorical")) {
+  #
+  #     n_missing <- t1 |>
+  #       dplyr::filter(is.na(level)) |>
+  #       dplyr::select(strata,
+  #                     var,
+  #                     n = n_strata,
+  #                     missing = n_level) |>
+  #       mutate(pct = missing / n,
+  #              pct = scales::percent(x = pct,
+  #                                    accuracy = cat_accuracy,
+  #                                    scale = 100,
+  #                                    prefix = prefix,
+  #                                    suffix = pct_suffix,
+  #                                    big.mark = big_mark,
+  #                                    decimal.mark = decimal_mark,
+  #                                    style_positive = style_positive,
+  #                                    style_negative = style_negative,
+  #                                    scale_cut = scale_cut,
+  #                                    trim = cat_trim),
+  #              n_missing = glue::glue("{missing} ({pct})")) |>
+  #       dplyr::select(strata,
+  #                     n_missing) |>
+  #       tidyr::pivot_wider(names_from = strata,
+  #                          values_from = n_missing)
+  #
+  #   } else {
+  #
+  #     n_missing <- t1 |>
+  #       dplyr::filter(any(missing > 0)) |>
+  #       dplyr::select(strata, var, n, missing) |>
+  #       mutate(pct = missing / n,
+  #              pct = scales::percent(x = pct,
+  #                                    accuracy = cat_accuracy,
+  #                                    scale = 100,
+  #                                    prefix = prefix,
+  #                                    suffix = pct_suffix,
+  #                                    big.mark = big_mark,
+  #                                    decimal.mark = decimal_mark,
+  #                                    style_positive = style_positive,
+  #                                    style_negative = style_negative,
+  #                                    scale_cut = scale_cut,
+  #                                    trim = cat_trim),
+  #              n_missing = glue::glue("{missing} ({pct})")) |>
+  #       dplyr::select(strata,
+  #                     n_missing) |>
+  #       tidyr::pivot_wider(names_from = strata,
+  #                          values_from = n_missing)
+  #
+  #   }
+  #
+  #   pretty_t1 <- pretty_t1 |>
+  #     dplyr::bind_rows(n_missing)
+  #
+  #
+  # } else if (missing == "always" & any(names(t1) == "level")) {
+  #
+  #   # Missing == "always"
+  #   n_missing <- t1 |>
+  #     mutate(n_level = dplyr::if_else(is.na(level), n_level, 0),
+  #            n = n_strata,
+  #            missing = n_level) |>
+  #     group_by(strata,
+  #              n) |>
+  #     summarise(missing = sum(missing, na.rm = TRUE),
+  #               .groups = "drop") |>
+  #     mutate(pct = missing / n,
+  #            pct = scales::percent(x = pct,
+  #                                  accuracy = cat_accuracy,
+  #                                  scale = 100,
+  #                                  prefix = prefix,
+  #                                  suffix = pct_suffix,
+  #                                  big.mark = big_mark,
+  #                                  decimal.mark = decimal_mark,
+  #                                  style_positive = style_positive,
+  #                                  style_negative = style_negative,
+  #                                  scale_cut = scale_cut,
+  #                                  trim = cat_trim),
+  #            n_missing = glue::glue("{missing} ({pct})")) |>
+  #     dplyr::select(strata,
+  #                   n_missing) |>
+  #     tidyr::pivot_wider(names_from = strata,
+  #                        values_from = n_missing)
+  #
+  #   t1 <- t1 |>
+  #     dplyr::bind_rows(n_missing)
+  #
+  # } else if (missing == "always" & !(any(names(t1) == "level"))) {
+  #
+  #   # Missing == "always"
+  #   n_missing <- t1 |>
+  #     group_by(strata,
+  #              n) |>
+  #     summarise(missing = sum(missing, na.rm = TRUE),
+  #               .groups = "drop") |>
+  #     mutate(pct = missing / n,
+  #            pct = scales::percent(x = pct,
+  #                                  accuracy = cat_accuracy,
+  #                                  scale = 100,
+  #                                  prefix = prefix,
+  #                                  suffix = pct_suffix,
+  #                                  big.mark = big_mark,
+  #                                  decimal.mark = decimal_mark,
+  #                                  style_positive = style_positive,
+  #                                  style_negative = style_negative,
+  #                                  scale_cut = scale_cut,
+  #                                  trim = cat_trim),
+  #            n_missing = glue::glue("{missing} ({pct})")) |>
+  #     dplyr::select(strata,
+  #                   n_missing) |>
+  #     tidyr::pivot_wider(names_from = strata,
+  #                        values_from = n_missing)
+  #
+  #   t1 <- t1 |>
+  #     dplyr::bind_rows(n_missing)
+  #
+  # } else {
+  #
+  #   pretty_t1 <- pretty_t1
+  # }
 
 
-  if (missing == "no") {
 
-    # Missing == "no"
-    t1 <- t1 |>
-      dplyr::filter(!(is.na(level) & var_type == "categorical"))
-
-  } else if (missing == "ifany") {
-
-    # Missing == "ifany"
-    n_missing <- t1 |>
-      dplyr::filter(any(missing > 0) | is.na(level)) |>
-      mutate(n = dplyr::coalesce(n, n_strata),
-             missing = dplyr::coalesce(missing, n_level)) |>
-      dplyr::select(strata, var, n, missing) |>
-      mutate(pct = missing / n,
-             pct = scales::percent(x = pct,
-                                   accuracy = cat_accuracy,
-                                   scale = 100,
-                                   prefix = prefix,
-                                   suffix = pct_suffix,
-                                   big.mark = big_mark,
-                                   decimal.mark = decimal_mark,
-                                   style_positive = style_positive,
-                                   style_negative = style_negative,
-                                   scale_cut = scale_cut,
-                                   trim = cat_trim),
-             n_missing = glue::glue("{missing} ({pct})")) |>
-      dplyr::select(strata,
-                    n_missing) |>
-      tidyr::pivot_wider(names_from = strata,
-                         values_from = n_missing)
-
-    t1 <- t1 |>
-      dplyr::bind_rows(n_missing)
-
-  } else if (missing == "always") {
-
-    # Missing == "always"
-    n_missing <- t1 |>
-      mutate(n_level = dplyr::if_else(is.na(level), n_level, 0),
-             n = dplyr::coalesce(n, n_strata),
-             missing = dplyr::coalesce(missing, n_level)) |>
-      group_by(strata,
-               n) |>
-      summarise(missing = sum(missing, na.rm = TRUE),
-                .groups = "drop") |>
-      mutate(pct = missing / n,
-             pct = scales::percent(x = pct,
-                                   accuracy = cat_accuracy,
-                                   scale = 100,
-                                   prefix = prefix,
-                                   suffix = pct_suffix,
-                                   big.mark = big_mark,
-                                   decimal.mark = decimal_mark,
-                                   style_positive = style_positive,
-                                   style_negative = style_negative,
-                                   scale_cut = scale_cut,
-                                   trim = cat_trim),
-             n_missing = glue::glue("{missing} ({pct})")) |>
-      dplyr::select(strata,
-                    n_missing) |>
-      tidyr::pivot_wider(names_from = strata,
-                         values_from = n_missing)
-
-    t1 <- t1 |>
-      dplyr::bind_rows(n_missing)
-
-  } else {
-
-    t1 <- t1
-  }
-
-
-
-  return(t1)
+  return(pretty_t1)
 
 
 }
