@@ -251,24 +251,73 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
 
   #### Top row (n) --------------------------------
 
-  top_row <- tidy_t1 |>
-    dplyr::distinct(n) |>
-    dplyr::filter(!is.na(n)) |>
-    dplyr::rename(Overall = n) |>
-    mutate(Overall = scales::number(x = Overall,
-                                    accuracy = 1.0,
-                                    scale = 1,
-                                    prefix = "",
-                                    suffix = "",
-                                    big.mark = "",
-                                    decimal.mark = ".",
-                                    style_positive = "none",
-                                    style_negative = "hyphen",
-                                    scale_cut = NULL,
-                                    trim = FALSE)) |>
-    mutate(var = "n") |>
-    dplyr::select(var,
-                  dplyr::everything())
+  if (any(tidy_t1$var_type == "continuous") & any(tidy_t1$var_type == "categorical")) {
+
+    top_row <- tidy_t1 |>
+      dplyr::distinct(n) |>
+      dplyr::filter(!is.na(n)) |>
+      dplyr::rename(Overall = n) |>
+      mutate(Overall = scales::number(x = Overall,
+                                      accuracy = 1.0,
+                                      scale = 1,
+                                      prefix = "",
+                                      suffix = "",
+                                      big.mark = "",
+                                      decimal.mark = ".",
+                                      style_positive = "none",
+                                      style_negative = "hyphen",
+                                      scale_cut = NULL,
+                                      trim = FALSE)) |>
+      mutate(var = "n") |>
+      dplyr::select(var,
+                    dplyr::everything())
+
+  } else if (any(tidy_t1$var_type == "continuous")) {
+
+    top_row <- tidy_t1 |>
+      dplyr::distinct(n) |>
+      dplyr::filter(!is.na(n)) |>
+      dplyr::rename(Overall = n) |>
+      mutate(Overall = scales::number(x = Overall,
+                                      accuracy = 1.0,
+                                      scale = 1,
+                                      prefix = "",
+                                      suffix = "",
+                                      big.mark = "",
+                                      decimal.mark = ".",
+                                      style_positive = "none",
+                                      style_negative = "hyphen",
+                                      scale_cut = NULL,
+                                      trim = FALSE)) |>
+      mutate(var = "n") |>
+      dplyr::select(var,
+                    dplyr::everything())
+
+
+  } else if (any(tidy_t1$var_type == "categorical")) {
+
+    top_row <- tidy_t1 |>
+      dplyr::distinct(n_strata) |>
+      dplyr::rename(n = n_strata) |>
+      dplyr::filter(!is.na(n)) |>
+      dplyr::rename(Overall = n) |>
+      mutate(Overall = scales::number(x = Overall,
+                                      accuracy = 1.0,
+                                      scale = 1,
+                                      prefix = "",
+                                      suffix = "",
+                                      big.mark = "",
+                                      decimal.mark = ".",
+                                      style_positive = "none",
+                                      style_negative = "hyphen",
+                                      scale_cut = NULL,
+                                      trim = FALSE)) |>
+      mutate(var = "n") |>
+      dplyr::select(var,
+                    dplyr::everything())
+
+  }
+
 
   empty_row <- tibble::as_tibble(lapply(top_row, function(x) ""))
 
