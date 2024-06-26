@@ -567,10 +567,6 @@ build_tab1 <- function(tab_var,
     dplyr::filter(var == tab_var) |>
     dplyr::pull(p_value)
 
-  m_i <- tab_miss |>
-    dplyr::filter(var == tab_var) |>
-    dplyr::pull(num_not_miss)
-
   s_i <- tab_stats |>
     dplyr::filter(var == tab_var) |>
     dplyr::select(-var,
@@ -587,6 +583,10 @@ build_tab1 <- function(tab_var,
     dplyr::pull(smd)
 
   if (missing == "no") {
+
+    m_i <- tab_miss |>
+      dplyr::filter(var == tab_var) |>
+      dplyr::pull(num_not_miss)
 
     res <- tibble::tibble(var = tab_var,
                           num_not_miss = m_i,
@@ -605,11 +605,16 @@ build_tab1 <- function(tab_var,
       dplyr::add_row()
 
   } else {
+
+    m_i <- tab_miss |>
+      dplyr::filter(var == tab_var)
+
     res <- tibble::tibble(var = tab_var,
                           p_value = p_i,
                           test = t_i,
                           smd = smd_i) |>
       dplyr::bind_rows(s_i) |>
+      dplyr::bind_rows(m_i) |>
       dplyr::select(var,
                     dplyr::everything(),
                     -p_value,
@@ -1155,6 +1160,23 @@ get_miss <- function(t1,
       dplyr::rowwise() |>
       mutate(num_not_miss = glue::glue(glue_formula)) |>
       dplyr::select(var, num_not_miss)
+
+  } else {
+
+    miss_tab <- miss_tab |>
+      mutate(glue_formula = default_miss,
+             glue_formula = stringr::str_replace_all(string = glue_formula,
+                                                     pattern = "\\{n\\}",
+                                                     replacement = "{missing}"),
+             glue_formula = stringr::str_replace_all(string = glue_formula,
+                                                     pattern = "\\{p\\}",
+                                                     replacement = "{missing_p}")) |>
+      dplyr::rowwise() |>
+      mutate(n_miss = glue::glue(glue_formula)) |>
+      mutate(level = missing_text) |>
+      dplyr::select(strata, n_miss) |>
+      tidyr::pivot_wider(names_from = strata,
+                         values_from = n_miss)
 
   }
 

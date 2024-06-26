@@ -385,12 +385,13 @@ build_tab1_no_strata <- function(tab_var,
                   -var_type) |>
     mutate(var = NA_character_)
 
-  m_i <- tab_miss |>
-    dplyr::filter(var == tab_var) |>
-    dplyr::pull(num_not_miss)
+
 
   if (missing == "no") {
 
+    m_i <- tab_miss |>
+      dplyr::filter(var == tab_var) |>
+      dplyr::pull(num_not_miss)
 
     res <- tibble::tibble(var = tab_var,
                           num_not_miss = m_i) |>
@@ -401,8 +402,13 @@ build_tab1_no_strata <- function(tab_var,
 
   } else {
 
+    m_i <- tab_miss |>
+      dplyr::filter(var == tab_var) |>
+      dplyr::select(-var)
+
     res <- tibble::tibble(var = tab_var) |>
       dplyr::bind_rows(s_i) |>
+      dplyr::bind_rows(m_i) |>
       dplyr::select(var,
                     dplyr::everything()) |>
       dplyr::add_row()
@@ -880,6 +886,21 @@ get_miss_no_strata <- function(t1,
       dplyr::rowwise() |>
       mutate(num_not_miss = glue::glue(glue_formula)) |>
       dplyr::select(var, num_not_miss)
+
+  } else {
+
+    miss_tab <- miss_tab |>
+      mutate(glue_formula = default_miss,
+             glue_formula = stringr::str_replace_all(string = glue_formula,
+                                                     pattern = "\\{n\\}",
+                                                     replacement = "{missing}"),
+             glue_formula = stringr::str_replace_all(string = glue_formula,
+                                                     pattern = "\\{p\\}",
+                                                     replacement = "{missing_p}")) |>
+      dplyr::rowwise() |>
+      mutate(glue_formula2 = glue::glue(glue_formula)) |>
+      mutate(level = missing_text) |>
+      dplyr::select(var, level, glue_formula2)
 
   }
 
