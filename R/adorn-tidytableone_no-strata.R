@@ -519,8 +519,14 @@ make_t1_pretty_no_strata <- function(t1,
                                                    pattern = "max|Max|maximum|Maximum",
                                                    replacement = "p100")) |>
     mutate(glue_formula = stringr::str_replace_all(string = glue_formula,
-                                                   pattern = "max|Max|maximum|Maximum",
-                                                   replacement = "p100")) |>
+                                                   pattern = "\\{iqr\\}",
+                                                   replacement = "{p25} to {p75}")) |>
+    mutate(glue_formula = stringr::str_replace_all(string = glue_formula,
+                                                   pattern = "\\{IQR\\}",
+                                                   replacement = "{p25} to {p75}")) |>
+    mutate(glue_formula = stringr::str_replace_all(string = glue_formula,
+                                                   pattern = "\\{range\\}",
+                                                   replacement = "{p0} to {p100}")) |>
     mutate(glue_formula = stringr::str_replace_all(string = glue_formula,
                                                    pattern = "\\{p\\}",
                                                    replacement = "{pct}")) |>
