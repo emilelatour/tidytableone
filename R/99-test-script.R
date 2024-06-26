@@ -327,6 +327,98 @@
 #                                "status")) |>
 #   adorn_tidytableone(missing = "always")
 #
+#
+#
+#
+# #### Continous text --------------------------------
+#
+# ## Strata, Continous ----------------
+#
+# create_tidy_table_one(data = pbc_mayo2,
+#                       strata = "trt",
+#                       vars = c("time")) |>
+#   adorn_tidytableone(missing = "always",
+#                      combine_level_col = TRUE,
+#                      default_continuous = "{mean} ({sd})\n{median} [{iqr}]\n{median} [{range}]\n{range}",
+#                      missing_text = "Unknown")
+#
+#
+#
+# create_tidy_table_one(data = pbc_mayo2,
+#                       # strata = "trt",
+#                       vars = c("time")) |>
+#   adorn_tidytableone(missing = "always",
+#                      combine_level_col = TRUE,
+#                      default_continuous = "{mean} ({sd})\n{median} [{iqr}]\n{median} [{range}]\n{range}",
+#                      missing_text = "Unknown")
+#
+#
+# #### With labels --------------------------------
+#
+#
+# # With labels
+# library(labelled)
+#
+# # Tibble with labels
+# var_labels <- tibble::tribble(
+#   ~vars,                                      ~labels,
+#   "id",                                "Case Number",
+#   "time",          "Number of days since registration",
+#   "status",                         "Status at endpoint",
+#   "trt",                            "Treatment group",
+#   "age",                              "Age, in years",
+#   "sex",                                        "Sex",
+#   "ascites",                        "Presence of ascites",
+#   "hepato", "Presence of hepatomegaly or enlarged liver",
+#   "spiders",     "Blood vessel malformations in the skin",
+#   "edema",                          "Presence of edema",
+#   "bili",                   "Serum bilirunbin (mg/dl)",
+#   "chol",                  "Serum cholesterol (mg/dl)",
+#   "albumin",                       "Serum albumin (g/dl)",
+#   "copper",                      "Urine copper (ug/day)",
+#   "alk_phos",             "Alkaline phosphotase (U/liter)",
+#   "ast",          "Aspartate aminotransferase (U/ml)",
+#   "trig",                      "Triglycerides (mg/dl)",
+#   "platelet",                             "Platelet count",
+#   "protime",           "Standardised blood clotting time",
+#   "stage", "Histologic stage of disease (needs biopsy)"
+# )
+#
+# labels_list <- setNames(as.list(var_labels$labels), var_labels$vars)
+#
+# # Apply labels
+# labelled::var_label(pbc_mayo) <- labels_list
+#
+# pbc_mayo2 <- pbc_mayo |>
+#   mutate(dplyr::across(
+#     .cols = all_of(c("time")),
+#     .fns = ~ ifelse(row_number(.x) %in% sample(1:n(), size = (10 * n(
+#     ) / 100)), NA, .x)
+#   ))
+#
+# labelled::var_label(pbc_mayo2) <- labels_list
+#
+# create_tidy_table_one(data = pbc_mayo2,
+#                       strata = "trt",
+#                       vars = c("time")) |>
+#   adorn_tidytableone(missing = "always",
+#                      combine_level_col = TRUE,
+#                      default_continuous = "{mean} ({sd})\n{median} [{iqr}]\n{median} [{range}]\n{range}",
+#                      missing_text = "Unknown")
+#
+#
+#
+# create_tidy_table_one(data = pbc_mayo2,
+#                       # strata = "trt",
+#                       vars = c("time",
+#                                "stage")) |>
+#   adorn_tidytableone(missing = "ifany",
+#                      combine_level_col = TRUE,
+#                      default_continuous = "{mean} ({sd})\n{median} [{iqr}]\n{median} [{range}]\n{range}",
+#                      missing_text = "Unknown")
+#
+#
+#
 # # if (any(tidy_t1$var_type == "continuous") & any(tidy_t1$var_type == "categorical")) {
 # #
 # #

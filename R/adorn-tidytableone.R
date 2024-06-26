@@ -664,41 +664,6 @@ build_tab1 <- function(tab_var,
   }
 
 
-  # if (show_test) {
-  #
-  #   t_i <- tab_pvals |>
-  #     dplyr::filter(var == tab_var) |>
-  #     dplyr::pull(test)
-  #
-  #   res <- tibble(var = tab_var,
-  #                 p_value = p_i,
-  #                 test = t_i)
-  #
-  #   res <- res |>
-  #     dplyr::bind_rows(s_i) |>
-  #     dplyr::select(var,
-  #                   dplyr::everything(),
-  #                   -p_value,
-  #                   -test,
-  #                   p_value,
-  #                   test) |>
-  #     dplyr::add_row()
-  #
-  #
-  # } else {
-  #   res <- tibble(var = tab_var,
-  #                 p_value = p_i)
-  #
-  #
-  #   res <- res |>
-  #     dplyr::bind_rows(s_i) |>
-  #     dplyr::select(var,
-  #                   dplyr::everything(),
-  #                   -p_value,
-  #                   p_value) |>
-  #     dplyr::add_row()
-  #
-  # }
 
   return(res)
 
@@ -766,7 +731,6 @@ make_t1_pretty <- function(t1,
   }
 
   ## Fix formula ----------------
-
 
   formula_for_table <- formula_for_table |>
     mutate(glue_formula = stringr::str_replace_all(string = glue_formula,
@@ -946,7 +910,10 @@ make_t1_pretty <- function(t1,
                                                replacement = "N"),
            glue_formula = stringr::str_replace(glue_formula,
                                                pattern = "\\{pct\\}",
-                                               replacement = "%"))
+                                               replacement = "%"),
+           glue_formula = stringr::str_replace(glue_formula,
+                                               pattern = "\\{p25\\} to \\{p75\\}",
+                                               replacement = "IQR"))
 
 
   return(pretty_t1)

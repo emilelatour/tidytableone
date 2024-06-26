@@ -507,7 +507,6 @@ make_t1_pretty_no_strata <- function(t1,
 
   ## Fix formula ----------------
 
-
   formula_for_table <- formula_for_table |>
     mutate(glue_formula = stringr::str_replace_all(string = glue_formula,
                                                    pattern = "median|Median|med|med",
@@ -536,6 +535,7 @@ make_t1_pretty_no_strata <- function(t1,
     mutate(glue_formula = stringr::str_replace_all(string = glue_formula,
                                                    pattern = "\\{N\\}",
                                                    replacement = "{n_strata_valid}"))
+
 
 
 
@@ -661,6 +661,7 @@ make_t1_pretty_no_strata <- function(t1,
     tidyr::separate_longer_delim(cols = c(-var, -var_type),
                                  delim = "\n") |>
     # Replace labels for stats
+    # Replace labels for stats
     mutate(glue_formula = stringr::str_replace(glue_formula,
                                                pattern = "\\{mean\\}",
                                                replacement = "Mean"),
@@ -684,7 +685,10 @@ make_t1_pretty_no_strata <- function(t1,
                                                replacement = "N"),
            glue_formula = stringr::str_replace(glue_formula,
                                                pattern = "\\{pct\\}",
-                                               replacement = "%"))
+                                               replacement = "%"),
+           glue_formula = stringr::str_replace(glue_formula,
+                                               pattern = "\\{p25\\} to \\{p75\\}",
+                                               replacement = "IQR"))
 
 
   return(pretty_t1)
