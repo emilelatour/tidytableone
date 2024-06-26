@@ -354,7 +354,20 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
     dplyr::bind_rows(empty_row) |>
     dplyr::bind_rows(adorned_tidy_t1)
 
-  #### Return table --------------------------------
+
+
+  #### Not combine var and level columns --------------------------------
+
+  if (!combine_level_col) {
+
+    adorned_tidy_t1 <- adorned_tidy_t1 |>
+      dplyr::relocate(level,
+                      .after = var)
+
+  }
+
+
+  #### Final clean-up --------------------------------
 
   if (missing == "no") {
 
@@ -365,6 +378,16 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
              num_not_miss = tidyr::replace_na(num_not_miss, ""))
 
   }
+
+
+  adorned_tidy_t1 <- adorned_tidy_t1 |>
+    mutate(dplyr::across(.cols = dplyr::everything(),
+                         .fns = ~ tidyr::replace_na(., ""))) |>
+    mutate(dplyr::across(.cols = dplyr::everything(),
+                         .fns = ~ as.character(.)))
+
+
+  #### Return table --------------------------------
 
   return(adorned_tidy_t1)
 

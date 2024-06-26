@@ -515,7 +515,17 @@ adorn_tidytableone <- function(tidy_t1,
     dplyr::bind_rows(adorned_tidy_t1)
 
 
-  #### Return table --------------------------------
+  #### Not combine var and level columns --------------------------------
+
+  if (!combine_level_col) {
+
+    adorned_tidy_t1 <- adorned_tidy_t1 |>
+      dplyr::relocate(level,
+                      .after = var)
+
+  }
+
+  #### Final clean-up --------------------------------
 
   if (missing == "no") {
 
@@ -542,6 +552,15 @@ adorn_tidytableone <- function(tidy_t1,
 
   }
 
+
+  adorned_tidy_t1 <- adorned_tidy_t1 |>
+    mutate(dplyr::across(.cols = dplyr::everything(),
+                         .fns = ~ tidyr::replace_na(., ""))) |>
+    mutate(dplyr::across(.cols = dplyr::everything(),
+                         .fns = ~ as.character(.)))
+
+
+  #### Return table --------------------------------
 
   return(adorned_tidy_t1)
 
@@ -607,7 +626,8 @@ build_tab1 <- function(tab_var,
   } else {
 
     m_i <- tab_miss |>
-      dplyr::filter(var == tab_var)
+      dplyr::filter(var == tab_var) |>
+      dplyr::select(-var)
 
     res <- tibble::tibble(var = tab_var,
                           p_value = p_i,
@@ -1174,7 +1194,7 @@ get_miss <- function(t1,
       dplyr::rowwise() |>
       mutate(n_miss = glue::glue(glue_formula)) |>
       mutate(level = missing_text) |>
-      dplyr::select(strata, n_miss) |>
+      dplyr::select(strata, var, level, n_miss) |>
       tidyr::pivot_wider(names_from = strata,
                          values_from = n_miss)
 
