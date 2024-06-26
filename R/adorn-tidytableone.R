@@ -46,9 +46,13 @@
 #'   of two. HTML won't recognize the extra spaces when printing, but you can
 #'   used `flextable::padding` to indent the right rows in that column later.
 #' @param missing Indicates whether to include counts of NA values in the table.
-#'   Allowed values are "no" (never display NA values), "ifany" (only display if
+#'   Allowed values are "no" (shows a column of number not missing), "ifany" (only display if
 #'   any NA values), and "always" (includes NA count row for all variables).
-#'   Default is "ifany".
+#'   Default is "no".
+#' @param missing_text Character string to use in place of `NA` when missing is
+#'   "ifany" or "always". Default is "(Missing)".
+#' @param default_miss A glue statement that provides the formatting for
+#'   missing, Default is "{n}"
 #' @param ... Additional arguments. Not used.
 #'
 #' @importFrom dplyr across
@@ -153,7 +157,9 @@ adorn_tidytableone <- function(tidy_t1,
                                show_smd = FALSE,
                                use_labels = TRUE,
                                combine_level_col = TRUE,
-                               missing = "ifany", ...) {
+                               missing = "no",
+                               missing_text = "(Missing)",
+                               default_miss = "{n}", ...) {
 
   # Silence no visible binding for global variable
   p_value <- test <- smd <- label <- glue_formula <- NULL
@@ -185,7 +191,10 @@ adorn_tidytableone <- function(tidy_t1,
                                               show_test = show_test,
                                               show_smd = show_smd,
                                               use_labels = use_labels,
-                                              combine_level_col = combine_level_col, ...)
+                                              combine_level_col = combine_level_col,
+                                              missing = missing,
+                                              missing_text = missing_text,
+                                              default_miss = default_miss, ...)
 
     #### Return results --------------------------------
 
@@ -335,6 +344,24 @@ adorn_tidytableone <- function(tidy_t1,
                                 decimal.mark = "."))
 
 
+  #### Get the missing --------------------------------
+
+  tab_miss <- tidy_t1 |>
+    get_miss(missing = missing,
+             missing_text = missing_text,
+             default_miss = default_miss,
+             cat_accuracy = cat_accuracy,
+             prefix = prefix,
+             suffix = suffix,
+             big_mark = big_mark,
+             decimal_mark = decimal_mark,
+             style_positive = style_positive[[1]],
+             style_negative = style_negative[[1]],
+             scale_cut = scale_cut,
+             con_trim = con_trim,
+             cat_trim = cat_trim,
+             show_pct = show_pct)
+
 
   #### Make the table --------------------------------
 
@@ -347,6 +374,8 @@ adorn_tidytableone <- function(tidy_t1,
                                    .f = ~ build_tab1(tab_var = .x,
                                                      tab_pvals = tab_pvals,
                                                      tab_stats = tab_stats,
+                                                     tab_miss = tab_miss,
+                                                     missing = missing,
                                                      show_test = show_test,
                                                      show_smd = show_smd,
                                                      tab_smd = tab_smd)) |>
@@ -488,6 +517,17 @@ adorn_tidytableone <- function(tidy_t1,
 
   #### Return table --------------------------------
 
+  if (missing == "no") {
+
+    adorned_tidy_t1 <- adorned_tidy_t1 |>
+      dplyr::relocate(num_not_miss,
+                      .before = "Overall")|>
+      mutate(num_not_miss = as.character(num_not_miss),
+             num_not_miss = tidyr::replace_na(num_not_miss, ""))
+
+  }
+
+
   if (show_test == TRUE) {
 
     adorned_tidy_t1 <- adorned_tidy_t1 |>
@@ -514,6 +554,8 @@ adorn_tidytableone <- function(tidy_t1,
 build_tab1 <- function(tab_var,
                        tab_pvals,
                        tab_stats,
+                       tab_miss,
+                       missing = "no",
                        show_test = FALSE,
                        show_smd = FALSE,
                        tab_smd) {
@@ -524,6 +566,10 @@ build_tab1 <- function(tab_var,
   p_i <- tab_pvals |>
     dplyr::filter(var == tab_var) |>
     dplyr::pull(p_value)
+
+  m_i <- tab_miss |>
+    dplyr::filter(var == tab_var) |>
+    dplyr::pull(num_not_miss)
 
   s_i <- tab_stats |>
     dplyr::filter(var == tab_var) |>
@@ -540,20 +586,42 @@ build_tab1 <- function(tab_var,
     dplyr::filter(var == tab_var) |>
     dplyr::pull(smd)
 
-  res <- tibble::tibble(var = tab_var,
-                        p_value = p_i,
-                        test = t_i,
-                        smd = smd_i) |>
-    dplyr::bind_rows(s_i) |>
-    dplyr::select(var,
-                  dplyr::everything(),
-                  -p_value,
-                  -test,
-                  -smd,
-                  p_value,
-                  test,
-                  smd) |>
-    dplyr::add_row()
+  if (missing == "no") {
+
+    res <- tibble::tibble(var = tab_var,
+                          num_not_miss = m_i,
+                          p_value = p_i,
+                          test = t_i,
+                          smd = smd_i) |>
+      dplyr::bind_rows(s_i) |>
+      dplyr::select(var,
+                    dplyr::everything(),
+                    -p_value,
+                    -test,
+                    -smd,
+                    p_value,
+                    test,
+                    smd) |>
+      dplyr::add_row()
+
+  } else {
+    res <- tibble::tibble(var = tab_var,
+                          p_value = p_i,
+                          test = t_i,
+                          smd = smd_i) |>
+      dplyr::bind_rows(s_i) |>
+      dplyr::select(var,
+                    dplyr::everything(),
+                    -p_value,
+                    -test,
+                    -smd,
+                    p_value,
+                    test,
+                    smd) |>
+      dplyr::add_row()
+
+  }
+
 
 
   if (!show_test) {
@@ -693,10 +761,10 @@ make_t1_pretty <- function(t1,
                                                    replacement = "{pct}")) |>
     mutate(glue_formula = stringr::str_replace_all(string = glue_formula,
                                                    pattern = "\\{n\\}",
-                                                   replacement = "{n_level}")) |>
+                                                   replacement = "{n_level_valid}")) |>
     mutate(glue_formula = stringr::str_replace_all(string = glue_formula,
                                                    pattern = "\\{N\\}",
-                                                   replacement = "{n_strata}"))
+                                                   replacement = "{n_strata_valid}"))
 
 
 
@@ -705,10 +773,10 @@ make_t1_pretty <- function(t1,
   if (any(t1$var_type == "continuous") & any(t1$var_type == "categorical")) {
 
     pretty_t1 <- t1 |>
-      mutate(pct = n_level / n_strata) |>
+      mutate(pct = n_level_valid / n_strata_valid) |>
       # Format counts for strata
-      mutate(dplyr::across(.cols = c(n_level,
-                                     n_strata),
+      mutate(dplyr::across(.cols = c(n_level_valid,
+                                     n_strata_valid),
                            .fns = ~ scales::number(x = .,
                                                    accuracy = 1.0,
                                                    scale = 1,
@@ -744,16 +812,17 @@ make_t1_pretty <- function(t1,
                                                    style_positive = style_positive,
                                                    style_negative = style_negative,
                                                    scale_cut = scale_cut,
-                                                   trim = con_trim)))
+                                                   trim = con_trim))) |>
+      dplyr::filter(!(is.na(level) & var_type == "categorical"))
 
 
   } else if (any(t1$var_type == "categorical")) {
 
     pretty_t1 <- t1 |>
-      mutate(pct = n_level / n_strata) |>
+      mutate(pct = n_level_valid / n_strata_valid) |>
       # Format counts for strata
-      mutate(dplyr::across(.cols = c(n_level,
-                                     n_strata),
+      mutate(dplyr::across(.cols = c(n_level_valid,
+                                     n_strata_valid),
                            .fns = ~ scales::number(x = .,
                                                    accuracy = 1.0,
                                                    scale = 1,
@@ -776,7 +845,8 @@ make_t1_pretty <- function(t1,
                                    style_positive = style_positive,
                                    style_negative = style_negative,
                                    scale_cut = scale_cut,
-                                   trim = cat_trim))
+                                   trim = cat_trim)) |>
+      dplyr::filter(!is.na(level))
 
   } else if (any(t1$var_type == "continuous")) {
 
@@ -838,153 +908,260 @@ make_t1_pretty <- function(t1,
                                                pattern = "\\{p100\\}",
                                                replacement = "Max."),
            glue_formula = stringr::str_replace(glue_formula,
-                                               pattern = "\\{n_level\\}",
+                                               pattern = "\\{n_level_valid\\}",
                                                replacement = "n"),
            glue_formula = stringr::str_replace(glue_formula,
-                                               pattern = "\\{n_strata\\}",
+                                               pattern = "\\{n_strata_valid\\}",
                                                replacement = "N"),
            glue_formula = stringr::str_replace(glue_formula,
                                                pattern = "\\{pct\\}",
                                                replacement = "%"))
 
 
-
-  #### Handle NAs --------------------------------
-
-  # if (missing == "no") {
-  #
-  #   # Missing == "no"
-  #   pretty_t1 <- pretty_t1 |>
-  #     dplyr::filter(!(is.na(level) & var_type == "categorical"))
-  #
-  # } else if (missing == "ifany") {
-  #
-  #   # Missing == "ifany"
-  #
-  #   if (any(t1$var_type == "categorical")) {
-  #
-  #     n_missing <- t1 |>
-  #       dplyr::filter(is.na(level)) |>
-  #       dplyr::select(strata,
-  #                     var,
-  #                     n = n_strata,
-  #                     missing = n_level) |>
-  #       mutate(pct = missing / n,
-  #              pct = scales::percent(x = pct,
-  #                                    accuracy = cat_accuracy,
-  #                                    scale = 100,
-  #                                    prefix = prefix,
-  #                                    suffix = pct_suffix,
-  #                                    big.mark = big_mark,
-  #                                    decimal.mark = decimal_mark,
-  #                                    style_positive = style_positive,
-  #                                    style_negative = style_negative,
-  #                                    scale_cut = scale_cut,
-  #                                    trim = cat_trim),
-  #              n_missing = glue::glue("{missing} ({pct})")) |>
-  #       dplyr::select(strata,
-  #                     n_missing) |>
-  #       tidyr::pivot_wider(names_from = strata,
-  #                          values_from = n_missing)
-  #
-  #   } else {
-  #
-  #     n_missing <- t1 |>
-  #       dplyr::filter(any(missing > 0)) |>
-  #       dplyr::select(strata, var, n, missing) |>
-  #       mutate(pct = missing / n,
-  #              pct = scales::percent(x = pct,
-  #                                    accuracy = cat_accuracy,
-  #                                    scale = 100,
-  #                                    prefix = prefix,
-  #                                    suffix = pct_suffix,
-  #                                    big.mark = big_mark,
-  #                                    decimal.mark = decimal_mark,
-  #                                    style_positive = style_positive,
-  #                                    style_negative = style_negative,
-  #                                    scale_cut = scale_cut,
-  #                                    trim = cat_trim),
-  #              n_missing = glue::glue("{missing} ({pct})")) |>
-  #       dplyr::select(strata,
-  #                     n_missing) |>
-  #       tidyr::pivot_wider(names_from = strata,
-  #                          values_from = n_missing)
-  #
-  #   }
-  #
-  #   pretty_t1 <- pretty_t1 |>
-  #     dplyr::bind_rows(n_missing)
-  #
-  #
-  # } else if (missing == "always" & any(names(t1) == "level")) {
-  #
-  #   # Missing == "always"
-  #   n_missing <- t1 |>
-  #     mutate(n_level = dplyr::if_else(is.na(level), n_level, 0),
-  #            n = n_strata,
-  #            missing = n_level) |>
-  #     group_by(strata,
-  #              n) |>
-  #     summarise(missing = sum(missing, na.rm = TRUE),
-  #               .groups = "drop") |>
-  #     mutate(pct = missing / n,
-  #            pct = scales::percent(x = pct,
-  #                                  accuracy = cat_accuracy,
-  #                                  scale = 100,
-  #                                  prefix = prefix,
-  #                                  suffix = pct_suffix,
-  #                                  big.mark = big_mark,
-  #                                  decimal.mark = decimal_mark,
-  #                                  style_positive = style_positive,
-  #                                  style_negative = style_negative,
-  #                                  scale_cut = scale_cut,
-  #                                  trim = cat_trim),
-  #            n_missing = glue::glue("{missing} ({pct})")) |>
-  #     dplyr::select(strata,
-  #                   n_missing) |>
-  #     tidyr::pivot_wider(names_from = strata,
-  #                        values_from = n_missing)
-  #
-  #   t1 <- t1 |>
-  #     dplyr::bind_rows(n_missing)
-  #
-  # } else if (missing == "always" & !(any(names(t1) == "level"))) {
-  #
-  #   # Missing == "always"
-  #   n_missing <- t1 |>
-  #     group_by(strata,
-  #              n) |>
-  #     summarise(missing = sum(missing, na.rm = TRUE),
-  #               .groups = "drop") |>
-  #     mutate(pct = missing / n,
-  #            pct = scales::percent(x = pct,
-  #                                  accuracy = cat_accuracy,
-  #                                  scale = 100,
-  #                                  prefix = prefix,
-  #                                  suffix = pct_suffix,
-  #                                  big.mark = big_mark,
-  #                                  decimal.mark = decimal_mark,
-  #                                  style_positive = style_positive,
-  #                                  style_negative = style_negative,
-  #                                  scale_cut = scale_cut,
-  #                                  trim = cat_trim),
-  #            n_missing = glue::glue("{missing} ({pct})")) |>
-  #     dplyr::select(strata,
-  #                   n_missing) |>
-  #     tidyr::pivot_wider(names_from = strata,
-  #                        values_from = n_missing)
-  #
-  #   t1 <- t1 |>
-  #     dplyr::bind_rows(n_missing)
-  #
-  # } else {
-  #
-  #   pretty_t1 <- pretty_t1
-  # }
-
-
-
   return(pretty_t1)
+
+
+}
+
+
+#### Handle NAs --------------------------------
+
+get_miss <- function(t1,
+                     missing = "no",
+                     missing_text = "(Missing)",
+                     default_miss = "{n}",
+                     cat_accuracy = 0.1,
+                     prefix = "",
+                     suffix = "",
+                     big_mark = "",
+                     decimal_mark = ".",
+                     style_positive = "none",
+                     style_negative = "hyphen",
+                     scale_cut = NULL,
+                     con_trim = TRUE,
+                     cat_trim = FALSE,
+                     show_pct = TRUE, ...) {
+
+  # Silence no visible binding for global variable
+  glue_formula <- pct <- cv <- strata <- glue_formula2 <- NULL
+
+  # Percentage suffix
+  if (show_pct) {
+    pct_suffix = "%"
+  } else {
+    pct_suffix = ""
+  }
+
+
+  if (any(t1$var_type == "continuous") & any(t1$var_type == "categorical")) {
+
+    t1 <- t1
+
+  } else if (any(t1$var_type == "continuous")) {
+
+    t1 <- t1 |>
+      mutate(n_strata = NA_integer_,
+             n_strata_valid = NA_integer_,
+             level = NA_character_)
+
+  } else if (any(t1$var_type == "categorical")) {
+
+    t1 <- t1 |>
+      mutate(n = NA_integer_,
+             complete = NA_integer_,
+             missing = NA_integer_)
+
+  }
+
+
+  if (missing == "no") {
+
+    miss_tab <- t1 |>
+      dplyr::filter(strata == "Overall") |>
+      dplyr::distinct(var,
+                      n,
+                      complete,
+                      n_strata,
+                      n_strata_valid,
+                      var_type) |>
+      mutate(n = dplyr::coalesce(n, n_strata),
+             n_available = dplyr::coalesce(complete, n_strata_valid),
+             p_available = n_available / n) |>
+      dplyr::select(var, n, n_available, p_available)
+
+
+    miss_tab <- miss_tab |>
+      # Format counts for strata
+      mutate(dplyr::across(.cols = c(n,
+                                     n_available),
+                           .fns = ~ scales::number(x = .,
+                                                   accuracy = 1.0,
+                                                   scale = 1,
+                                                   prefix = "",
+                                                   suffix = "",
+                                                   big.mark = "",
+                                                   decimal.mark = ".",
+                                                   style_positive = "none",
+                                                   style_negative = "hyphen",
+                                                   scale_cut = NULL,
+                                                   trim = FALSE))) |>
+      # Format categorical Percentages
+      mutate(p_available = scales::percent(x = p_available,
+                                           accuracy = cat_accuracy,
+                                           scale = 100,
+                                           prefix = prefix,
+                                           suffix = pct_suffix,
+                                           big.mark = big_mark,
+                                           decimal.mark = decimal_mark,
+                                           style_positive = style_positive,
+                                           style_negative = style_negative,
+                                           scale_cut = scale_cut,
+                                           trim = cat_trim))
+
+  } else if (missing == "ifany") {
+
+    any_miss <- t1 |>
+      dplyr::filter(strata == "Overall") |>
+      mutate(n = dplyr::coalesce(n, n_strata),
+             missing = dplyr::if_else(var_type == "continuous",
+                                      missing,
+                                      n_strata - n_strata_valid)) |>
+      dplyr::filter(missing > 0) |>
+      dplyr::pull(var)
+
+    miss_tab <- t1 |>
+      dplyr::filter(var %in% any_miss) |>
+      dplyr::select(strata,
+                    var,
+                    n,
+                    missing,
+                    level,
+                    n_strata,
+                    n_strata_valid,
+                    var_type) |>
+      mutate(n = dplyr::coalesce(n, n_strata),
+             missing = dplyr::if_else(var_type == "continuous",
+                                      missing,
+                                      n_strata - n_strata_valid),
+             missing_p = missing / n) |>
+      dplyr::distinct(strata,
+                      var,
+                      n,
+                      missing,
+                      missing_p,
+                      var_type)
+
+
+    miss_tab <- miss_tab |>
+      # Format counts for strata
+      mutate(dplyr::across(.cols = c(n,
+                                     missing),
+                           .fns = ~ scales::number(x = .,
+                                                   accuracy = 1.0,
+                                                   scale = 1,
+                                                   prefix = "",
+                                                   suffix = "",
+                                                   big.mark = "",
+                                                   decimal.mark = ".",
+                                                   style_positive = "none",
+                                                   style_negative = "hyphen",
+                                                   scale_cut = NULL,
+                                                   trim = FALSE))) |>
+      # Format categorical Percentages
+      mutate(missing_p = scales::percent(x = missing_p,
+                                         accuracy = cat_accuracy,
+                                         scale = 100,
+                                         prefix = prefix,
+                                         suffix = pct_suffix,
+                                         big.mark = big_mark,
+                                         decimal.mark = decimal_mark,
+                                         style_positive = style_positive,
+                                         style_negative = style_negative,
+                                         scale_cut = scale_cut,
+                                         trim = cat_trim))
+
+
+
+  } else if (missing == "always") {
+
+    miss_tab <- t1 |>
+      dplyr::select(strata,
+                    var,
+                    n,
+                    missing,
+                    level,
+                    n_strata,
+                    n_strata_valid,
+                    var_type) |>
+      mutate(n = dplyr::coalesce(n, n_strata),
+             missing = dplyr::if_else(var_type == "continuous",
+                                      missing,
+                                      n_strata - n_strata_valid),
+             missing_p = missing / n) |>
+      dplyr::distinct(strata,
+                      var,
+                      n,
+                      missing,
+                      missing_p,
+                      var_type)
+
+
+    miss_tab <- miss_tab |>
+      # Format counts for strata
+      mutate(dplyr::across(.cols = c(n,
+                                     missing),
+                           .fns = ~ scales::number(x = .,
+                                                   accuracy = 1.0,
+                                                   scale = 1,
+                                                   prefix = "",
+                                                   suffix = "",
+                                                   big.mark = "",
+                                                   decimal.mark = ".",
+                                                   style_positive = "none",
+                                                   style_negative = "hyphen",
+                                                   scale_cut = NULL,
+                                                   trim = FALSE))) |>
+      # Format categorical Percentages
+      mutate(missing_p = scales::percent(x = missing_p,
+                                         accuracy = cat_accuracy,
+                                         scale = 100,
+                                         prefix = prefix,
+                                         suffix = pct_suffix,
+                                         big.mark = big_mark,
+                                         decimal.mark = decimal_mark,
+                                         style_positive = style_positive,
+                                         style_negative = style_negative,
+                                         scale_cut = scale_cut,
+                                         trim = cat_trim))
+
+
+
+  }
+
+
+
+  # Format results
+
+  if (missing == "no") {
+
+    miss_tab <- miss_tab |>
+      mutate(glue_formula = default_miss,
+             glue_formula = stringr::str_replace_all(string = glue_formula,
+                                                     pattern = "\\{n\\}",
+                                                     replacement = "{n_available}"),
+             glue_formula = stringr::str_replace_all(string = glue_formula,
+                                                     pattern = "\\{p\\}",
+                                                     replacement = "{p_available}")) |>
+      dplyr::rowwise() |>
+      mutate(num_not_miss = glue::glue(glue_formula)) |>
+      dplyr::select(var, num_not_miss)
+
+  }
+
+
+
+
+  return(miss_tab)
 
 
 }

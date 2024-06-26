@@ -627,7 +627,7 @@ create_tidy_table_one <- function(data,
 
     #### Hypothesis tests --------------------------------
 
-    if(!is.null(strata)) {
+    if (!is.null(strata)) {
 
       htest_res <- dplyr::bind_rows(
         calc_con_htest(data = df_omit_na_strata,

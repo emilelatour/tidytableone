@@ -31,7 +31,9 @@ adorn_tidytableone(
   show_smd = FALSE,
   use_labels = TRUE,
   combine_level_col = TRUE,
-  missing = "ifany",
+  missing = "no",
+  missing_text = "(Missing)",
+  default_miss = "{n}",
   ...
 )
 }
@@ -102,9 +104,15 @@ of two. HTML won't recognize the extra spaces when printing, but you can
 used \code{flextable::padding} to indent the right rows in that column later.}
 
 \item{missing}{Indicates whether to include counts of NA values in the table.
-Allowed values are "no" (never display NA values), "ifany" (only display if
+Allowed values are "no" (shows a column of number not missing), "ifany" (only display if
 any NA values), and "always" (includes NA count row for all variables).
-Default is "ifany".}
+Default is "no".}
+
+\item{missing_text}{Character string to use in place of \code{NA} when missing is
+"ifany" or "always". Default is "(Missing)".}
+
+\item{default_miss}{A glue statement that provides the formatting for
+missing, Default is "{n}"}
 
 \item{...}{Additional arguments. Not used.}
 }
