@@ -157,6 +157,9 @@ create_tidy_table_one <- function(data,
                                   na_level = "(Missing)",
                                   b_replicates = 2000, ...) {
 
+  # Silence no visible binding for global variable
+  dat <- res <- n_level_valid <- n_strata_valid <- label <- NULL
+
 
   if (is.null(strata)) {
     # stop("Currently, the function only works when a strata is given.")
@@ -1066,6 +1069,10 @@ get_var_labels <- function(x) {
 }
 
 do_one_cat_strata <- function(x, strata_sym) {
+
+  # Silence no visible binding for global variable
+  n_level_valid <- NULL
+
   x |>
     tidyr::pivot_longer(cols = - !! strata_sym,
                         names_to = "var",

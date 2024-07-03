@@ -41,10 +41,10 @@ adorn_tidytableone(
 \item{tidy_t1}{Results in a tibble from \code{create_tidy_table_one}}
 
 \item{default_continuous}{A glue statement that provides the formatting for
-continuous variables, Default is "{mean} ({sd})"}
+continuous variables, Default is \code{"{mean} ({sd})"}}
 
 \item{default_categorical}{A glue statement that provides the formatting for
-categorical variables, Default is "{n} ({p})"}
+categorical variables, Default is \code{"{n} ({p})"}}
 
 \item{fmt_vars}{A list of variable names and glue statements to override the
 defaults for specific variables.}
@@ -112,7 +112,7 @@ Default is "no".}
 "ifany" or "always". Default is "(Missing)".}
 
 \item{default_miss}{A glue statement that provides the formatting for
-missing, Default is "{n}"}
+missing, Default is \code{"{n}"}}
 
 \item{...}{Additional arguments. Not used.}
 }

@@ -8,9 +8,9 @@
 #'
 #' @param tidy_t1 Results in a tibble from `create_tidy_table_one`
 #' @param default_continuous A glue statement that provides the formatting for
-#'   continuous variables, Default is "{mean} ({sd})"
+#'   continuous variables, Default is `"{mean} ({sd})"`
 #' @param default_categorical A glue statement that provides the formatting for
-#'   categorical variables, Default is "{n} ({p})"
+#'   categorical variables, Default is `"{n} ({p})"`
 #' @param fmt_vars A list of variable names and glue statements to override the
 #'   defaults for specific variables.
 #' @param con_accuracy A number to round to for continuous variables. Use (e.g.)
@@ -52,7 +52,7 @@
 #' @param missing_text Character string to use in place of `NA` when missing is
 #'   "ifany" or "always". Default is "(Missing)".
 #' @param default_miss A glue statement that provides the formatting for
-#'   missing, Default is "{n}"
+#'   missing, Default is `"{n}"`
 #' @param ... Additional arguments. Not used.
 #'
 #' @importFrom dplyr across
@@ -162,7 +162,7 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
                                          default_miss = "{n}", ...) {
 
   # Silence no visible binding for global variable
-  label <- glue_formula <- NULL
+  label <- glue_formula <- glue_formula2 <- Overall <- num_not_miss <- NULL
 
 
   #### get variable labels --------------------------------
@@ -402,6 +402,8 @@ build_tab1_no_strata <- function(tab_var,
                                  tab_miss,
                                  missing = "no") {
 
+  num_not_miss <- NULL
+
   s_i <- tab_stats |>
     dplyr::filter(var == tab_var) |>
     dplyr::select(-var,
@@ -467,6 +469,7 @@ make_t1_pretty_no_strata <- function(t1,
 
   # Silence no visible binding for global variable
   glue_formula <- pct <- cv <- strata <- glue_formula2 <- NULL
+  n_level_valid <- n_strata_valid <- NULL
 
   # Percentage suffix
   if (show_pct) {
@@ -718,6 +721,7 @@ get_miss_no_strata <- function(t1,
 
   # Silence no visible binding for global variable
   glue_formula <- pct <- cv <- strata <- glue_formula2 <- NULL
+  n_strata_valid <- n_available <- p_available <- missing_p <- num_not_miss <- n_miss <- NULL
 
   # Percentage suffix
   if (show_pct) {

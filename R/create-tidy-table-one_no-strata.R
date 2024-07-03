@@ -140,6 +140,9 @@ create_tidy_table_one_no_strata <- function(data,
                                             na_level = "(Missing)",
                                             b_replicates = 2000, ...) {
 
+  # Silence no visible binding for global variable
+  dat <- res <- n_level_valid <- n_strata_valid <- label <- NULL
+
 
   if (!is.null(strata)) {
     stop("Strata must be NULL for create_tidy_table_one_no_stata.")
@@ -487,6 +490,10 @@ create_tidy_table_one_no_strata <- function(data,
 #### Helper function --------------------------------
 
 do_one_cat <- function(x) {
+
+  # Silence no visible binding for global variable
+  n_level_valid <- NULL
+
   x |>
     dplyr::rename("level" = 1) |>
     dplyr::count(level,

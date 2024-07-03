@@ -8,9 +8,9 @@
 #'
 #' @param tidy_t1 Results in a tibble from `create_tidy_table_one`
 #' @param default_continuous A glue statement that provides the formatting for
-#'   continuous variables, Default is "{mean} ({sd})"
+#'   continuous variables, Default is `"{mean} ({sd})"`
 #' @param default_categorical A glue statement that provides the formatting for
-#'   categorical variables, Default is "{n} ({p})"
+#'   categorical variables, Default is `"{n} ({p})"`
 #' @param fmt_vars A list of variable names and glue statements to override the
 #'   defaults for specific variables.
 #' @param con_accuracy A number to round to for continuous variables. Use (e.g.)
@@ -52,7 +52,7 @@
 #' @param missing_text Character string to use in place of `NA` when missing is
 #'   "ifany" or "always". Default is "(Missing)".
 #' @param default_miss A glue statement that provides the formatting for
-#'   missing, Default is "{n}"
+#'   missing, Default is `"{n}"`
 #' @param ... Additional arguments. Not used.
 #'
 #' @importFrom dplyr across
@@ -163,6 +163,7 @@ adorn_tidytableone <- function(tidy_t1,
 
   # Silence no visible binding for global variable
   p_value <- test <- smd <- label <- glue_formula <- NULL
+  strata <- num_not_miss <- NULL
 
   if (!"strata" %in% names(tidy_t1)) {
     # stop("Currently, the function only works when a strata is given.")
@@ -580,7 +581,7 @@ build_tab1 <- function(tab_var,
                        tab_smd) {
 
   # Silence no visible binding for global variable
-  p_value <- test <- smd <- NULL
+  p_value <- test <- smd <- num_not_miss <- NULL
 
   p_i <- tab_pvals |>
     dplyr::filter(var == tab_var) |>
@@ -692,6 +693,7 @@ make_t1_pretty <- function(t1,
 
   # Silence no visible binding for global variable
   glue_formula <- pct <- cv <- strata <- glue_formula2 <- NULL
+  n_level_valid <- n_strata_valid <- NULL
 
   # Percentage suffix
   if (show_pct) {
@@ -942,6 +944,8 @@ get_miss <- function(t1,
 
   # Silence no visible binding for global variable
   glue_formula <- pct <- cv <- strata <- glue_formula2 <- NULL
+  n_strata_valid <- n_available <- p_available <- missing_p <- num_not_miss <- n_miss <- NULL
+
 
   # Percentage suffix
   if (show_pct) {
