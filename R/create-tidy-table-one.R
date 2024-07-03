@@ -227,26 +227,18 @@ create_tidy_table_one <- function(data,
 
     #### Categorical stats --------------------------------
 
-    suppressWarnings(cat_strata <- data %>%
-                       dplyr::select(!! strata_sym,
-                                     dplyr::one_of(cat_vars)) %>%
-                       tidyr::pivot_longer(data = .,
-                                           cols = - !! strata_sym,
-                                           names_to = "var",
-                                           values_to = "level") %>%
-                       dplyr::count(!! strata_sym, var, level,
-                                    name = "n_level",
-                                    .drop = FALSE) %>%
-                       group_by(var) %>%
-                       tidyr::complete(!! strata_sym, level,
-                                       fill = list(n_level = 0)) %>%
-                       group_by(!! strata_sym, var) %>%
-                       mutate(n_strata = sum(n_level, na.rm = TRUE),
-                              n_level_valid = dplyr::if_else(is.na(level), NA_integer_, n_level),
-                              n_strata_valid = sum(n_level_valid, na.rm = TRUE)) %>%
-                       ungroup() %>%
-                       dplyr::select(!! strata_sym, dplyr::everything()) %>%
-                       mutate(!! strata_sym := as.character(!! strata_sym)) )
+    suppressWarnings(
+      cat_strata <- tibble::tibble(var = cat_vars) |>
+        mutate(dat = purrr::map(.x = var,
+                                .f = ~ dplyr::select(data,
+                                                     !! strata_sym,
+                                                     dplyr::one_of(.x))),
+               res = purrr::map(.x = dat,
+                                .f = ~ do_one_cat_strata(x = .x,
+                                                         strata_sym = strata_sym))) |>
+        dplyr::select(res) |>
+        tidyr::unnest(res)
+      )
 
     cat_overall <- cat_strata %>%
       dplyr::group_by(var, level) %>%
@@ -425,26 +417,18 @@ create_tidy_table_one <- function(data,
 
     #### Categorical stats --------------------------------
 
-    suppressWarnings(cat_strata <- data %>%
-                       dplyr::select(!! strata_sym,
-                                     dplyr::one_of(cat_vars)) %>%
-                       tidyr::pivot_longer(data = .,
-                                           cols = - !! strata_sym,
-                                           names_to = "var",
-                                           values_to = "level") %>%
-                       dplyr::count(!! strata_sym, var, level,
-                                    name = "n_level",
-                                    .drop = FALSE) %>%
-                       group_by(var) %>%
-                       tidyr::complete(!! strata_sym, level,
-                                       fill = list(n_level = 0)) %>%
-                       group_by(!! strata_sym, var) %>%
-                       mutate(n_strata = sum(n_level, na.rm = TRUE),
-                              n_level_valid = dplyr::if_else(is.na(level), NA_integer_, n_level),
-                              n_strata_valid = sum(n_level_valid, na.rm = TRUE)) %>%
-                       ungroup() %>%
-                       dplyr::select(!! strata_sym, dplyr::everything()) %>%
-                       mutate(!! strata_sym := as.character(!! strata_sym)) )
+    suppressWarnings(
+      cat_strata <- tibble::tibble(var = cat_vars) |>
+        mutate(dat = purrr::map(.x = var,
+                                .f = ~ dplyr::select(data,
+                                                     !! strata_sym,
+                                                     dplyr::one_of(.x))),
+               res = purrr::map(.x = dat,
+                                .f = ~ do_one_cat_strata(x = .x,
+                                                         strata_sym = strata_sym))) |>
+        dplyr::select(res) |>
+        tidyr::unnest(res)
+    )
 
     cat_overall <- cat_strata %>%
       dplyr::group_by(var, level) %>%
@@ -1081,3 +1065,22 @@ get_var_labels <- function(x) {
 
 }
 
+do_one_cat_strata <- function(x, strata_sym) {
+  x |>
+    tidyr::pivot_longer(cols = - !! strata_sym,
+                        names_to = "var",
+                        values_to = "level") |>
+    dplyr::count(!! strata_sym, var, level,
+                 name = "n_level",
+                 .drop = FALSE)  |>
+    group_by(var) |>
+    tidyr::complete(!! strata_sym, level,
+                    fill = list(n_level = 0)) |>
+    group_by(!! strata_sym, var) |>
+    mutate(n_strata = sum(n_level, na.rm = TRUE),
+           n_level_valid = dplyr::if_else(is.na(level), NA_integer_, n_level),
+           n_strata_valid = sum(n_level_valid, na.rm = TRUE)) |>
+    ungroup() |>
+    dplyr::select(!! strata_sym, dplyr::everything()) |>
+    mutate(!! strata_sym := as.character(!! strata_sym))
+}
