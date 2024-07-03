@@ -180,21 +180,14 @@ create_tidy_table_one_no_strata <- function(data,
     #### Categorical stats --------------------------------
 
     suppressWarnings(
-      cat_stats <- data |>
-        dplyr::select(dplyr::one_of(cat_vars)) |>
-        tidyr::pivot_longer(cols = dplyr::one_of(cat_vars),
-                            names_to = "var",
-                            values_to = "level") |>
-        dplyr::count(var, level,
-                     name = "n_level",
-                     .drop = FALSE) |>
-        group_by(var) |>
-        tidyr::complete(level,
-                        fill = list(n_level = 0)) |>
-        mutate(n_strata = sum(n_level, na.rm = TRUE)) |>
-        mutate(n_level_valid = dplyr::if_else(is.na(level), NA_integer_, n_level),
-               n_strata_valid = sum(n_level_valid, na.rm = TRUE)) |>
-        ungroup()
+      cat_stats <- tibble::tibble(var = cat_vars) |>
+        mutate(dat = purrr::map(.x = var,
+                                .f = ~ dplyr::select(data,
+                                                     dplyr::one_of(.x))),
+               res = purrr::map(.x = dat,
+                                .f = ~ do_one_cat(.x))) |>
+        dplyr::select(var, res) |>
+        tidyr::unnest(res)
     )
 
     # Calc percentage
@@ -299,21 +292,14 @@ create_tidy_table_one_no_strata <- function(data,
     #### Categorical stats --------------------------------
 
     suppressWarnings(
-      cat_stats <- data |>
-        dplyr::select(dplyr::one_of(cat_vars)) |>
-        tidyr::pivot_longer(cols = dplyr::one_of(cat_vars),
-                            names_to = "var",
-                            values_to = "level") |>
-        dplyr::count(var, level,
-                     name = "n_level",
-                     .drop = FALSE) |>
-        group_by(var) |>
-        tidyr::complete(level,
-                        fill = list(n_level = 0)) |>
-        mutate(n_strata = sum(n_level, na.rm = TRUE)) |>
-        mutate(n_level_valid = dplyr::if_else(is.na(level), NA_integer_, n_level),
-               n_strata_valid = sum(n_level_valid, na.rm = TRUE)) |>
-        ungroup()
+      cat_stats <- tibble::tibble(var = cat_vars) |>
+        mutate(dat = purrr::map(.x = var,
+                                .f = ~ dplyr::select(data,
+                                                     dplyr::one_of(.x))),
+               res = purrr::map(.x = dat,
+                                .f = ~ do_one_cat(.x))) |>
+        dplyr::select(var, res) |>
+        tidyr::unnest(res)
     )
 
     # Calc percentage
@@ -495,3 +481,20 @@ create_tidy_table_one_no_strata <- function(data,
 
 }
 
+
+
+
+#### Helper function --------------------------------
+
+do_one_cat <- function(x) {
+  x |>
+    dplyr::rename("level" = 1) |>
+    dplyr::count(level,
+                 name = "n_level",
+                 .drop = FALSE) |>
+    tidyr::complete(level,
+                    fill = list(n_level = 0)) |>
+    mutate(n_strata = sum(n_level, na.rm = TRUE)) |>
+    mutate(n_level_valid = dplyr::if_else(is.na(level), NA_integer_, n_level),
+           n_strata_valid = sum(n_level_valid, na.rm = TRUE))
+}
