@@ -469,7 +469,8 @@ create_tidy_table_one <- function(data,
       htest_res <- dplyr::bind_rows(
         calc_cat_htest(data = df_omit_na_strata,
                        strata = strata,
-                       vars = cat_vars)
+                       vars = cat_vars,
+                       b_replicates = b_replicates)
       )
 
     }
