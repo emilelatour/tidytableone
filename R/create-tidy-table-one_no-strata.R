@@ -143,7 +143,7 @@ create_tidy_table_one_no_strata <- function(data,
   # Silence no visible binding for global variable
   dat <- res <- n_level_valid <- n_strata_valid <- label <- NULL
 
-
+  # Ensure strata is NULL since this function does not handle stratified data
   if (!is.null(strata)) {
     stop("Strata must be NULL for create_tidy_table_one_no_stata.")
   }
@@ -153,6 +153,7 @@ create_tidy_table_one_no_strata <- function(data,
                      .funs = ~ factor(., ordered = FALSE))
 
 
+  # If no variables are specified, use all variables in the dataset
   if (missing(vars)) {
     vars <- names(data)
   }
@@ -160,15 +161,16 @@ create_tidy_table_one_no_strata <- function(data,
 
   #### Get variable info --------------------------------
 
+  # Extract variable labels for later use
   var_lbls <- tibble::tibble(var = names(data)) |>
     mutate(label = purrr::map_chr(.x = data[, var],
                                   .f = ~ get_var_labels(x = .x)))
 
-
+  # Get variable types and other meta-information
   var_info <- get_var_info(data = data,
                            .vars = vars)
 
-  # Add variables for sorting later
+  # Create sorting variables to maintain order in the output
   var_info <- var_info |>
     mutate(sort1 = cumsum(var != dplyr::lag(var, default = dplyr::first(var))),
            sort1 = sort1 + 1) |>
@@ -176,6 +178,7 @@ create_tidy_table_one_no_strata <- function(data,
     mutate(sort2 = dplyr::row_number()) |>
     ungroup()
 
+  # Identify categorical and continuous variables
   cat_vars <- var_info |>
     dplyr::filter(var_type == "categorical") |>
     dplyr::pull(var) |>
@@ -187,189 +190,40 @@ create_tidy_table_one_no_strata <- function(data,
     unique()
 
 
-  if (length(cat_vars) > 0 & length(con_vars) > 0) {
+  #### Get tables stats --------------------------------
 
-    #### Categorical stats --------------------------------
+  res_stats <- list()
+
+  # Process categorical variables, if any
+  if (length(cat_vars) > 0) {
 
     suppressWarnings(
+
       cat_stats <- tibble::tibble(var = cat_vars) |>
         mutate(dat = purrr::map(.x = var,
                                 .f = ~ dplyr::select(data,
-                                                     dplyr::one_of(.x))),
+                                                     dplyr::all_of(.x))),
                res = purrr::map(.x = dat,
                                 .f = ~ do_one_cat(.x))) |>
         dplyr::select(var, res) |>
-        tidyr::unnest(res)
+        tidyr::unnest(res) |>
+        mutate(pct = n_level / n_strata,
+               pct_valid = n_level_valid / n_strata_valid)
+
     )
 
-    # Calc percentage
-    cat_stats <- cat_stats |>
-      mutate(pct = n_level / n_strata,
-             pct_valid = n_level_valid / n_strata_valid)
-
-    #### Continuous stats --------------------------------
-
-    con_stats <- data |>
-      dplyr::select(dplyr::one_of(con_vars)) |>
-      tidyr::pivot_longer(cols = dplyr::one_of(con_vars),
-                          names_to = "var",
-                          values_to = "value") |>
-      group_by(var) |>
-      summarise(n = dplyr::n(),
-                n_distinct = dplyr::n_distinct(value),
-                complete = sum(!is.na(value)),
-                missing = sum(is.na(value)),
-                mean = mean(value, na.rm = TRUE),
-                sd = sd(value, na.rm = TRUE),
-                p0 = custom_min(value, na.rm = TRUE),
-                p25 = quantile(value, probs = 0.25, na.rm = TRUE),
-                p50 = quantile(value, probs = 0.50, na.rm = TRUE),
-                p75 = quantile(value, probs = 0.75, na.rm = TRUE),
-                p100 = custom_max(value, na.rm = TRUE),
-                cv = sd / mean,
-                shapiro_test = calc_shapiro_test(var = value),
-                ks_test = calc_ks_test(var = value),
-                ad_test = calc_ad_test(var = value)) |>
-      ungroup()
-
-
-    #### Calc SMD --------------------------------
-
-    # Not calculated
-
-    #### Hypothesis tests --------------------------------
-
-    # No hypothesis tests performed when only one group
-
-    #### Combine results --------------------------------
-
-    res_stats <- dplyr::bind_rows(con_stats,
+    res_stats <- dplyr::bind_rows(res_stats,
                                   cat_stats)
 
-
-    #### Add on var_info --------------------------------
-
-    class_and_type <- var_info |>
-      dplyr::select(-level,
-                    -sort1,
-                    -sort2) |>
-      dplyr::distinct()
-
-    res_stats <- res_stats |>
-      dplyr::left_join(class_and_type,
-                       by = "var")
-
-    res_stats <- res_stats |>
-      dplyr::left_join(var_lbls,
-                       by = "var")
+  }
 
 
-    #### Arrange results --------------------------------
-
-    sort_vars <- var_info |>
-      dplyr::select(var, level, sort1, sort2)
-
-    res_stats <- res_stats |>
-      dplyr::left_join(sort_vars,
-                       by = c("var", "level")) |>
-      dplyr::arrange(sort1, sort2) |>
-      mutate(var = forcats::fct_inorder(var),
-             level = forcats::fct_inorder(level)) |>
-      dplyr::select(-sort1, -sort2)
-
-
-    #### Return results --------------------------------
-
-    res_stats <- res_stats |>
-      dplyr::relocate(class,
-                      var_type,
-                      label,
-                      .after = dplyr::everything())
-
-    return(res_stats)
-
-
-  } else if (length(cat_vars) > 0) {
-
-    #### Categorical stats --------------------------------
-
-    suppressWarnings(
-      cat_stats <- tibble::tibble(var = cat_vars) |>
-        mutate(dat = purrr::map(.x = var,
-                                .f = ~ dplyr::select(data,
-                                                     dplyr::one_of(.x))),
-               res = purrr::map(.x = dat,
-                                .f = ~ do_one_cat(.x))) |>
-        dplyr::select(var, res) |>
-        tidyr::unnest(res)
-    )
-
-    # Calc percentage
-    cat_stats <- cat_stats |>
-      mutate(pct = n_level / n_strata,
-             pct_valid = n_level_valid / n_strata_valid)
-
-
-    #### Calc SMD --------------------------------
-
-    # Not calculated
-
-    #### Hypothesis tests --------------------------------
-
-    # No hypothesis tests performed when only one group
-
-    #### Combine results --------------------------------
-
-    res_stats <- cat_stats
-
-
-    #### Add on var_info --------------------------------
-
-    class_and_type <- var_info |>
-      dplyr::select(-level,
-                    -sort1,
-                    -sort2) |>
-      dplyr::distinct()
-
-    res_stats <- res_stats |>
-      dplyr::left_join(class_and_type,
-                       by = "var")
-
-    res_stats <- res_stats |>
-      dplyr::left_join(var_lbls,
-                       by = "var")
-
-
-    #### Arrange results --------------------------------
-
-    sort_vars <- var_info |>
-      dplyr::select(var, level, sort1, sort2)
-
-    res_stats <- res_stats |>
-      dplyr::left_join(sort_vars,
-                       by = c("var", "level")) |>
-      dplyr::arrange(sort1, sort2) |>
-      mutate(var = forcats::fct_inorder(var),
-             level = forcats::fct_inorder(level)) |>
-      dplyr::select(-sort1, -sort2)
-
-    #### Return results --------------------------------
-
-    res_stats <- res_stats |>
-      dplyr::relocate(class,
-                      var_type,
-                      label,
-                      .after = dplyr::everything())
-
-    return(res_stats)
-
-  } else if (length(con_vars) > 0) {
-
-    #### Continuous stats --------------------------------
+  # Process continuous variables, if any
+  if (length(con_vars) > 0) {
 
     con_stats <- data |>
       dplyr::select(dplyr::one_of(con_vars)) |>
-      tidyr::pivot_longer(cols = dplyr::one_of(con_vars),
+      tidyr::pivot_longer(cols = dplyr::all_of(con_vars),
                           names_to = "var",
                           values_to = "value") |>
       group_by(var) |>
@@ -390,59 +244,67 @@ create_tidy_table_one_no_strata <- function(data,
                 ad_test = calc_ad_test(var = value)) |>
       ungroup()
 
+    res_stats <- dplyr::bind_rows(res_stats,
+                                  con_stats)
 
-    #### Calc SMD --------------------------------
+  }
 
-    # Not calculated
 
-    #### Hypothesis tests --------------------------------
+  #### Clean up and arrange --------------------------------
 
-    # No hypothesis tests performed when only one group
+  # Add variable info (class, type) and labels to the results
+  class_and_type <- var_info |>
+    dplyr::select(-level,
+                  -sort1,
+                  -sort2) |>
+    dplyr::distinct()
 
-    #### Combine results --------------------------------
+  res_stats <- res_stats |>
+    dplyr::left_join(class_and_type,
+                     by = "var") |>
+    dplyr::left_join(var_lbls,
+                     by = "var")
 
-    res_stats <- con_stats
 
-    #### Add on var_info --------------------------------
-
-    class_and_type <- var_info |>
-      dplyr::select(-level,
-                    -sort1,
-                    -sort2) |>
-      dplyr::distinct()
-
-    res_stats <- res_stats |>
-      dplyr::left_join(class_and_type,
-                       by = "var")
-
-    res_stats <- res_stats |>
-      dplyr::left_join(var_lbls,
-                       by = "var")
-
-    #### Arrange results --------------------------------
+  # Arrange results by variable and level, maintaining the original order
+  if (length(cat_vars) > 0) {
 
     sort_vars <- var_info |>
       dplyr::select(var, level, sort1, sort2)
+
+    res_stats <- res_stats |>
+      dplyr::left_join(sort_vars,
+                       by = c("var", "level")) |>
+      dplyr::arrange(sort1, sort2) |>
+      mutate(var = forcats::fct_inorder(var),
+             level = forcats::fct_inorder(level)) |>
+      dplyr::select(-sort1, -sort2) |>
+      dplyr::relocate(class,
+                      var_type,
+                      label,
+                      .after = dplyr::everything())
+  } else {
+
+    sort_vars <- var_info |>
+      dplyr::select(var, sort1, sort2)
 
     res_stats <- res_stats |>
       dplyr::left_join(sort_vars,
                        by = c("var")) |>
       dplyr::arrange(sort1, sort2) |>
       mutate(var = forcats::fct_inorder(var)) |>
-      dplyr::select(-sort1, -sort2)
-
-
-    #### Return results --------------------------------
-
-    res_stats <- res_stats |>
+      dplyr::select(-sort1, -sort2) |>
       dplyr::relocate(class,
                       var_type,
                       label,
                       .after = dplyr::everything())
 
-    return(res_stats)
-
   }
+
+
+  #### Return results --------------------------------
+
+  return(res_stats)
 
 }
 
@@ -456,6 +318,7 @@ do_one_cat <- function(x) {
   # Silence no visible binding for global variable
   n_level_valid <- NULL
 
+  # Summarize categorical variable, filling in missing levels if necessary
   x |>
     dplyr::rename("level" = 1) |>
     dplyr::count(level,
