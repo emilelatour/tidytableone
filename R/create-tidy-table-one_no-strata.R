@@ -160,12 +160,21 @@ create_tidy_table_one_no_strata <- function(data,
 
   #### Get variable info --------------------------------
 
-  var_lbls <- tibble::tibble(var = names(data)) |>
+    var_lbls <- tibble::tibble(var = names(data)) |>
     mutate(label = purrr::map_chr(.x = data[, var],
                                   .f = ~ get_var_labels(x = .x)))
 
+
   var_info <- get_var_info(data = data,
                            .vars = vars)
+
+  # Add variables for sorting later
+  var_info <- var_info |>
+    mutate(sort1 = cumsum(var != dplyr::lag(var, default = dplyr::first(var))),
+           sort1 = sort1 + 1) |>
+    group_by(var) |>
+    mutate(sort2 = dplyr::row_number()) |>
+    ungroup()
 
   cat_vars <- var_info |>
     dplyr::filter(var_type == "categorical") |>
@@ -238,45 +247,35 @@ create_tidy_table_one_no_strata <- function(data,
                                   cat_stats)
 
 
-    #### Arrange results --------------------------------
-
-    var_lvls <- unique(var_info$var)
-
-    level_lvls <- var_info |>
-      dplyr::transmute(var_level = glue::glue("{var}_{level}")) |>
-      dplyr::pull()
-
-    res_stats <- res_stats |>
-      mutate(var = factor(var,
-                          levels = var_lvls),
-             var_level = glue::glue("{var}_{level}"),
-             var_level = factor(var_level,
-                                levels = level_lvls)) |>
-      dplyr::arrange(var, var_level) |>
-      mutate(level = factor(level)) |>
-      dplyr::select(-var_level)
-
-
     #### Add on var_info --------------------------------
 
-    res_stats <- var_info |>
-      dplyr::select(-level) |>
-      dplyr::distinct() |>
-      mutate(var = factor(var,
-                          levels = levels(res_stats$var))) |>
-      dplyr::left_join(res_stats,
-                       .,
+    class_and_type <- var_info |>
+      dplyr::select(-level,
+                    -sort1,
+                    -sort2) |>
+      dplyr::distinct()
+
+    res_stats <- res_stats |>
+      dplyr::left_join(class_and_type,
                        by = "var")
 
     res_stats <- res_stats |>
       dplyr::left_join(var_lbls,
                        by = "var")
 
-    #### Arrange  --------------------------------
+
+    #### Arrange results --------------------------------
+
+    sort_vars <- var_info |>
+      dplyr::select(var, level, sort1, sort2)
 
     res_stats <- res_stats |>
-      mutate(var = factor(var, levels = vars)) |>
-      dplyr::arrange(var, level)
+      dplyr::left_join(sort_vars,
+                       by = c("var", "level")) |>
+      dplyr::arrange(sort1, sort2) |>
+      mutate(var = forcats::fct_inorder(var),
+             level = forcats::fct_inorder(level)) |>
+      dplyr::select(-sort1, -sort2)
 
 
     #### Return results --------------------------------
@@ -324,34 +323,16 @@ create_tidy_table_one_no_strata <- function(data,
     res_stats <- cat_stats
 
 
-    #### Arrange results --------------------------------
-
-    var_lvls <- unique(var_info$var)
-
-    level_lvls <- var_info |>
-      dplyr::transmute(var_level = glue::glue("{var}_{level}")) |>
-      dplyr::pull()
-
-    res_stats <- res_stats |>
-      mutate(var = factor(var,
-                          levels = var_lvls),
-             var_level = glue::glue("{var}_{level}"),
-             var_level = factor(var_level,
-                                levels = level_lvls)) |>
-      dplyr::arrange(var, var_level) |>
-      mutate(level = factor(level)) |>
-      dplyr::select(-var_level)
-
-
     #### Add on var_info --------------------------------
 
-    res_stats <- var_info |>
-      dplyr::select(-level) |>
-      dplyr::distinct() |>
-      mutate(var = factor(var,
-                          levels = levels(res_stats$var))) |>
-      dplyr::left_join(res_stats,
-                       .,
+    class_and_type <- var_info |>
+      dplyr::select(-level,
+                    -sort1,
+                    -sort2) |>
+      dplyr::distinct()
+
+    res_stats <- res_stats |>
+      dplyr::left_join(class_and_type,
                        by = "var")
 
     res_stats <- res_stats |>
@@ -359,12 +340,18 @@ create_tidy_table_one_no_strata <- function(data,
                        by = "var")
 
 
-    #### Arrange  --------------------------------
+    #### Arrange results --------------------------------
+
+    sort_vars <- var_info |>
+      dplyr::select(var, level, sort1, sort2)
 
     res_stats <- res_stats |>
-      mutate(var = factor(var, levels = vars)) |>
-      dplyr::arrange(var, level)
-
+      dplyr::left_join(sort_vars,
+                       by = c("var", "level")) |>
+      dplyr::arrange(sort1, sort2) |>
+      mutate(var = forcats::fct_inorder(var),
+             level = forcats::fct_inorder(level)) |>
+      dplyr::select(-sort1, -sort2)
 
     #### Return results --------------------------------
 
@@ -416,61 +403,36 @@ create_tidy_table_one_no_strata <- function(data,
 
     res_stats <- con_stats
 
-
-    #### Arrange results --------------------------------
-
-    var_lvls <- unique(var_info$var)
-
-    res_stats <- res_stats |>
-      mutate(var = factor(var,
-                          levels = var_lvls)) |>
-      dplyr::arrange(var)
-
     #### Add on var_info --------------------------------
 
-    res_stats <- var_info |>
-      dplyr::select(-level) |>
-      dplyr::distinct() |>
-      mutate(var = factor(var,
-                          levels = levels(res_stats$var))) |>
-      dplyr::left_join(res_stats,
-                       .,
+    class_and_type <- var_info |>
+      dplyr::select(-level,
+                    -sort1,
+                    -sort2) |>
+      dplyr::distinct()
+
+    res_stats <- res_stats |>
+      dplyr::left_join(class_and_type,
                        by = "var")
 
     res_stats <- res_stats |>
       dplyr::left_join(var_lbls,
                        by = "var")
 
+    #### Arrange results --------------------------------
 
-    #### Arrange  --------------------------------
+    sort_vars <- var_info |>
+      dplyr::select(var, level, sort1, sort2)
 
-    if (any(res_stats$var_type == "continuous") & any(res_stats$var_type == "categorical")) {
-
-      res_stats <- res_stats |>
-        mutate(var = factor(var,
-                            levels = vars)) |>
-        dplyr::arrange(var, strata, level)
-
-    } else if (any(res_stats$var_type == "continuous")) {
-
-      res_stats <- res_stats |>
-        mutate(var = factor(var,
-                            levels = vars)) |>
-        dplyr::arrange(var, strata)
+    res_stats <- res_stats |>
+      dplyr::left_join(sort_vars,
+                       by = c("var")) |>
+      dplyr::arrange(sort1, sort2) |>
+      mutate(var = forcats::fct_inorder(var)) |>
+      dplyr::select(-sort1, -sort2)
 
 
-    } else if (any(res_stats$var_type == "categorical")) {
-
-      res_stats <- res_stats |>
-        mutate(var = factor(var,
-                            levels = vars)) |>
-        dplyr::arrange(var, strata, level)
-
-
-    }
-
-
-    #### Return results --------------------------------
+        #### Return results --------------------------------
 
     res_stats <- res_stats |>
       dplyr::relocate(class,
