@@ -141,13 +141,14 @@ create_tidy_table_one_no_strata <- function(data,
                                             b_replicates = 2000, ...) {
 
   # Silence no visible binding for global variable
-  dat <- res <- n_level_valid <- n_strata_valid <- label <- NULL
+  dat <- res <- n_level_valid <- n_strata_valid <- label <- sort1 <- sort2 <- NULL
 
   # Ensure strata is NULL since this function does not handle stratified data
   if (!is.null(strata)) {
     stop("Strata must be NULL for create_tidy_table_one_no_stata.")
   }
 
+  # Convert ordered factors to regular factors
   data <- data |>
     dplyr::mutate_if(.predicate = ~ ("ordered" %in% class(.)),
                      .funs = ~ factor(., ordered = FALSE))

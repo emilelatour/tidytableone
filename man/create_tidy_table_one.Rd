@@ -101,16 +101,82 @@ dplyr::glimpse(tab1)
 
 library(ggplot2)  # diamonds data set
 
-tab2 <- create_tidy_table_one(data = diamonds,
-                              strata = "cut",
-                              vars = c("carat",
-                                       # Don't have to include the strata variable
-                                       # "cut",
-                                       "color",
-                                       "clarity",
-                                       "depth",
-                                       "table",
-                                       "price"))
+#### With strata --------------------------------
 
-dplyr::glimpse(tab2)
+# Continuous and categoical
+(t1 <- create_tidy_table_one(data = diamonds,
+                             strata = "cut",
+                             vars = c("carat",
+                                      # Don't have to include the strata variable
+                                      # "cut",
+                                      "color",
+                                      "clarity",
+                                      "depth",
+                                      "table",
+                                      "price"))
+)
+
+dplyr::glimpse(t1)
+
+t1 |>
+  adorn_tidytableone()
+
+
+# Continuous only
+(t2 <- create_tidy_table_one(data = diamonds,
+                             strata = "cut",
+                             vars = c("carat"))
+)
+
+t2 |>
+  adorn_tidytableone()
+
+
+
+# Categorical only
+(t3 <- create_tidy_table_one(data = diamonds,
+                             strata = "cut",
+                             vars = c("color")))
+
+t3 |>
+  adorn_tidytableone()
+
+
+#### Withou strata --------------------------------
+
+# Continuous and categoical
+(t1 <- create_tidy_table_one(data = diamonds,
+                             strata = NULL,
+                             vars = c("carat",
+                                      # Don't have to include the strata variable
+                                      # "cut",
+                                      "color",
+                                      "clarity",
+                                      "depth",
+                                      "table",
+                                      "price"))
+)
+
+t1 |>
+  adorn_tidytableone()
+
+
+# Continuous only
+(t2 <- create_tidy_table_one(data = diamonds,
+                             strata = NULL,
+                             vars = c("carat"))
+)
+
+t2 |>
+  adorn_tidytableone()
+
+
+
+# Categorical only
+(t3 <- create_tidy_table_one(data = diamonds,
+                             strata = NULL,
+                             vars = c("color")))
+
+t3 |>
+  adorn_tidytableone()
 }
