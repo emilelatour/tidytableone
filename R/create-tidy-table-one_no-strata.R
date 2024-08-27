@@ -160,7 +160,7 @@ create_tidy_table_one_no_strata <- function(data,
 
   #### Get variable info --------------------------------
 
-    var_lbls <- tibble::tibble(var = names(data)) |>
+  var_lbls <- tibble::tibble(var = names(data)) |>
     mutate(label = purrr::map_chr(.x = data[, var],
                                   .f = ~ get_var_labels(x = .x)))
 
@@ -432,7 +432,7 @@ create_tidy_table_one_no_strata <- function(data,
       dplyr::select(-sort1, -sort2)
 
 
-        #### Return results --------------------------------
+    #### Return results --------------------------------
 
     res_stats <- res_stats |>
       dplyr::relocate(class,
