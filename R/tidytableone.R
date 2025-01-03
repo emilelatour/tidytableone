@@ -7,9 +7,8 @@
 #' # Example usage:
 #' library(tidytableone)
 #'
-#' @docType package
-#' @name tidytableone
-NULL
+#' @keywords internal
+"_PACKAGE"
 
 ## quiets concerns of R CMD check re: the .'s that appear in pipelines
 ## From Jenny Bryan's googlesheets package
