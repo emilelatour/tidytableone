@@ -5,8 +5,7 @@ Authors@R:
     person(given = "Emile",
            family = "Latour",
            role = c("aut", "cre"),
-           email = "latour@ohsu.edu",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
+           email = "latour@ohsu.edu")
 Description: A tidy approach to creating the "Table 1" of study characteristics common in bimoedical research.
 License: MIT + file LICENSE
 Encoding: UTF-8
@@ -24,10 +23,12 @@ Suggests:
 Imports: 
     car, 
     dplyr, 
+    flextable, 
     forcats, 
     glue, 
     magrittr, 
     nortest,
+    officer, 
     purrr, 
     rlang (>= 0.1.2), 
     scales, 

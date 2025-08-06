@@ -23,7 +23,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Emile Latour \email{latour@ohsu.edu} (\href{https://orcid.org/YOUR-ORCID-ID}{ORCID})
+\strong{Maintainer}: Emile Latour \email{latour@ohsu.edu}
 
 }
 \keyword{internal}
