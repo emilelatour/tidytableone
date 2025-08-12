@@ -16,10 +16,11 @@ Depends:
     R (>= 3.2.0)
 ByteCompile: true
 Suggests: 
-    ggplot2, 
-    knitr, 
-    rmarkdown, 
-    roxygen2
+    ggplot2,
+    knitr,
+    rmarkdown,
+    roxygen2,
+    testthat (>= 3.0.0)
 Imports: 
     car, 
     dplyr, 
@@ -39,3 +40,4 @@ Imports:
     tidyr (>= 1.1.0)
 RoxygenNote: 7.3.2
 Roxygen: list(markdown = TRUE)
+Config/testthat/edition: 3
