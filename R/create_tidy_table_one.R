@@ -16,6 +16,13 @@
 #' @param b_replicates an integer specifying the number of replicates used in
 #'   the Monte Carlo test for Fisher's Exact test and Chi-square test.
 #' @param ... Additional arguments. Not used.
+#' @param checkbox A tibble/data.frame specifying checkbox blocks:
+#'   columns `var` (the checkbox column name), `overall_lbl` (group label to show),
+#'   `checkbox_lbl` (label for each option), and `checkbox_txt` (the selected text to match, e.g., "Checked").
+#' @param checkbox_opts A list of options for checkbox processing. Recognized fields:
+#'   `denom` = c("group","nonmissing","responders"), `pvals` (ignored for no-strata),
+#'   `test` (ignored for no-strata), `p_adjust` (method passed to stats::p.adjust),
+#'   `show_any` (logical; add “Any selected” row), `note` (character footnote).
 #'
 #' @importFrom car leveneTest
 #' @importFrom dplyr bind_rows
@@ -54,6 +61,7 @@
 #' @importFrom stats kruskal.test
 #' @importFrom stats ks.test
 #' @importFrom stats oneway.test
+#' @importFrom stats p.adjust
 #' @importFrom stats quantile
 #' @importFrom stats sd
 #' @importFrom stats shapiro.test
@@ -226,17 +234,29 @@
   
   
   # Handle no strata case by calling the no strata version of the function
-  if (is.null(strata)) {
-    
-    res_stats <- create_tidy_table_one_no_strata(data = data,
-                                                 strata = NULL,
-                                                 vars = vars,
-                                                 na_level = na_level,
-                                                 b_replicates = b_replicates, ...)
-    
-    return(res_stats)
-    
+  # inside .create_tidy_table_one_core(), replace the current no‑strata block:
+if (is.null(strata)) {
+  if (is.null(checkbox)) {
+    res_stats <- create_tidy_table_one_no_strata(
+      data = data,
+      vars = vars,
+      na_level = na_level,
+      b_replicates = b_replicates,
+      ...
+    )
+  } else {
+    res_stats <- create_tidy_table_one_no_strata_checkbox(
+      data = data,
+      vars = vars,
+      na_level = na_level,
+      b_replicates = b_replicates,
+      checkbox = checkbox,
+      checkbox_opts = checkbox_opts,
+      ...
+    )
   }
+  return(res_stats)
+}
   
   # Convert ordered factors to regular factors
   data <- data %>%

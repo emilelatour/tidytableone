@@ -8,7 +8,6 @@
 #' to the `tableone` package by Kazuki Yoshida.
 #'
 #' @param data A data frame or tibble containing the variables to be summarized.
-#' @param strata NULL
 #' @param vars Character vector of the variable names to be summarized. If
 #'   empty, then all variables in the given data frame are used.
 #' @param na_level Character string of the text to replace `NA` in the strata
