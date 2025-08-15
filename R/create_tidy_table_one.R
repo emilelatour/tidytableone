@@ -53,6 +53,7 @@
 #' @importFrom purrr map2
 #' @importFrom nortest ad.test
 #' @importFrom purrr pluck
+#' @importFrom rlang %||%
 #' @importFrom rlang ensym
 #' @importFrom stats as.formula
 #' @importFrom stats bartlett.test
@@ -235,28 +236,28 @@
   
   # Handle no strata case by calling the no strata version of the function
   # inside .create_tidy_table_one_core(), replace the current no‑strata block:
-if (is.null(strata)) {
-  if (is.null(checkbox)) {
-    res_stats <- create_tidy_table_one_no_strata(
-      data = data,
-      vars = vars,
-      na_level = na_level,
-      b_replicates = b_replicates,
-      ...
-    )
-  } else {
-    res_stats <- create_tidy_table_one_no_strata_checkbox(
-      data = data,
-      vars = vars,
-      na_level = na_level,
-      b_replicates = b_replicates,
-      checkbox = checkbox,
-      checkbox_opts = checkbox_opts,
-      ...
-    )
+  if (is.null(strata)) {
+    if (is.null(checkbox)) {
+      res_stats <- create_tidy_table_one_no_strata(
+        data = data,
+        vars = vars,
+        na_level = na_level,
+        b_replicates = b_replicates,
+        ...
+      )
+    } else {
+      res_stats <- create_tidy_table_one_no_strata_checkbox(
+        data = data,
+        vars = vars,
+        na_level = na_level,
+        b_replicates = b_replicates,
+        checkbox = checkbox,
+        checkbox_opts = checkbox_opts,
+        ...
+      )
+    }
+    return(res_stats)
   }
-  return(res_stats)
-}
   
   # Convert ordered factors to regular factors
   data <- data %>%
@@ -347,7 +348,9 @@ if (is.null(strata)) {
       sort1 = match(var, vars),  # order by first mention in `vars`
       sort2 = 0L
     )
+    
     var_info <- dplyr::bind_rows(var_info, cb_vi)
+    
   }
   
   
@@ -365,8 +368,6 @@ if (is.null(strata)) {
     dplyr::pull(var) |>
     unique() |>
     setdiff(strata)
-  
-  
   
   
   #### Get Categorical and Continuous Stats --------------------------------
@@ -436,52 +437,58 @@ if (is.null(strata)) {
     
   }
   
-  # Emit a friendly warning once per call if chi-squared looks shaky
-  if (isTRUE(getOption("tidytableone.warn_chisq", TRUE))) {
-    if (nrow(htest_res) > 0 && "check_categorical_test" %in% names(htest_res)) {
-      bad <- unique(htest_res$var[htest_res$check_categorical_test == "warning"])
-      if (length(bad) > 0) {
-        warning(
-          glue::glue(
-            "Chi-squared assumptions may be violated for: {paste(bad, collapse = ', ')}. ",
-            "Consider Fisher's exact test (returned in `fisher_test`)."
-          ),
-          call. = FALSE
-        )
-      }
-    }
-  }
+  # # Emit a friendly warning once per call if chi-squared looks shaky
+  # if (isTRUE(getOption("tidytableone.warn_chisq", TRUE))) {
+  #   if (nrow(htest_res) > 0 && "check_categorical_test" %in% names(htest_res)) {
+  #     bad <- unique(htest_res$var[htest_res$check_categorical_test == "warning"])
+  #     if (length(bad) > 0) {
+  #       warning(
+  #         glue::glue(
+  #           "Chi-squared assumptions may be violated for: {paste(bad, collapse = ', ')}. ",
+  #           "Consider Fisher's exact test (returned in `fisher_test`)."
+  #         ),
+  #         call. = FALSE
+  #       )
+  #     }
+  #   }
+  # }
   
   
   #### Checkbox blocks (multi-response) --------------------------------
   res_checkbox <- NULL
   
   if (length(cb_blocks) > 0) {
-    res_checkbox <- process_checkbox_blocks(
-      data        = data,
-      strata_var  = rlang::as_name(strata_sym),  # <- pass name, not values
-      blocks      = cb_blocks,
-      opts        = checkbox_opts
-    )
-    
-    res_checkbox <- res_checkbox |>
-      dplyr::rename(!! rlang::as_name(strata_sym) := .strata)
-    
-    # If requested, compute per-level p-values (2x2 selected vs not by strata)
+    res_checkbox <- process_checkbox_blocks_strata(
+      data          = data,
+      blocks        = cb_blocks,
+      opts          = checkbox_opts,
+      strata_var    = rlang::as_name(strata_sym),
+      strata_levels = levels(data[[rlang::as_name(strata_sym)]]) %||%
+                      unique(as.character(data[[rlang::as_name(strata_sym)]]))
+    ) %>%
+      dplyr::rename(!! rlang::as_name(strata_sym) := strata)
+
+    # Always provide the column so downstream code/tests can rely on it
+    if (!"p_value_level" %in% names(res_checkbox)) {
+      res_checkbox <- dplyr::mutate(res_checkbox, p_value_level = NA_real_)
+    }
+
+    # If per-level p-values were requested, fill them in once
     if (!is.null(strata) && isTRUE(checkbox_opts$pvals %in% c("per_level"))) {
       res_checkbox <- add_pvalues_checkbox(
-        res_checkbox,
-        data        = data,
-        strata_var  = rlang::as_name(strata_sym),  # <- pass name, not values
-        blocks      = cb_blocks,
-        test        = checkbox_opts$test,
-        p_adjust    = checkbox_opts$p_adjust
+        tab        = res_checkbox,
+        data       = data,
+        strata_var = rlang::as_name(strata_sym),
+        blocks     = cb_blocks,
+        test       = checkbox_opts$test    %||% "auto",
+        p_adjust   = checkbox_opts$p_adjust %||% "none",
+        B          = 2000
       )
     }
-    
+
     # Tag as categorical for downstream p-value formatting (keeps compat)
-    res_checkbox <- res_checkbox |>
-      dplyr::mutate(var_type = "categorical", class = "checkbox")  # <- add class tag
+    res_checkbox <- res_checkbox %>%
+      dplyr::mutate(var_type = "categorical", class = "checkbox")
   }
   
   # Bind checkbox rows with the rest (if present)
@@ -494,6 +501,7 @@ if (is.null(strata)) {
     attr(res_stats, "checkbox_blocks") <- cb_blocks
     attr(res_stats, "checkbox_opts")   <- checkbox_opts
   }
+  
   
   
   #### Combine results, Clean up and arrange --------------------------------
@@ -511,23 +519,48 @@ if (is.null(strata)) {
                                strata_sym)
   
   
-  #### Return results --------------------------------
+  #### Return warnings (if any) --------------------------------
   
   if (isTRUE(getOption("tidytableone.warn_chisq", TRUE))) {
-    # warn once if any flagged
-    if (any(htest_res$check_categorical_test == "warning", na.rm = TRUE)) {
-      flagged <- htest_res$var[htest_res$check_categorical_test == "warning"]
-      flagged <- unique(flagged)
-      rlang::warn(
-        paste0(
-          "Chi-squared assumptions may be violated for: ",
-          paste(flagged, collapse = ", "),
-          ". Consider Fisher's exact test (returned in `fisher_test`)."
-        )
-      )
+    if ("check_categorical_test" %in% names(res_stats)) {
+      
+      flagged_rows <- res_stats %>%
+        dplyr::filter(.data$check_categorical_test == "warning")
+      
+      if (nrow(flagged_rows) > 0) {
+        vars_to_report <- flagged_rows %>%
+          dplyr::mutate(
+            var_for_msg = dplyr::if_else(
+              .data$class == "checkbox" & !is.na(.data$level_var) & .data$level_var != "",
+              .data$level_var,                      # e.g., "race___5"
+              as.character(.data$var)               # e.g., "gender"
+            )
+          ) %>%
+          dplyr::pull(.data$var_for_msg) %>%
+          unique() %>%
+          stats::na.omit()
+        
+        if (length(vars_to_report) > 0) {
+          warning(
+            glue::glue(
+              "Chi-squared assumptions may be violated for: {paste(vars_to_report, collapse = ', ')}. ",
+              "Consider Fisher's exact test (returned in `fisher_test`)."
+            ),
+            call. = FALSE
+          )
+        }
+      }
     }
   }
   
+  
+  #### One last tidying -------------------------------- 
+  
+  res_stats <- res_stats |> 
+    dplyr::select(-level_var)
+  
+  
+  #### Return results --------------------------------
   
   return(res_stats)
   

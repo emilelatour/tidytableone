@@ -147,7 +147,6 @@ safe_merge_cols <- function(df, target, candidates) {
   df
 }
 
-# Arrange results
 arrange_results <- function(res_stats,
                             htest_res,
                             smd_res,
@@ -160,93 +159,154 @@ arrange_results <- function(res_stats,
                             strata,
                             strata_sym) {
 
-  # Silence no visible binding for global variable
+  # Silence no visible binding notes
   sort1 <- sort2 <- label <- strata_var <- NULL
 
-  # Get the factor levels for the strata
+  # Strata levels (Overall first)
   if (is.factor(purrr::pluck(data, strata))) {
     strata_lvls <- c("Overall", levels(purrr::pluck(data, strata)))
   } else {
     strata_lvls <- c("Overall", unique(purrr::pluck(data, strata)))
   }
 
-  # Combine the results and convert strata to factor
-  res_stats <- res_stats |>
-    dplyr::left_join(htest_res, by = "var") |>
-    dplyr::rename("strata" = !!strata_sym) |>
-    dplyr::left_join(smd_res, by = "var") |>
+  # ---- Join hypothesis tests (once), guarantee *_ht columns, coalesce into main
+  res_stats <- res_stats %>%
+    dplyr::left_join(htest_res, by = "var", suffix = c("", "_ht")) %>%
+    .ensure_cols(cols_types = list(
+      chisq_test_ht               = NA_real_,
+      chisq_test_no_correction_ht = NA_real_,
+      chisq_test_simulated_ht     = NA_real_,
+      fisher_test_ht              = NA_real_,
+      fisher_test_simulated_ht    = NA_real_
+    )) %>%
+    # also ensure the target columns exist *before* coalesce
+    .ensure_cols(cols_types = list(
+      chisq_test               = NA_real_,
+      chisq_test_no_correction = NA_real_,
+      chisq_test_simulated     = NA_real_,
+      fisher_test              = NA_real_,
+      fisher_test_simulated    = NA_real_
+    )) %>%
+    dplyr::mutate(
+      chisq_test               = dplyr::coalesce(.data$chisq_test,               .data$chisq_test_ht),
+      chisq_test_no_correction = dplyr::coalesce(.data$chisq_test_no_correction, .data$chisq_test_no_correction_ht),
+      chisq_test_simulated     = dplyr::coalesce(.data$chisq_test_simulated,     .data$chisq_test_simulated_ht),
+      fisher_test              = dplyr::coalesce(.data$fisher_test,              .data$fisher_test_ht),
+      fisher_test_simulated    = dplyr::coalesce(.data$fisher_test_simulated,    .data$fisher_test_simulated_ht)
+    ) %>%
+    dplyr::select(-dplyr::ends_with("_ht")) %>%
+    dplyr::rename("strata" = !!strata_sym) %>%
+    dplyr::left_join(smd_res, by = "var") %>%
     dplyr::mutate(strata = factor(.data$strata, levels = strata_lvls))
 
-  # Add variable info (class, type) and labels to the results
-  class_and_type <- var_info |>
-    dplyr::select(-level, -sort1, -sort2) |>
+  # ---- Add class/type + labels
+  class_and_type <- var_info %>%
+    dplyr::select(-level, -sort1, -sort2) %>%
     dplyr::distinct()
 
-  res_stats <- res_stats |>
-    dplyr::left_join(class_and_type, by = "var") |>
+  res_stats <- res_stats %>%
+    dplyr::left_join(class_and_type, by = "var") %>%
     dplyr::left_join(var_lbls, by = "var")
 
-  # Ensure expected columns exist (robust to partial joins)
   for (nm in c("class", "var_type", "label")) {
     if (!nm %in% names(res_stats)) {
       res_stats[[nm]] <- if (nm == "label") NA_character_ else NA_character_
     }
   }
 
-  # Arrange results by variable and level, maintaining the original order
+  # ---- Arrange with resilient sort2 fill (works even if join didn't supply sort2)
   if (length(cat_vars) > 0) {
-    sort_vars <- var_info |>
-      dplyr::select(var, level, sort1, sort2)
+    sort_vars <- var_info %>% dplyr::select(var, level, sort1, sort2)
 
-    res_stats <- res_stats |>
-      dplyr::left_join(sort_vars, by = c("var", "level")) |>
-      dplyr::arrange(.data$sort1, .data$sort2) |>
+    res_stats <- res_stats %>%
+      dplyr::left_join(sort_vars, by = c("var", "level")) %>%
+      dplyr::group_by(.data$var) %>%
+      dplyr::mutate(
+        # carry forward sort1 from any non‑missing row in the group
+        sort1 = dplyr::coalesce(.data$sort1, dplyr::first(stats::na.omit(.data$sort1))),
+        # safe base max (never warns)
+        .base_max_num = max(c(-Inf, .data$sort2), na.rm = TRUE),
+        .base_max_int = ifelse(is.finite(.base_max_num), as.integer(.base_max_num), 0L),
+        # fill missing sort2s sequentially after the base
+        sort2 = dplyr::if_else(
+          is.na(.data$sort2),
+          as.integer(.base_max_int + cumsum(is.na(.data$sort2))),
+          .data$sort2
+        ),
+        # tie‑breakers: keep checkbox “any_selected” last; missing level last
+        .is_missing_level = is.na(.data$level),
+        .is_any_selected  = .data$class == "checkbox" & grepl("___any_selected$", .data$var, perl = TRUE)
+      ) %>%
+      dplyr::ungroup() %>%
+      dplyr::arrange(.data$sort1, .data$sort2, .data$.is_any_selected, .data$.is_missing_level) %>%
       dplyr::mutate(
         var   = forcats::fct_inorder(.data$var),
         level = forcats::fct_inorder(.data$level)
-      ) |>
-      dplyr::select(-sort1, -sort2) |>
+      ) %>%
+      dplyr::select(-sort1, -sort2, -.is_missing_level, -.is_any_selected,
+                    -.base_max_num, -.base_max_int) %>%
       dplyr::relocate(class, var_type, label, .after = dplyr::everything())
   } else {
-    sort_vars <- var_info |>
-      dplyr::select(var, sort1, sort2)
+    sort_vars <- var_info %>% dplyr::select(var, sort1, sort2)
 
-    res_stats <- res_stats |>
-      dplyr::left_join(sort_vars, by = "var") |>
-      dplyr::arrange(.data$sort1, .data$sort2) |>
-      dplyr::mutate(var = forcats::fct_inorder(.data$var)) |>
-      dplyr::select(-sort1, -sort2) |>
+    res_stats <- res_stats %>%
+      dplyr::left_join(sort_vars, by = "var") %>%
+      dplyr::group_by(.data$var) %>%
+      dplyr::mutate(
+        sort1 = dplyr::coalesce(.data$sort1, dplyr::first(stats::na.omit(.data$sort1))),
+        .base_max_num = max(c(-Inf, .data$sort2), na.rm = TRUE),
+        .base_max_int = ifelse(is.finite(.base_max_num), as.integer(.base_max_num), 0L),
+        sort2 = dplyr::if_else(
+          is.na(.data$sort2),
+          as.integer(.base_max_int + cumsum(is.na(.data$sort2))),
+          .data$sort2
+        )
+      ) %>%
+      dplyr::ungroup() %>%
+      dplyr::arrange(.data$sort1, .data$sort2) %>%
+      dplyr::mutate(var = forcats::fct_inorder(.data$var)) %>%
+      dplyr::select(-sort1, -sort2, -.base_max_num, -.base_max_int) %>%
       dplyr::relocate(class, var_type, label, .after = dplyr::last_col())
   }
 
-  # Coalesce duplicated columns from joins and drop helpers
-  res_stats <- res_stats |>
-    safe_merge_cols("label",    c("label.x", "label.y", "label")) |>
-    safe_merge_cols("var_type", c("var_type.x", "var_type.y", "var_type")) |>
-    safe_merge_cols("class",    c("class.x", "class.y", "class")) |>
-    safe_merge_cols("chisq_test", c("chisq_test.x", "chisq_test.y", "chisq_test")) |>
-    safe_merge_cols("chisq_test_no_correction",
-                    c("chisq_test_no_correction.x", "chisq_test_no_correction.y", "chisq_test_no_correction")) |>
-    safe_merge_cols("chisq_test_simulated",
-                    c("chisq_test_simulated.x", "chisq_test_simulated.y", "chisq_test_simulated")) |>
-    safe_merge_cols("fisher_test", c("fisher_test.x", "fisher_test.y", "fisher_test")) |>
-    safe_merge_cols("fisher_test_simulated",
-                    c("fisher_test_simulated.x", "fisher_test_simulated.y", "fisher_test_simulated")) |>
-    safe_merge_cols("check_categorical_test",
-                    c("check_categorical_test.x", "check_categorical_test.y", "check_categorical_test")) |>
-    dplyr::select(-dplyr::any_of(c(".strata", "level_var", "group_n", "p_value")))
+  # ---- Merge dup columns & drop helpers (keep p_value_level/level_var intact)
+  res_stats <- res_stats %>%
+    safe_merge_cols("label",    c("label.x", "label.y", "label")) %>%
+    safe_merge_cols("var_type", c("var_type.x", "var_type.y", "var_type")) %>%
+    safe_merge_cols("class",    c("class.x", "class.y", "class")) %>%
+    dplyr::select(-dplyr::any_of(c(".strata", "group_n", "p_value")))
 
-  # Ensure all columns referenced by relocate() exist
+  # ---- Guarantee denom/percent columns BEFORE computing/coercing
   res_stats <- .ensure_cols(
     res_stats,
     cols_types = list(
-      level = NA_character_,
-      strata_var = NA_character_,
       n = NA_integer_, n_distinct = NA_integer_, complete = NA_integer_, missing = NA_integer_,
-      n_level = NA_integer_, n_strata = NA_integer_, n_level_valid = NA_integer_, n_strata_valid = NA_integer_,
-      mean = NA_real_, sd = NA_real_, p0 = NA_real_, p25 = NA_real_, p50 = NA_real_,
-      p75 = NA_real_, p100 = NA_real_, cv = NA_real_,
+      n_level = NA_integer_, n_strata = NA_integer_,
+      n_level_valid = NA_integer_, n_strata_valid = NA_integer_,
       pct = NA_real_, pct_valid = NA_real_,
+      mean = NA_real_, sd = NA_real_, p0 = NA_real_, p25 = NA_real_, p50 = NA_real_,
+      p75 = NA_real_, p100 = NA_real_, cv = NA_real_
+    )
+  )
+
+  # ---- Now safe to coerce & compute pct
+  res_stats <- res_stats %>%
+    dplyr::mutate(
+      n_level        = as.integer(.data$n_level),
+      n_strata       = as.integer(.data$n_strata),
+      n_level_valid  = dplyr::coalesce(.data$n_level_valid,  .data$n_level),
+      n_strata_valid = dplyr::coalesce(.data$n_strata_valid, .data$n_strata),
+      pct            = dplyr::coalesce(.data$pct,
+                                       dplyr::if_else(.data$n_strata > 0L,       .data$n_level       / .data$n_strata,       NA_real_)),
+      pct_valid      = dplyr::coalesce(.data$pct_valid,
+                                       dplyr::if_else(.data$n_strata_valid > 0L, .data$n_level_valid / .data$n_strata_valid, NA_real_))
+    )
+
+  # ---- Ensure ALL columns referenced by relocate() exist
+  res_stats <- .ensure_cols(
+    res_stats,
+    cols_types = list(
+      level = NA_character_, level_var = NA_character_, strata_var = NA_character_,
       chisq_test = NA_real_, chisq_test_no_correction = NA_real_, chisq_test_simulated = NA_real_,
       fisher_test = NA_real_, fisher_test_simulated = NA_real_, check_categorical_test = NA_character_,
       oneway_test_unequal_var = NA_real_, oneway_test_equal_var = NA_real_,
@@ -255,8 +315,8 @@ arrange_results <- function(res_stats,
     )
   )
 
-  # Tidy column order
-  res_stats <- res_stats |>
+  # ---- Final column order
+  res_stats <- res_stats %>%
     dplyr::relocate(
       strata_var, strata, var, level,
       n, n_distinct, complete, missing,
@@ -268,14 +328,15 @@ arrange_results <- function(res_stats,
       oneway_test_unequal_var, oneway_test_equal_var,
       kruskal_test, bartlett_test, levene_test, smd,
       .before = dplyr::everything()
-    ) |>
+    ) %>%
     dplyr::relocate(class, var_type, label, .after = dplyr::last_col())
 
-  # Fill in the name of the strata var (after we ensured the column exists)
-  res_stats |>
-    dplyr::mutate(strata_var = rlang::quo_name(strata_sym)) |>
+  # Fill strata var name
+  res_stats %>%
+    dplyr::mutate(strata_var = rlang::quo_name(strata_sym)) %>%
     dplyr::relocate(strata_var, .before = dplyr::everything())
 }
+
 
 # Extracts the label attribute from a variable, if it exists.
 # If the label is not found, returns NA as a character string.
@@ -336,3 +397,7 @@ do_one_cat_strata <- function(x, strata_sym) {
     mutate(!! strata_sym := as.character(!! strata_sym))
   
 }
+
+
+
+

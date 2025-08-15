@@ -632,62 +632,85 @@ process_checkbox_blocks_nostrata <- function(data, blocks, opts) {
 
 process_checkbox_blocks_overall <- function(data, blocks, opts) {
   denom <- match.arg(opts$denom, c("group","nonmissing","responders"))
-  
-  overall_N <- switch(
-    denom,
-    group       = nrow(data),
-    nonmissing  = nrow(data),                    # refine if you later track true NAs
-    responders  = {
-      sel_any <- sapply(blocks, function(bl) {
-        rowSums(as.data.frame(lapply(bl$vars, function(v) as.integer(data[[v]] == bl$select_txt[[v]]))), na.rm = TRUE) > 0L
-      })
-      # if multiple blocks, “responders” is per block; we’ll set per-block below anyway
-      NULL
-    }
-  )
-  
+
   out <- lapply(blocks, function(bl) {
-    # 0/1 matrix for this block
-    sel_mat <- as.data.frame(lapply(bl$vars, function(v) as.integer(data[[v]] == bl$select_txt[[v]])))
+    # raw columns for the block
+    raw_mat <- as.data.frame(data[bl$vars], stringsAsFactors = FALSE)
+    # 0/1 selection matrix for this block
+    sel_mat <- as.data.frame(lapply(bl$vars, function(v)
+      as.integer(data[[v]] == bl$select_txt[[v]])))
     names(sel_mat) <- bl$vars
-    
+
+    # Numerators per level
     n_level <- colSums(sel_mat, na.rm = TRUE)
-    df <- tibble::tibble(
-      strata = "Overall",
-      var    = bl$overall_lbl,
-      level  = unname(bl$labels[names(n_level)]),
-      n_level = as.integer(n_level)
+
+    # Denominator for displayed percent (pct)
+    group_N <- switch(
+      denom,
+      group      = nrow(data),
+      responders = sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE),
+      nonmissing = nrow(data) # (pct shown with display denom; valid uses nonmissing below)
     )
-    
-    # denominator for this block (responders can differ by block)
-    block_N <- if (identical(denom, "responders")) {
-      sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE)
-    } else {
-      overall_N
-    }
-    
-    df$pct       <- ifelse(block_N > 0, df$n_level / block_N, NA_real_)
-    df$n_strata  <- block_N
-    df$pct_valid <- df$pct
-    
-    # optional “Any selected”
-    any_row <- NULL
+
+    # Numerators/denominators for “valid” percent
+    n_level_valid <- n_level
+    # Per-level nonmissing counts
+    nonmiss_per_level <- colSums(!is.na(raw_mat), na.rm = TRUE)
+    # Valid denom per row
+    n_strata_valid <- switch(
+      denom,
+      group      = rep(group_N, length(n_level)),
+      responders = rep(sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE), length(n_level)),
+      nonmissing = as.integer(nonmiss_per_level)
+    )
+
+    df <- tibble::tibble(
+      strata   = "Overall",
+      var      = bl$overall_lbl,
+      level    = unname(bl$labels[names(n_level)]),
+      n_level  = as.integer(n_level),
+      n_strata = as.integer(group_N),
+      pct      = dplyr::if_else(n_strata > 0L, n_level / n_strata, NA_real_),
+
+      n_level_valid  = as.integer(n_level_valid),
+      n_strata_valid = as.integer(n_strata_valid),
+      pct_valid      = dplyr::if_else(n_strata_valid > 0L, n_level_valid / n_strata_valid, NA_real_)
+    )
+
+    # Optional “Any selected”
+    any_count <- sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE)
     if (isTRUE(opts$show_any)) {
-      any_count <- sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE)
-      any_row <- tibble::tibble(
-        strata   = "Overall",
-        var      = bl$overall_lbl,
-        level    = "Any selected",
-        n_level  = as.integer(any_count),
-        n_strata = block_N,
-        pct      = ifelse(block_N > 0, any_count / block_N, NA_real_),
-        pct_valid = ifelse(block_N > 0, any_count / block_N, NA_real_)
+      # valid denom for “Any selected”
+      any_nonmissing <- sum(rowSums(!is.na(raw_mat)) > 0L, na.rm = TRUE)
+      any_display_denom <- switch(denom,
+                                  group      = nrow(data),
+                                  responders = any_count,
+                                  nonmissing = nrow(data))
+      any_valid_denom   <- switch(denom,
+                                  group      = any_display_denom,
+                                  responders = any_count,
+                                  nonmissing = any_nonmissing)
+
+      df <- dplyr::bind_rows(
+        df,
+        tibble::tibble(
+          strata   = "Overall",
+          var      = bl$overall_lbl,
+          level    = "Any selected",
+          n_level  = as.integer(any_count),
+          n_strata = as.integer(any_display_denom),
+          pct      = ifelse(any_display_denom > 0, any_count / any_display_denom, NA_real_),
+
+          n_level_valid  = as.integer(any_count),
+          n_strata_valid = as.integer(any_valid_denom),
+          pct_valid      = ifelse(any_valid_denom > 0, any_count / any_valid_denom, NA_real_)
+        )
       )
     }
-    
-    dplyr::bind_rows(df, any_row)
+
+    df
   })
-  
+
   dplyr::bind_rows(out) |>
     dplyr::mutate(
       var_type = "categorical",

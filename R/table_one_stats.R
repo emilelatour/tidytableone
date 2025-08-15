@@ -113,13 +113,23 @@ calc_levene_test <- function(data, form) {
 
 
 # cat_check
+# cat_check <- function(tab) {
+#   
+#   dplyr::if_else(testit::has_warning(chisq.test(tab)),
+#                  "warning",
+#                  "ok")
+# }
+# Flag cases where chi-square approximation may be shaky
+# (any expected < 1) OR (>20% of expected < 5)
 cat_check <- function(tab) {
+  tab <- as.matrix(tab)
+  n   <- sum(tab)
+  rs  <- rowSums(tab)
+  cs  <- colSums(tab)
+  exp <- (rs %o% cs) / n  # expected counts, no warning triggered
   
-  dplyr::if_else(testit::has_warning(chisq.test(tab)),
-                 "warning",
-                 "ok")
+  if (any(exp < 1, na.rm = TRUE) || mean(exp < 5, na.rm = TRUE) > 0.20) "warning" else "ok"
 }
-
 
 # calc_fisher_test
 calc_fisher_test <- function(tab,
@@ -155,12 +165,10 @@ calc_chisq_test <- function(tab,
                             simulate.p.value = FALSE,
                             B = 2000) {
   
-  tryCatch(chisq.test(tab,
-                      correct = correct,
-                      simulate.p.value = simulate.p.value,
-                      B = B)  %>%
-             purrr::pluck(., "p.value"),
-           error = function(err) NA)
+  safe_chisq(tab = tab, 
+             correct = correct, 
+             simulate.p.value = simulate.p.value, 
+             B = B)
   
 }
 
@@ -171,12 +179,10 @@ calc_chisq_test_no_correct <- function(tab,
                                        simulate.p.value = FALSE,
                                        B = 2000) {
   
-  tryCatch(chisq.test(tab,
-                      correct = correct,
-                      simulate.p.value = simulate.p.value,
-                      B = B)  %>%
-             purrr::pluck(., "p.value"),
-           error = function(err) NA)
+  safe_chisq(tab = tab, 
+             correct = correct, 
+             simulate.p.value = simulate.p.value, 
+             B = B)
   
 }
 
@@ -187,12 +193,10 @@ calc_chisq_test_sim_p <- function(tab,
                                   simulate.p.value = TRUE,
                                   B = 2000) {
   
-  tryCatch(chisq.test(tab,
-                      correct = correct,
-                      simulate.p.value = simulate.p.value,
-                      B = B)  %>%
-             purrr::pluck(., "p.value"),
-           error = function(err) NA)
+  safe_chisq(tab = tab, 
+             correct = correct, 
+             simulate.p.value = simulate.p.value, 
+             B = B)
   
 }
 
@@ -244,7 +248,7 @@ chisq_expected_flag <- function(tab) {
 #                   check_categorical_test)
 # }
 calc_cat_htest <- function(data, strata, vars, b_replicates) {
-
+  
   tibble::tibble(strata = strata,
                  var = vars) %>%
     mutate(x = purrr::map(.x = strata, ~ purrr::pluck(data, .x)),
@@ -252,10 +256,10 @@ calc_cat_htest <- function(data, strata, vars, b_replicates) {
     dplyr::filter(strata != var) %>%
     mutate(
       tab = purrr::map2(x, y, ~ table(.x, .y)),
-
+      
       # Our own assumption flag (no base warnings involved)
       check_categorical_test = purrr::map_chr(tab, ~ if (chisq_expected_flag(.x)) "warning" else "ok"),
-
+      
       # Suppress the base warning noise; we expose issues via the flag above
       chisq_test                = purrr::map_dbl(tab, ~ suppressWarnings(calc_chisq_test(.x))),
       chisq_test_no_correction  = purrr::map_dbl(tab, ~ suppressWarnings(calc_chisq_test_no_correct(.x))),
@@ -353,4 +357,61 @@ custom_max <- function(x, na.rm = TRUE) {
   } else {
     max(x, na.rm = na.rm)
   }
+}
+
+
+#### Safe versions -------------------------------- 
+
+# Quietly return chisq p-value (or NA) with optional Yates correction / simulation
+# safe_chisq <- function(tab, correct = TRUE, simulate.p.value = FALSE, B = 2000) {
+#   res <- tryCatch(
+#     suppressWarnings(stats::chisq.test(tab, correct = correct,
+#                                        simulate.p.value = simulate.p.value, B = B)),
+#     error = function(e) NULL
+#   )
+#   if (is.null(res)) NA_real_ else as.numeric(res$p.value)
+# }
+
+# Keep only ONE definition of this in the package
+safe_chisq <- function(tab, correct = TRUE, simulate.p.value = FALSE, B = 2000) {
+  
+  if (is.null(tab) && !is.null(tbl)) tab <- tbl
+  
+  withCallingHandlers(
+    {
+      res <- try(
+        stats::chisq.test(tab,
+                          correct = correct,
+                          simulate.p.value = simulate.p.value,
+                          B = B),
+        silent = TRUE
+      )
+      if (inherits(res, "try-error")) return(NA_real_)
+      as.numeric(res$p.value)
+    },
+    warning = function(w) {
+      msg <- conditionMessage(w)
+      if (grepl("Chi-squared approximation may be incorrect", msg, fixed = TRUE)) {
+        invokeRestart("muffleWarning")
+      }
+      # otherwise let unrelated warnings bubble up
+    }
+  )
+}
+
+safe_fisher <- function(tbl, simulate.p.value = FALSE, B = 2000) {
+  out <- try(stats::fisher.test(tbl, simulate.p.value = simulate.p.value, B = B),
+             silent = TRUE)
+  if (inherits(out, "try-error")) return(NA_real_)
+  as.numeric(out$p.value)
+}
+
+flag_chisq_ok <- function(tbl) {
+  # Chi-square rule of thumb: all expected >= 5 and no zero rows/cols
+  out <- try(suppressWarnings(stats::chisq.test(tbl, correct = FALSE)), silent = TRUE)
+  if (inherits(out, "try-error")) return("warning")
+  exp_ok <- all(out$expected >= 5, na.rm = TRUE)
+  has_zero_row <- any(rowSums(tbl) == 0)
+  has_zero_col <- any(colSums(tbl) == 0)
+  if (exp_ok && !has_zero_row && !has_zero_col) "ok" else "warning"
 }

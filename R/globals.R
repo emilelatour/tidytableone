@@ -6,5 +6,9 @@ utils::globalVariables(c(
   "overall_lbl", "p_raw", "p_value",
   "p0", "p25", "p50", "p75", "p100",
   "pct", "pct_valid", "selected", "smd",
-  "sort1", "sort2", "strata", "strata_var"
+  "sort1", "sort2", "strata", "strata_var", 
+  "group_label_first", "glue_formula",
+  ".base_max_num", ".base_max_int",
+  ".is_missing_level", ".is_any_selected",
+  "group_id", "tbl"
 ))

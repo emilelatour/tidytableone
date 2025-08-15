@@ -24,6 +24,7 @@ Suggests:
     withr
 Imports: 
     car, 
+    cluster, 
     dplyr, 
     flextable, 
     forcats, 
@@ -35,6 +36,7 @@ Imports:
     rlang (>= 0.1.2), 
     scales, 
     stringr, 
+    stringdist, 
     tableone, 
     testit, 
     tibble, 
