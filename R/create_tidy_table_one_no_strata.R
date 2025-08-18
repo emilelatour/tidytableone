@@ -4,7 +4,7 @@
 #' overall group (every row has `strata = "Overall"`). No between‑group tests
 #' are computed in this variant. This *legacy* function does **not** process
 #' checkbox (multi‑response) blocks — see
-#' [create_tidy_table_one_no_strata_checkbox()] for that.
+#' [create_tidytableone_no_strata_checkbox()] for that.
 #'
 #' @param data A data frame with the variables to summarise.
 #' @param vars Character vector of column names to include. If omitted,
@@ -24,7 +24,7 @@
 #'   (`n_level`, `pct`, `pct_valid`, …), testing columns present but `NA`
 #'   (since there are no groups), and metadata (`class`, `var_type`, `label`).
 #'
-#' @seealso [create_tidy_table_one()], [create_tidy_table_one_no_strata_checkbox()],
+#' @seealso [create_tidy_table_one()], [create_tidytableone_no_strata_checkbox()],
 #'   [adorn_tidytableone()]
 #'
 #' @examples
@@ -36,21 +36,21 @@
 #'   misc = rnorm(100)  # ignored below
 #' )
 #'
-#' tab <- create_tidy_table_one_no_strata(
+#' tab <- create_tidytableone_no_strata(
 #'   data = df,
 #'   vars = c("age", "sex")
 #' )
 #' head(tab)
 #'
 #' # Continuous only
-#' tab_num <- create_tidy_table_one_no_strata(
+#' tab_num <- create_tidytableone_no_strata(
 #'   data = df,
 #'   vars = "age"
 #' )
 #' head(tab_num)
 #'
 #' # Categorical only
-#' tab_cat <- create_tidy_table_one_no_strata(
+#' tab_cat <- create_tidytableone_no_strata(
 #'   data = df,
 #'   vars = "sex"
 #' )
@@ -59,9 +59,9 @@
 #' # (If available) present like a traditional Table 1
 #' # adorn_tidytableone(tab)
 #'
-#' @name create_tidy_table_one_no_strata
+#' @name create_tidytableone_no_strata
 #' @export
-create_tidy_table_one_no_strata <- function(data,
+create_tidytableone_no_strata <- function(data,
                                             vars,
                                             na_level = "(Missing)",
                                             b_replicates = 2000,
@@ -249,7 +249,7 @@ create_tidy_table_one_no_strata <- function(data,
 #'   `var_type == "categorical"`). For checkbox rows, denominators and
 #'   percentages obey `checkbox_opts$denom`.
 #'
-#' @seealso [create_tidy_table_one_no_strata()], [create_tidy_table_one()],
+#' @seealso [create_tidytableone_no_strata()], [create_tidy_table_one()],
 #'   [adorn_tidytableone()]
 #'
 #' @examples
@@ -273,7 +273,7 @@ create_tidy_table_one_no_strata <- function(data,
 #'   stringsAsFactors = FALSE
 #' )
 #'
-#' tab_cb <- create_tidy_table_one_no_strata_checkbox(
+#' tab_cb <- create_tidytableone_no_strata_checkbox(
 #'   data = dfc,
 #'   vars = c("age","gender","race___1","race___2","race___3","race___98"),
 #'   checkbox = cb,
@@ -282,7 +282,7 @@ create_tidy_table_one_no_strata <- function(data,
 #' head(tab_cb)
 #'
 #' # Change denominator to "responders" for the checkbox block
-#' tab_cb_resp <- create_tidy_table_one_no_strata_checkbox(
+#' tab_cb_resp <- create_tidytableone_no_strata_checkbox(
 #'   data = dfc,
 #'   vars = c("age","gender","race___1","race___2","race___3","race___98"),
 #'   checkbox = cb,
@@ -293,9 +293,9 @@ create_tidy_table_one_no_strata <- function(data,
 #' # (If available) present like a traditional Table 1
 #' # adorn_tidytableone(tab_cb)
 #'
-#' @name create_tidy_table_one_no_strata_checkbox
+#' @name create_tidytableone_no_strata_checkbox
 #' @export
-create_tidy_table_one_no_strata_checkbox <- function(data,
+create_tidytableone_no_strata_checkbox <- function(data,
                                                      vars,
                                                      na_level = "(Missing)",
                                                      b_replicates = 2000,
@@ -691,4 +691,16 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
       var_type = "categorical",
       class    = "checkbox"
     )
+}
+
+#' @export
+create_tidy_table_one_no_strata <- function(...) {
+  .Deprecated("create_tidytableone_no_strata")
+  create_tidytableone_no_strata(...)
+}
+
+#' @export
+create_tidy_table_one_no_strata_checkbox <- function(...) {
+  .Deprecated("create_tidytableone_no_strata_checkbox")
+  create_tidytableone_no_strata_checkbox(...)
 }

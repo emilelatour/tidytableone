@@ -118,7 +118,7 @@
 #'   color = sample(c("E","H"), 20, TRUE),
 #'   carat = runif(20, 0.2, 1.5)
 #' )
-#' create_tidy_table_one(
+#' create_tidytableone(
 #'   data = tiny,
 #'   strata = "cut",
 #'   vars = c("carat","color")
@@ -132,7 +132,7 @@
 #'
 #' #### With strata --------------------------------
 #' # Continuous + categorical
-#' t1 <- create_tidy_table_one(
+#' t1 <- create_tidytableone(
 #'   data = ggplot2::diamonds,
 #'   strata = "cut",
 #'   vars = c("carat","color","clarity","depth","table","price")
@@ -142,7 +142,7 @@
 #' # t1 |> adorn_tidytableone()
 #'
 #' # Continuous only
-#' t2 <- create_tidy_table_one(
+#' t2 <- create_tidytableone(
 #'   data = ggplot2::diamonds,
 #'   strata = "cut",
 #'   vars = c("carat")
@@ -150,7 +150,7 @@
 #' # t2 |> adorn_tidytableone()
 #'
 #' # Categorical only
-#' t3 <- create_tidy_table_one(
+#' t3 <- create_tidytableone(
 #'   data = ggplot2::diamonds,
 #'   strata = "cut",
 #'   vars = c("color")
@@ -159,7 +159,7 @@
 #'
 #' #### Without strata --------------------------------
 #' # Continuous + categorical
-#' t4 <- create_tidy_table_one(
+#' t4 <- create_tidytableone(
 #'   data = ggplot2::diamonds,
 #'   strata = NULL,
 #'   vars = c("carat","color","clarity","depth","table","price")
@@ -167,7 +167,7 @@
 #' # t4 |> adorn_tidytableone()
 #'
 #' # Continuous only
-#' t5 <- create_tidy_table_one(
+#' t5 <- create_tidytableone(
 #'   data = ggplot2::diamonds,
 #'   strata = NULL,
 #'   vars = c("carat")
@@ -175,7 +175,7 @@
 #' # t5 |> adorn_tidytableone()
 #'
 #' # Categorical only
-#' t6 <- create_tidy_table_one(
+#' t6 <- create_tidytableone(
 #'   data = ggplot2::diamonds,
 #'   strata = NULL,
 #'   vars = c("color")
@@ -185,7 +185,7 @@
 #' 
 #' #### With Built in data set --------------------------------
 #'
-#' tab1 <- create_tidy_table_one(data = pbc_mayo,
+#' tab1 <- create_tidytableone(data = pbc_mayo,
 #'                               strata = "trt",
 #'                               vars = c("time",
 #'                                        "status",
@@ -212,7 +212,7 @@
 #'
 
 #' @keywords internal
-.create_tidy_table_one_core <- function(data,
+.create_tidytableone_core <- function(data,
                                         strata = NULL,
                                         vars,
                                         na_level = "(Missing)",
@@ -233,10 +233,10 @@
   
   
   # Handle no strata case by calling the no strata version of the function
-  # inside .create_tidy_table_one_core(), replace the current no‑strata block:
+  # inside .create_tidytableone_core(), replace the current no‑strata block:
   if (is.null(strata)) {
     if (is.null(checkbox)) {
-      res_stats <- create_tidy_table_one_no_strata(
+      res_stats <- create_tidytableone_no_strata(
         data = data,
         vars = vars,
         na_level = na_level,
@@ -244,7 +244,7 @@
         ...
       )
     } else {
-      res_stats <- create_tidy_table_one_no_strata_checkbox(
+      res_stats <- create_tidytableone_no_strata_checkbox(
         data = data,
         vars = vars,
         na_level = na_level,
@@ -569,9 +569,9 @@
 
 #' Create a tidy “Table 1”
 #'
-#' @inheritParams .create_tidy_table_one_core
+#' @inheritParams .create_tidytableone_core
 #' @export
-create_tidy_table_one <- function(data,
+create_tidytableone <- function(data,
                                   strata = NULL,
                                   vars,
                                   na_level = "(Missing)",
@@ -596,7 +596,7 @@ create_tidy_table_one <- function(data,
   
   checkbox_opts <- validate_checkbox_opts(checkbox_opts)
   
-  .create_tidy_table_one_core(
+  .create_tidytableone_core(
     data = data,
     strata = strata,
     vars = vars,
@@ -611,10 +611,10 @@ create_tidy_table_one <- function(data,
 
 #' Create tidy Table 1 with checkbox variables
 #'
-#' This is a wrapper for [create_tidy_table_one()] that supports
+#' This is a wrapper for [create_tidytableone()] that supports
 #' multi-select (checkbox) variables, such as REDCap checkboxes.
 #'
-#' @inheritParams .create_tidy_table_one_core
+#' @inheritParams .create_tidytableone_core
 #' @param checkbox A tibble with columns:
 #'   \itemize{
 #'     \item `var` — checkbox variable name in `data` (e.g., `"race___1"`).
@@ -633,10 +633,10 @@ create_tidy_table_one <- function(data,
 #'     \item{show_any}{Logical: whether to add an "Any selected" row.}
 #'     \item{note}{Character: note text to include.}
 #'   }
-#' @param ... Additional arguments passed to [create_tidy_table_one()].
+#' @param ... Additional arguments passed to [create_tidytableone()].
 #'
 #' @details
-#' This function first calls [create_tidy_table_one()] to produce the
+#' This function first calls [create_tidytableone()] to produce the
 #' standard Table 1, then expands and relabels multi-select (checkbox)
 #' variables so each selection appears as a separate row.
 #'
@@ -649,9 +649,9 @@ create_tidy_table_one <- function(data,
 #' )
 #' ```
 #'
-#' @seealso [create_tidy_table_one()]
+#' @seealso [create_tidytableone()]
 #'
-#' @return A tibble in the same format as [create_tidy_table_one()].
+#' @return A tibble in the same format as [create_tidytableone()].
 #' @export
 #'
 #' @examples
@@ -665,7 +665,7 @@ create_tidy_table_one <- function(data,
 #'   race___2 = sample(c("Checked","Unchecked"), 20, TRUE)
 #' )
 #'
-#' create_tidy_table_one_checkbox(
+#' create_tidytableone_checkbox(
 #'   data = tiny,
 #'   strata = "group",
 #'   vars = c("gender","age","race___1","race___2"),
@@ -708,7 +708,7 @@ create_tidy_table_one <- function(data,
 #' )
 #' 
 #' # Basic table with checkboxes
-#' create_tidy_table_one_checkbox(
+#' create_tidytableone_checkbox(
 #'   data = df2,
 #'   strata = "group",
 #'   vars = c("gender", "age", "education", "ethnicity", "income", "marital_status",
@@ -726,7 +726,7 @@ create_tidy_table_one <- function(data,
 #'   race___98 = "Race (Prefer not to answer)"
 #' )
 #' 
-#' create_tidy_table_one_checkbox(
+#' create_tidytableone_checkbox(
 #'   data = df2_labelled,
 #'   strata = "group",
 #'   vars = c("gender", "age", "education", "ethnicity", "income", "marital_status",
@@ -735,7 +735,7 @@ create_tidy_table_one <- function(data,
 #' )
 #' 
 #'
-create_tidy_table_one_checkbox <- function(data,
+create_tidytableone_checkbox <- function(data,
                                            strata = NULL,
                                            vars,
                                            na_level = "(Missing)",
@@ -750,7 +750,7 @@ create_tidy_table_one_checkbox <- function(data,
                                              note     = "Participants could select more than one option; percentages may exceed 100%."
                                            ),
                                            ...) {
-  .create_tidy_table_one_core(
+  .create_tidytableone_core(
     data = data,
     strata = strata,
     vars = vars,
@@ -764,7 +764,17 @@ create_tidy_table_one_checkbox <- function(data,
 
 
 
+#' @export
+create_tidy_table_one <- function(...) {
+  .Deprecated("create_tidytableone")
+  create_tidytableone(...)
+}
 
+#' @export
+create_tidy_table_one_checkbox <- function(...) {
+  .Deprecated("create_tidytableone_checkbox")
+  create_tidytableone_checkbox(...)
+}
 
 
 
