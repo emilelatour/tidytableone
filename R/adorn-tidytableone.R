@@ -394,41 +394,61 @@ adorn_tidytableone <- function(tidy_t1,
   
   #### Make the table --------------------------------
   
-  # Checkboxes
-  cb_vars <- tidy_t1 |>
-    dplyr::filter(class == "checkbox") |>
-    dplyr::distinct(var) |>
-    # dplyr::left_join(var_lbls,
-    #                  by = dplyr::join_by(var)) |> 
-    dplyr::pull() |>
-    as.character()
+  # Detect real checkbox mode from the data (not just labels)
+  is_checkbox_mode <- any(tidy_t1$class %in% "checkbox", na.rm = TRUE)
   
+  # Vars present in the tidy table
   tidy_t1_vars <- dplyr::distinct(tidy_t1, var) |>
     dplyr::pull() |>
     as.character()
   
-  grouped_tidy_t1_vars <- group_similar_vars(tidy_t1_vars) |> 
-    mutate(is_checkbox = dplyr::if_else(var %in% cb_vars, 1, 0))
-  
-  
-  tab_vars <- dplyr::distinct(grouped_tidy_t1_vars, group_label_first) |>
+  # Vars that are truly checkbox rows
+  cb_vars <- tidy_t1 |>
+    dplyr::filter(class == "checkbox") |>
+    dplyr::distinct(var) |>
     dplyr::pull() |>
     as.character()
   
+  # Group variables by their “base” label for display (e.g., race___1..98 → one group)
+  grouped_tidy_t1_vars <- group_similar_vars(tidy_t1_vars)
   
-  adorned_tidy_t1 <- purrr::map(.x = tab_vars,
-                                .f = ~ build_tab1(tab_var = .x,
-                                                  cb_vars = cb_vars,
-                                                  tab_pvals = tab_pvals,
-                                                  tab_stats = tab_stats,
-                                                  tab_miss = tab_miss,
-                                                  missing = missing,
-                                                  show_test = show_test,
-                                                  show_smd = show_smd,
-                                                  tab_smd = tab_smd)) |> 
+  # Build a list: names = group label; values = member vars in that group
+  groups <- split(grouped_tidy_t1_vars$var, grouped_tidy_t1_vars$group_label_first)
+  
+  # For each display group:
+  adorned_tidy_t1 <- purrr::imap(groups, function(members, grp_label) {
+    grp_cb_vars <- intersect(members, cb_vars)
+    
+    if (length(grp_cb_vars) > 0) {
+      # This group is a checkbox block: build a single block using only the group’s checkbox vars
+      build_tab1_cb(
+        tab_var   = grp_label,
+        cb_vars   = grp_cb_vars,            # <- pass ONLY this group’s checkbox members
+        tab_pvals = tab_pvals,
+        tab_stats = tab_stats,
+        tab_miss  = tab_miss,
+        missing   = missing,
+        show_test = show_test,
+        show_smd  = show_smd,
+        tab_smd   = tab_smd
+      )
+    } else {
+      # Non-checkbox: build rows for ALL members in this group, then bind them
+      purrr::map_dfr(members, ~ build_tab1_noncb(
+        tab_var   = .x,
+        tab_pvals = tab_pvals,
+        tab_stats = tab_stats,
+        tab_miss  = tab_miss,
+        missing   = missing,
+        show_test = show_test,
+        show_smd  = show_smd,
+        tab_smd   = tab_smd
+      ))
+    }
+  }) |>
     dplyr::bind_rows() |>
-    dplyr::mutate(dplyr::across(.cols = dplyr::everything(),
-                                .fns = ~ dplyr::if_else(is.na(.), "", .)))
+    dplyr::mutate(dplyr::across(dplyr::everything(),
+                                ~ dplyr::if_else(is.na(.), "", .)))
   
   
   #### Apply labels --------------------------------
