@@ -213,20 +213,20 @@
 
 #' @keywords internal
 .create_tidytableone_core <- function(data,
-                                        strata = NULL,
-                                        vars,
-                                        na_level = "(Missing)",
-                                        b_replicates = 2000,
-                                        checkbox = NULL,
-                                        checkbox_opts = list(
-                                          denom = "group",
-                                          pvals = "per_level",
-                                          test  = "auto",
-                                          p_adjust = "none",
-                                          show_any = TRUE,
-                                          note = "Participants could select more than one option; percentages may exceed 100%."
-                                        ),
-                                        ...) {
+                                      strata = NULL,
+                                      vars,
+                                      na_level = "(Missing)",
+                                      b_replicates = 2000,
+                                      checkbox = NULL,
+                                      checkbox_opts = list(
+                                        denom = "group",
+                                        pvals = "per_level",
+                                        test  = "auto",
+                                        p_adjust = "none",
+                                        show_any = TRUE,
+                                        note = "Participants could select more than one option; percentages may exceed 100%."
+                                      ),
+                                      ...) {
   
   # Silence no visible binding for global variable
   dat <- res <- n_level_valid <- n_strata_valid <- label <- sort1 <- NULL
@@ -462,15 +462,15 @@
       opts          = checkbox_opts,
       strata_var    = rlang::as_name(strata_sym),
       strata_levels = levels(data[[rlang::as_name(strata_sym)]]) %||%
-                      unique(as.character(data[[rlang::as_name(strata_sym)]]))
+        unique(as.character(data[[rlang::as_name(strata_sym)]]))
     ) %>%
       dplyr::rename(!! rlang::as_name(strata_sym) := strata)
-
+    
     # Always provide the column so downstream code/tests can rely on it
     if (!"p_value_level" %in% names(res_checkbox)) {
       res_checkbox <- dplyr::mutate(res_checkbox, p_value_level = NA_real_)
     }
-
+    
     # If per-level p-values were requested, fill them in once
     if (!is.null(strata) && isTRUE(checkbox_opts$pvals %in% c("per_level"))) {
       res_checkbox <- add_pvalues_checkbox(
@@ -483,7 +483,23 @@
         B          = 2000
       )
     }
-
+    
+    # Get the SMD
+    smd_cb <- get_smd_checkbox(
+      data   = data,
+      strata = strata,   # e.g., "group"
+      blocks = cb_blocks
+    )
+    
+    # res_checkbox <- res_checkbox %>%
+    #   dplyr::left_join(smd_cb, by = "var", suffix = c("", ".cb")) %>%
+    #   dplyr::mutate(smd = dplyr::coalesce(.data$smd, .data$smd.cb)) %>%
+    #   dplyr::select(-dplyr::any_of("smd.cb"))
+    
+    res_checkbox <- res_checkbox %>%
+      dplyr::left_join(smd_cb, by = "var")
+    
+    
     # Tag as categorical for downstream p-value formatting (keeps compat)
     res_checkbox <- res_checkbox %>%
       dplyr::mutate(var_type = "categorical", class = "checkbox")
@@ -499,7 +515,6 @@
     attr(res_stats, "checkbox_blocks") <- cb_blocks
     attr(res_stats, "checkbox_opts")   <- checkbox_opts
   }
-  
   
   
   #### Combine results, Clean up and arrange --------------------------------
@@ -557,6 +572,27 @@
   res_stats <- res_stats |> 
     dplyr::select(-level_var)
   
+  # fix_smd_cols <- function(df) {
+  #   # coalesce any of these, in this order, into `smd`, then drop the extras
+  #   candidates <- c("smd", "smd.cb", "smd.y", "smd.x")
+  #   have <- intersect(candidates, names(df))
+  #   if (length(have) == 0) return(df)
+  #   df %>%
+  #     dplyr::mutate(smd = dplyr::coalesce(!!!rlang::syms(have))) %>%
+  #     dplyr::select(-dplyr::any_of(setdiff(have, "smd")))
+  # }
+  # 
+  # # use it:
+  # res_stats <- fix_smd_cols(res_stats)
+  
+  if ("smd.x" %in% names(res_stats) || "smd.y" %in% names(res_stats)) {
+    res_stats <- res_stats %>%
+      dplyr::mutate(
+        smd = dplyr::coalesce(.data$smd, .data$smd.y, .data$smd.x)
+      ) %>%
+      dplyr::select(-dplyr::any_of(c("smd.y", "smd.x")))
+  }
+  
   
   #### Return results --------------------------------
   
@@ -572,13 +608,13 @@
 #' @inheritParams .create_tidytableone_core
 #' @export
 create_tidytableone <- function(data,
-                                  strata = NULL,
-                                  vars,
-                                  na_level = "(Missing)",
-                                  b_replicates = 2000,
-                                  checkbox = NULL,
-                                  checkbox_opts = NULL, 
-                                  ...) {
+                                strata = NULL,
+                                vars,
+                                na_level = "(Missing)",
+                                b_replicates = 2000,
+                                checkbox = NULL,
+                                checkbox_opts = NULL, 
+                                ...) {
   
   # # ensure defaults if user didn't supply checkbox_opts
   # if (is.null(checkbox_opts)) {
@@ -736,20 +772,20 @@ create_tidytableone <- function(data,
 #' 
 #'
 create_tidytableone_checkbox <- function(data,
-                                           strata = NULL,
-                                           vars,
-                                           na_level = "(Missing)",
-                                           b_replicates = 2000,
-                                           checkbox = NULL,
-                                           checkbox_opts = list(
-                                             denom   = "group",
-                                             pvals   = "per_level",
-                                             test    = "auto",
-                                             p_adjust = "none",
-                                             show_any = TRUE,
-                                             note     = "Participants could select more than one option; percentages may exceed 100%."
-                                           ),
-                                           ...) {
+                                         strata = NULL,
+                                         vars,
+                                         na_level = "(Missing)",
+                                         b_replicates = 2000,
+                                         checkbox = NULL,
+                                         checkbox_opts = list(
+                                           denom   = "group",
+                                           pvals   = "per_level",
+                                           test    = "auto",
+                                           p_adjust = "none",
+                                           show_any = TRUE,
+                                           note     = "Participants could select more than one option; percentages may exceed 100%."
+                                         ),
+                                         ...) {
   .create_tidytableone_core(
     data = data,
     strata = strata,

@@ -28,6 +28,60 @@ get_smd <- function(data,
   
 }
 
+# Compute SMDs for all checkbox variables (including any_selected) across ANY # of strata
+# Returns tibble: var, smd  -- ready to left_join() onto your tab
+get_smd_checkbox <- function(data, strata, blocks, na_level = "(Missing)") {
+  # no strata -> nothing to compute
+  if (is.null(strata)) {
+    return(tibble::tibble(var = character(0), smd = numeric(0)))
+  }
+
+  # normalize strata to a plain string name
+  s <- rlang::as_name(rlang::ensym(strata))
+
+  # work on a copy; make sure strata is a factor and NAs get an explicit level
+  df <- data
+  df[[s]] <- as.factor(df[[s]])
+  if (!is.null(na_level)) {
+    df[[s]] <- forcats::fct_na_value_to_level(f = df[[s]], 
+                                              level = na_level)
+  }
+
+  out_vars <- character(0)
+
+  for (bl in blocks) {
+    # per-level binaries (Selected vs Not selected), reusing original var names
+    for (v in bl$vars) {
+      df[[v]] <- factor(
+        ifelse(df[[v]] == bl$select_txt[[v]], "Selected", "Not selected"),
+        levels = c("Not selected", "Selected")
+      )
+      out_vars <- c(out_vars, v)
+    }
+
+    # synthetic any_selected for the block (lower-case stem, matches the table rows)
+    stem_l  <- tolower(sub("___.*$", "", bl$vars[[1]]))
+    var_any <- paste0(stem_l, "___any_selected")
+
+    df[[var_any]] <- factor(
+      ifelse(
+        rowSums(as.data.frame(lapply(bl$vars, function(v)
+          as.integer(df[[v]] == "Selected"))), na.rm = TRUE) > 0L,
+        "Selected", "Not selected"
+      ),
+      levels = c("Not selected", "Selected")
+    )
+    out_vars <- c(out_vars, var_any)
+  }
+
+  # Use your existing wrapper to compute SMDs (handles >2 groups)
+  get_smd(
+    data   = df,
+    strata = s,
+    vars   = unique(out_vars)
+  )
+}
+
 
 # shapiro test
 calc_shapiro_test <- function(var) {
@@ -165,7 +219,7 @@ calc_chisq_test <- function(tab,
                             simulate.p.value = FALSE,
                             B = 2000) {
   
-  safe_chisq(tab = tab, 
+  safe_chisq(tbl = tab, 
              correct = correct, 
              simulate.p.value = simulate.p.value, 
              B = B)
@@ -179,7 +233,7 @@ calc_chisq_test_no_correct <- function(tab,
                                        simulate.p.value = FALSE,
                                        B = 2000) {
   
-  safe_chisq(tab = tab, 
+  safe_chisq(tbl = tab, 
              correct = correct, 
              simulate.p.value = simulate.p.value, 
              B = B)
@@ -193,7 +247,7 @@ calc_chisq_test_sim_p <- function(tab,
                                   simulate.p.value = TRUE,
                                   B = 2000) {
   
-  safe_chisq(tab = tab, 
+  safe_chisq(tbl = tab, 
              correct = correct, 
              simulate.p.value = simulate.p.value, 
              B = B)
@@ -372,38 +426,74 @@ custom_max <- function(x, na.rm = TRUE) {
 #   if (is.null(res)) NA_real_ else as.numeric(res$p.value)
 # }
 
-# Keep only ONE definition of this in the package
-safe_chisq <- function(tab, correct = TRUE, simulate.p.value = FALSE, B = 2000) {
-  
-  if (is.null(tab) && !is.null(tbl)) tab <- tbl
-  
-  withCallingHandlers(
-    {
-      res <- try(
-        stats::chisq.test(tab,
-                          correct = correct,
-                          simulate.p.value = simulate.p.value,
-                          B = B),
-        silent = TRUE
-      )
-      if (inherits(res, "try-error")) return(NA_real_)
-      as.numeric(res$p.value)
-    },
-    warning = function(w) {
-      msg <- conditionMessage(w)
-      if (grepl("Chi-squared approximation may be incorrect", msg, fixed = TRUE)) {
-        invokeRestart("muffleWarning")
-      }
-      # otherwise let unrelated warnings bubble up
-    }
+# safe_chisq <- function(tab, correct = TRUE, simulate.p.value = FALSE, B = 2000) {
+#   
+#   if (is.null(tab) && !is.null(tbl)) tab <- tbl
+#   
+#   withCallingHandlers(
+#     {
+#       res <- try(
+#         stats::chisq.test(tab,
+#                           correct = correct,
+#                           simulate.p.value = simulate.p.value,
+#                           B = B),
+#         silent = TRUE
+#       )
+#       if (inherits(res, "try-error")) return(NA_real_)
+#       as.numeric(res$p.value)
+#     },
+#     warning = function(w) {
+#       msg <- conditionMessage(w)
+#       if (grepl("Chi-squared approximation may be incorrect", msg, fixed = TRUE)) {
+#         invokeRestart("muffleWarning")
+#       }
+#       # otherwise let unrelated warnings bubble up
+#     }
+#   )
+# }
+# 
+# safe_fisher <- function(tbl, simulate.p.value = FALSE, B = 2000) {
+#   out <- try(stats::fisher.test(tbl, simulate.p.value = simulate.p.value, B = B),
+#              silent = TRUE)
+#   if (inherits(out, "try-error")) return(NA_real_)
+#   as.numeric(out$p.value)
+# }
+# 
+
+
+# Silently compute chi-squared p-value; never emit base warnings.
+safe_chisq <- function(tbl, correct = TRUE, simulate.p.value = FALSE, B = 2000) {
+  # normalize & structural guards
+  if (length(dim(tbl)) != 2L) return(NA_real_)
+  if (anyNA(tbl)) tbl[is.na(tbl)] <- 0
+  if (sum(tbl) == 0L) return(NA_real_)
+  if (any(rowSums(tbl) == 0L) || any(colSums(tbl) == 0L)) return(NA_real_)  # <- key line
+
+  out <- try(
+    suppressWarnings(
+      stats::chisq.test(tbl, correct = correct, simulate.p.value = simulate.p.value, B = B)
+    ),
+    silent = TRUE
   )
+  if (inherits(out, "try-error")) return(NA_real_)
+  out$p.value
 }
 
+# Silently compute Fisher’s p-value; never emit base warnings.
 safe_fisher <- function(tbl, simulate.p.value = FALSE, B = 2000) {
-  out <- try(stats::fisher.test(tbl, simulate.p.value = simulate.p.value, B = B),
-             silent = TRUE)
+  if (length(dim(tbl)) != 2L) return(NA_real_)
+  if (anyNA(tbl)) tbl[is.na(tbl)] <- 0
+  if (sum(tbl) == 0L) return(NA_real_)
+  if (nrow(tbl) < 2L || ncol(tbl) < 2L) return(NA_real_)
+
+  out <- try(
+    suppressWarnings(
+      stats::fisher.test(tbl, simulate.p.value = simulate.p.value, B = B)
+    ),
+    silent = TRUE
+  )
   if (inherits(out, "try-error")) return(NA_real_)
-  as.numeric(out$p.value)
+  out$p.value
 }
 
 flag_chisq_ok <- function(tbl) {

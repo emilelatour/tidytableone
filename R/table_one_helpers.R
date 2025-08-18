@@ -219,7 +219,7 @@ arrange_results <- function(res_stats,
     sort_vars <- var_info %>% dplyr::select(var, level, sort1, sort2)
 
     res_stats <- res_stats %>%
-      dplyr::left_join(sort_vars, by = c("var", "level")) %>%
+      dplyr::left_join(sort_vars, by = c("var", "level"), relationship = "many-to-many") %>%
       dplyr::group_by(.data$var) %>%
       dplyr::mutate(
         # carry forward sort1 from any non‑missing row in the group
@@ -250,7 +250,7 @@ arrange_results <- function(res_stats,
     sort_vars <- var_info %>% dplyr::select(var, sort1, sort2)
 
     res_stats <- res_stats %>%
-      dplyr::left_join(sort_vars, by = "var") %>%
+      dplyr::left_join(sort_vars, by = "var", relationship = "many-to-many") %>%
       dplyr::group_by(.data$var) %>%
       dplyr::mutate(
         sort1 = dplyr::coalesce(.data$sort1, dplyr::first(stats::na.omit(.data$sort1))),
