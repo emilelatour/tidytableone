@@ -401,3 +401,98 @@ do_one_cat_strata <- function(x, strata_sym) {
 
 
 
+normalize_checkbox_opts <- function(x) {
+  defaults <- list(
+    denom    = "group",
+    pvals    = "per_level",  # used only when strata is present
+    test     = "auto",
+    p_adjust = "none",
+    show_any = TRUE,
+    note     = "Participants could select more than one option; percentages may exceed 100%."
+  )
+  utils::modifyList(defaults, x %||% list())
+}
+
+validate_checkbox_opts <- function(opts) {
+  opts$denom <- match.arg(opts$denom, c("group","nonmissing","responders"))
+  opts$pvals <- match.arg(opts$pvals, c("none","per_level"))
+  opts$test  <- match.arg(opts$test,  c("auto","chisq","fisher"))
+  opts
+}
+
+
+#' Order within-vars for no-strata output (no relabeling of NA)
+#' @param res_stats tibble from the no-strata engine
+#' @param vars      original vars vector the user passed (or NULL)
+#' @param checkbox  the checkbox mapping tibble (or NULL)
+#' @return          res_stats re-ordered
+order_within_vars_no_strata <- function(res_stats, vars = NULL, checkbox = NULL) {
+  var_levels <- vars
+
+  if (!is.null(var_levels) && !is.null(checkbox) && all(c("var","overall_lbl") %in% names(checkbox))) {
+    cb_map <- dplyr::distinct(checkbox, var, overall_lbl)
+    lookup <- stats::setNames(cb_map$overall_lbl, cb_map$var)
+
+    var_levels <- vapply(
+      var_levels,
+      function(v) if (!is.na(lookup[v])) lookup[[v]] else v,
+      character(1)
+    )
+
+    var_levels <- var_levels[!duplicated(var_levels)]
+  }
+
+  existing <- unique(as.character(res_stats$var))
+  if (!is.null(var_levels)) {
+    var_levels <- var_levels[var_levels %in% existing]
+    if (length(var_levels) == 0L) var_levels <- NULL
+  }
+
+  # make sure we don't pass *named* args to fct_relevel()
+  if (!is.null(var_levels)) var_levels <- unname(var_levels)
+
+  res_stats %>%
+    dplyr::mutate(
+      var = if (!is.null(var_levels)) forcats::fct_relevel(.data$var, !!!var_levels) else .data$var
+    ) %>%
+    dplyr::group_by(.data$var) %>%
+    dplyr::mutate(
+      .is_missing_level = is.na(.data$level),
+      .is_any_selected  = (.data$class == "checkbox" &
+                           !is.na(.data$level) &
+                           .data$level == "Any selected")
+    ) %>%
+    dplyr::arrange(.data$var, .data$.is_any_selected, .data$.is_missing_level, .by_group = TRUE) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(-.is_missing_level, -.is_any_selected)
+}
+
+
+
+# order_within_vars_no_strata <- function(res_stats, vars = NULL, checkbox = NULL) {
+#   # desired ordering = original var names in `vars` (when provided)
+#   var_levels <- if (!is.null(vars)) {
+#     vars
+#   } else {
+#     unique(as.character(res_stats$var))
+#   }
+# 
+#   # Keep only those that actually appear
+#   var_levels <- var_levels[var_levels %in% unique(as.character(res_stats$var))]
+#   if (length(var_levels)) var_levels <- unname(var_levels)
+# 
+#   res_stats %>%
+#     dplyr::mutate(
+#       var = if (length(var_levels)) forcats::fct_relevel(.data$var, !!!var_levels) else .data$var
+#     ) %>%
+#     dplyr::group_by(.data$var) %>%
+#     dplyr::mutate(
+#       .is_missing_level = is.na(.data$level),
+#       .is_any_selected  = .data$class == "checkbox" &
+#                           !is.na(.data$level) &
+#                           .data$level == "Any selected"
+#     ) %>%
+#     dplyr::arrange(.data$var, .data$.is_any_selected, .data$.is_missing_level, .by_group = TRUE) %>%
+#     dplyr::ungroup() %>%
+#     dplyr::select(-.is_missing_level, -.is_any_selected)
+# }

@@ -27,7 +27,6 @@
 #' @importFrom car leveneTest
 #' @importFrom dplyr bind_rows
 #' @importFrom dplyr count
-#' @importFrom dplyr count
 #' @importFrom dplyr distinct
 #' @importFrom dplyr everything
 #' @importFrom dplyr filter
@@ -39,7 +38,6 @@
 #' @importFrom dplyr n_distinct
 #' @importFrom dplyr all_of
 #' @importFrom dplyr pull
-#' @importFrom dplyr rename
 #' @importFrom dplyr rename
 #' @importFrom dplyr select
 #' @importFrom dplyr summarise
@@ -569,10 +567,7 @@
 
 
 
-#' Create a tidy “Table 1” (legacy)
-#'
-#' Same output columns as the checkbox version, but does not process
-#' multi‑response/checkbox blocks.
+#' Create a tidy “Table 1”
 #'
 #' @inheritParams .create_tidy_table_one_core
 #' @export
@@ -581,16 +576,33 @@ create_tidy_table_one <- function(data,
                                   vars,
                                   na_level = "(Missing)",
                                   b_replicates = 2000,
-                                  ...,
                                   checkbox = NULL,
-                                  checkbox_opts = NULL) {
+                                  checkbox_opts = NULL, 
+                                  ...) {
+  
+  # # ensure defaults if user didn't supply checkbox_opts
+  # if (is.null(checkbox_opts)) {
+  #   checkbox_opts <- list(
+  #     denom    = "group",
+  #     pvals    = "per_level",
+  #     test     = "auto",
+  #     p_adjust = "none",
+  #     show_any = TRUE,
+  #     note     = "Participants could select more than one option; percentages may exceed 100%."
+  #   )
+  # }
+  
+  checkbox_opts <- normalize_checkbox_opts(checkbox_opts)
+  
+  checkbox_opts <- validate_checkbox_opts(checkbox_opts)
+  
   .create_tidy_table_one_core(
     data = data,
     strata = strata,
     vars = vars,
     na_level = na_level,
     b_replicates = b_replicates,
-    checkbox = NULL,            # <- force OFF for legacy
+    checkbox = checkbox,          # <-- pass through
     checkbox_opts = checkbox_opts,
     ...
   )
