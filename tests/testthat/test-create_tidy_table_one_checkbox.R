@@ -1,3 +1,99 @@
+
+
+test_that("only our custom chi-sq warning is emitted (when enabled)", {
+  withr::local_options(list(tidytableone.warn_chisq = TRUE))
+
+  # capture *all* warnings and check the messages
+  msgs <- character()
+  withCallingHandlers({
+    create_tidy_table_one_checkbox(
+      data = tiny_df,
+      strata = "group",
+      vars = c("x_cat","race___1","race___2"),
+      checkbox = cb_spec
+    )
+  }, warning = function(w) {
+    msgs <<- c(msgs, conditionMessage(w))
+    invokeRestart("muffleWarning")
+  })
+
+  # exactly one warning and it's ours
+  expect_length(msgs, 1)
+  expect_match(msgs, "Chi-squared assumptions may be violated", fixed = TRUE)
+})
+
+test_that("no warning emitted when custom warning is disabled", {
+  withr::local_options(list(tidytableone.warn_chisq = FALSE))
+
+  expect_warning(
+    create_tidy_table_one_checkbox(
+      data = tiny_df,
+      strata = "group",
+      vars = c("x_cat","race___1","race___2"),
+      checkbox = cb_spec
+    ),
+    NA  # i.e., expect no warning
+  )
+})
+
+test_that("legacy returns required columns and no join leftovers", {
+  
+  withr::local_options(list(tidytableone.warn_chisq = FALSE))
+  
+  tt <- create_tidy_table_one(
+    data = tiny_df,
+    strata = "group",
+    vars = c("x_num","x_cat","race___1","race___2")
+  )
+
+  expect_true(all(c("strata","var","label","class","var_type") %in% names(tt)))
+  expect_true(all(c("pct","smd") %in% names(tt)))
+
+  # factor levels include Overall then strata levels
+  expect_equal(levels(tt$strata), c("Overall","A","B"))
+
+  # no .x/.y suffix columns from joins
+  expect_false(any(grepl("\\.x$|\\.y$", names(tt))))
+})
+
+test_that("legacy handles only continuous or only categorical without error", {
+  
+  withr::local_options(list(tidytableone.warn_chisq = FALSE))
+  
+  expect_no_error({
+    tt_num <- create_tidy_table_one(
+      data = tiny_df,
+      strata = "group",
+      vars = "x_num"
+    )
+  })
+  expect_true(all(c("mean","sd","p50") %in% names(tt_num)))
+
+  expect_no_error({
+    tt_cat <- create_tidy_table_one(
+      data = tiny_df,
+      strata = "group",
+      vars = "x_cat"
+    )
+  })
+  expect_true(all(c("level","n_level","pct") %in% names(tt_cat)))
+})
+
+test_that("legacy respects variable label attribute when present", {
+  
+  withr::local_options(list(tidytableone.warn_chisq = FALSE))
+  
+  df_lab <- tiny_df
+  attr(df_lab$x_num, "label") <- "Numeric X"
+  tt <- create_tidy_table_one(
+    data = df_lab,
+    strata = "group",
+    vars = c("x_num","x_cat")
+  )
+  lab_row <- dplyr::filter(tt, var == "x_num")$label
+  expect_true(any(lab_row == "Numeric X" | is.na(lab_row)))
+})
+
 test_that("checkbox block aggregates, labels, and per-level p-values column exists", {
   tt <- create_tidy_table_one_checkbox(
     data = tiny_df,
