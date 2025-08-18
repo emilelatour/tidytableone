@@ -763,20 +763,19 @@ create_tidytableone_checkbox <- function(data,
 }
 
 
-
+#' @rdname tidytableone-deprecated
 #' @export
 create_tidy_table_one <- function(...) {
   .Deprecated("create_tidytableone")
   create_tidytableone(...)
 }
 
+#' @rdname tidytableone-deprecated
 #' @export
 create_tidy_table_one_checkbox <- function(...) {
   .Deprecated("create_tidytableone_checkbox")
   create_tidytableone_checkbox(...)
 }
-
-
 
 
 

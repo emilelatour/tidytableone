@@ -4,7 +4,7 @@ test_that("no-strata respects variable label attribute when present", {
     sex = structure(sample(c("F","M"), 30, TRUE),    label = "Sex at birth")
   )
 
-  tt <- create_tidy_table_one_no_strata(
+  tt <- create_tidytableone_no_strata(
     data = df,
     vars = c("age","sex")
   )

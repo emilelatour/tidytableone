@@ -18,14 +18,15 @@ test_that("no-strata checkbox block aggregates and labels correctly", {
     "race___98", "Race",       "Prefer not to answer",   "Checked"
   )
 
-  tt <- create_tidy_table_one_no_strata_checkbox(
+  tt <- create_tidytableone_no_strata_checkbox(
     data = df,
     vars = c("age","race___1","race___2","race___3","race___98"),
     checkbox = spec
   )
 
   # should include the collapsed 'Race' variable with per-level rows + Any selected
-  race_rows <- dplyr::filter(tt, var == "Race")
+  race_rows <- tt %>%
+  dplyr::filter(.data$class == "checkbox", .data$label == "Race")
   expect_gt(nrow(race_rows), 0)
   expect_true(all(c("level","pct","n_strata") %in% names(race_rows)))
   expect_true(any(race_rows$level == "Any selected"))

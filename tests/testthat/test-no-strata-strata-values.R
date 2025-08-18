@@ -5,7 +5,7 @@ test_that("no-strata uses strata=='Overall' and strata_var==NA", {
     b = sample(c("Y","N"), 10, TRUE)
   )
 
-  tt <- create_tidy_table_one_no_strata(
+  tt <- create_tidytableone_no_strata(
     data = df,
     vars = c("a","b")
   )

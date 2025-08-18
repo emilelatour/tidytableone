@@ -1,6 +1,6 @@
 #' Create a tidy “Table 1” without strata
 #'
-#' Produce the same schema as [create_tidy_table_one()] but with a single
+#' Produce the same schema as [create_tidytableone()] but with a single
 #' overall group (every row has `strata = "Overall"`). No between‑group tests
 #' are computed in this variant. This *legacy* function does **not** process
 #' checkbox (multi‑response) blocks — see
@@ -18,13 +18,13 @@
 #'   not handled here).
 #' @param checkbox_opts Ignored (present for API symmetry).
 #'
-#' @return A tibble with the same columns as [create_tidy_table_one()], e.g.:
+#' @return A tibble with the same columns as [create_tidytableone()], e.g.:
 #'   `strata_var`, `strata`, `var`, `level`, wide continuous summaries
 #'   (`n`, `mean`, `sd`, `p25`, `p50`, `p75`, …), tall categorical summaries
 #'   (`n_level`, `pct`, `pct_valid`, …), testing columns present but `NA`
 #'   (since there are no groups), and metadata (`class`, `var_type`, `label`).
 #'
-#' @seealso [create_tidy_table_one()], [create_tidytableone_no_strata_checkbox()],
+#' @seealso [create_tidytableone()], [create_tidytableone_no_strata_checkbox()],
 #'   [adorn_tidytableone()]
 #'
 #' @examples
@@ -693,12 +693,14 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
     )
 }
 
+#' @rdname tidytableone-deprecated
 #' @export
 create_tidy_table_one_no_strata <- function(...) {
   .Deprecated("create_tidytableone_no_strata")
   create_tidytableone_no_strata(...)
 }
 
+#' @rdname tidytableone-deprecated
 #' @export
 create_tidy_table_one_no_strata_checkbox <- function(...) {
   .Deprecated("create_tidytableone_no_strata_checkbox")

@@ -12,7 +12,7 @@ test_that("no-strata checkbox: show_any = FALSE removes the 'Any selected' row",
     "race___2",  "Race",       "Black",       "Checked"
   )
 
-  tt <- create_tidy_table_one_no_strata_checkbox(
+  tt <- create_tidytableone_no_strata_checkbox(
     data = df,
     vars = c("race___1","race___2"),
     checkbox = cb_spec,

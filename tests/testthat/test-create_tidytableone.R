@@ -2,7 +2,7 @@ test_that("legacy returns required columns and no join leftovers", {
   
   withr::local_options(list(tidytableone.warn_chisq = FALSE))
   
-  tt <- create_tidy_table_one(
+  tt <- create_tidytableone(
     data = tiny_df,
     strata = "group",
     vars = c("x_num","x_cat","race___1","race___2")
@@ -23,7 +23,7 @@ test_that("legacy handles only continuous or only categorical without error", {
   withr::local_options(list(tidytableone.warn_chisq = FALSE))
   
   expect_no_error({
-    tt_num <- create_tidy_table_one(
+    tt_num <- create_tidytableone(
       data = tiny_df,
       strata = "group",
       vars = "x_num"
@@ -32,7 +32,7 @@ test_that("legacy handles only continuous or only categorical without error", {
   expect_true(all(c("mean","sd","p50") %in% names(tt_num)))
 
   expect_no_error({
-    tt_cat <- create_tidy_table_one(
+    tt_cat <- create_tidytableone(
       data = tiny_df,
       strata = "group",
       vars = "x_cat"

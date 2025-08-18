@@ -5,7 +5,7 @@ test_that("no-strata handles categorical only and computes pct", {
     b = sample(c("Yes","No"),  40, TRUE)
   )
 
-  tt <- create_tidy_table_one_no_strata(
+  tt <- create_tidytableone_no_strata(
     data = df,
     vars = c("a","b")
   )

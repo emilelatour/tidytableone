@@ -3,13 +3,13 @@ test_that("no-strata handles continuous only without error", {
   df <- tibble::tibble(x = rnorm(50), y = rnorm(50))
 
   expect_no_error({
-    tt <- create_tidy_table_one_no_strata(
+    tt <- create_tidytableone_no_strata(
       data = df,
       vars = c("x","y")
     )
   })
 
-  tt <- create_tidy_table_one_no_strata(df, vars = c("x","y"))
+  tt <- create_tidytableone_no_strata(df, vars = c("x","y"))
   # core numeric summaries present
   expect_true(all(c("mean","sd","p50") %in% names(tt)))
   # no 'level' required for continuous-only rows

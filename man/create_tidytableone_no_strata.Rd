@@ -34,14 +34,14 @@ not handled here).}
 \item{checkbox_opts}{Ignored (present for API symmetry).}
 }
 \value{
-A tibble with the same columns as \code{\link[=create_tidy_table_one]{create_tidy_table_one()}}, e.g.:
+A tibble with the same columns as \code{\link[=create_tidytableone]{create_tidytableone()}}, e.g.:
 \code{strata_var}, \code{strata}, \code{var}, \code{level}, wide continuous summaries
 (\code{n}, \code{mean}, \code{sd}, \code{p25}, \code{p50}, \code{p75}, …), tall categorical summaries
 (\code{n_level}, \code{pct}, \code{pct_valid}, …), testing columns present but \code{NA}
 (since there are no groups), and metadata (\code{class}, \code{var_type}, \code{label}).
 }
 \description{
-Produce the same schema as \code{\link[=create_tidy_table_one]{create_tidy_table_one()}} but with a single
+Produce the same schema as \code{\link[=create_tidytableone]{create_tidytableone()}} but with a single
 overall group (every row has \code{strata = "Overall"}). No between‑group tests
 are computed in this variant. This \emph{legacy} function does \strong{not} process
 checkbox (multi‑response) blocks — see
@@ -81,6 +81,6 @@ head(tab_cat)
 
 }
 \seealso{
-\code{\link[=create_tidy_table_one]{create_tidy_table_one()}}, \code{\link[=create_tidytableone_no_strata_checkbox]{create_tidytableone_no_strata_checkbox()}},
+\code{\link[=create_tidytableone]{create_tidytableone()}}, \code{\link[=create_tidytableone_no_strata_checkbox]{create_tidytableone_no_strata_checkbox()}},
 \code{\link[=adorn_tidytableone]{adorn_tidytableone()}}
 }

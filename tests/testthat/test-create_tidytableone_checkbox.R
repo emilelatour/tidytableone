@@ -6,7 +6,7 @@ test_that("only our custom chi-sq warning is emitted (when enabled)", {
   # capture *all* warnings and check the messages
   msgs <- character()
   withCallingHandlers({
-    create_tidy_table_one_checkbox(
+    create_tidytableone_checkbox(
       data = tiny_df,
       strata = "group",
       vars = c("x_cat","race___1","race___2"),
@@ -26,7 +26,7 @@ test_that("no warning emitted when custom warning is disabled", {
   withr::local_options(list(tidytableone.warn_chisq = FALSE))
 
   expect_warning(
-    create_tidy_table_one_checkbox(
+    create_tidytableone_checkbox(
       data = tiny_df,
       strata = "group",
       vars = c("x_cat","race___1","race___2"),
@@ -40,7 +40,7 @@ test_that("legacy returns required columns and no join leftovers", {
   
   withr::local_options(list(tidytableone.warn_chisq = FALSE))
   
-  tt <- create_tidy_table_one(
+  tt <- create_tidytableone(
     data = tiny_df,
     strata = "group",
     vars = c("x_num","x_cat","race___1","race___2")
@@ -61,7 +61,7 @@ test_that("legacy handles only continuous or only categorical without error", {
   withr::local_options(list(tidytableone.warn_chisq = FALSE))
   
   expect_no_error({
-    tt_num <- create_tidy_table_one(
+    tt_num <- create_tidytableone(
       data = tiny_df,
       strata = "group",
       vars = "x_num"
@@ -70,7 +70,7 @@ test_that("legacy handles only continuous or only categorical without error", {
   expect_true(all(c("mean","sd","p50") %in% names(tt_num)))
 
   expect_no_error({
-    tt_cat <- create_tidy_table_one(
+    tt_cat <- create_tidytableone(
       data = tiny_df,
       strata = "group",
       vars = "x_cat"
@@ -85,7 +85,7 @@ test_that("legacy respects variable label attribute when present", {
   
   df_lab <- tiny_df
   attr(df_lab$x_num, "label") <- "Numeric X"
-  tt <- create_tidy_table_one(
+  tt <- create_tidytableone(
     data = df_lab,
     strata = "group",
     vars = c("x_num","x_cat")
@@ -95,7 +95,7 @@ test_that("legacy respects variable label attribute when present", {
 })
 
 test_that("checkbox block aggregates, labels, and per-level p-values column exists", {
-  tt <- create_tidy_table_one_checkbox(
+  tt <- create_tidytableone_checkbox(
     data = tiny_df,
     strata = "group",
     vars   = c("x_cat","race___1","race___2"),
@@ -125,7 +125,7 @@ test_that("checkbox block aggregates, labels, and per-level p-values column exis
 })
 
 test_that("checkbox function coexists with regular categorical/continuous rows", {
-  tt <- create_tidy_table_one_checkbox(
+  tt <- create_tidytableone_checkbox(
     data = tiny_df,
     strata = "group",
     vars   = c("x_num","x_cat","race___1","race___2"),
@@ -141,7 +141,7 @@ test_that("checkbox function tolerates NA in strata by labeling as (Missing)", {
   df2 <- tiny_df
   df2$group[1] <- NA
 
-  tt <- create_tidy_table_one_checkbox(
+  tt <- create_tidytableone_checkbox(
     data = df2,
     strata = "group",
     vars   = c("x_cat","race___1","race___2"),

@@ -1,6 +1,6 @@
 test_that("arrange_results() pathway ensures columns referenced in relocate exist", {
   # Only continuous path:
-  tt_num <- create_tidy_table_one(
+  tt_num <- create_tidytableone(
     data = tiny_df,
     strata = "group",
     vars = "x_num"
@@ -14,7 +14,7 @@ test_that("arrange_results() pathway ensures columns referenced in relocate exis
   expect_true(all(must_exist %in% names(tt_num)))
 
   # Only categorical path:
-  tt_cat <- create_tidy_table_one(
+  tt_cat <- create_tidytableone(
     data = tiny_df,
     strata = "group",
     vars = "x_cat"

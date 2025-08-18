@@ -8,7 +8,7 @@ test_that("no-strata returns required columns and no join leftovers", {
     income = sample(20000:120000, 100, TRUE)
   )
 
-  tt <- create_tidy_table_one_no_strata(
+  tt <- create_tidytableone_no_strata(
     data = df,
     vars = c("gender","age","income")
   )

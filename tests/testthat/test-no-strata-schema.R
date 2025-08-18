@@ -5,7 +5,7 @@ test_that("no-strata output has full schema and no join leftovers", {
     x_cat = sample(c("A","B","C", NA), 20, TRUE)
   )
 
-  tt <- create_tidy_table_one_no_strata(
+  tt <- create_tidytableone_no_strata(
     data = df,
     vars = c("x_num","x_cat")
   )
