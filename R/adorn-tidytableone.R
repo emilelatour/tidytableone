@@ -226,7 +226,7 @@ adorn_tidytableone <- function(tidy_t1,
   
   #### keep class per var (for checkbox de-dup) -------------------------
   var_class <- tidy_t1 |>
-    dplyr::distinct(var, class = .data$class %||% NA_character_)
+    dplyr::distinct(var, class = dplyr::coalesce(class, NA_character_))
   
   #### Get the stats --------------------------------
   
@@ -409,11 +409,18 @@ adorn_tidytableone <- function(tidy_t1,
     dplyr::pull() |>
     as.character()
   
-  # Group variables by their “base” label for display (e.g., race___1..98 → one group)
-  grouped_tidy_t1_vars <- group_similar_vars(tidy_t1_vars)
+  ## Lock in the variable order ---------------- 
   
-  # Build a list: names = group label; values = member vars in that group
-  groups <- split(grouped_tidy_t1_vars$var, grouped_tidy_t1_vars$group_label_first)
+  # # Group variables by their “base” label for display (e.g., race___1..98 → one group)
+  # grouped_tidy_t1_vars <- group_similar_vars(tidy_t1_vars)
+  # 
+  # # Build a list: names = group label; values = member vars in that group
+  # groups <- split(grouped_tidy_t1_vars$var, grouped_tidy_t1_vars$group_label_first)
+  
+  groups <- .order_groups_like_vars(tidy_t1, group_similar_vars)
+  
+  
+  ## Proceed making the table ---------------- 
   
   # For each display group:
   adorned_tidy_t1 <- purrr::imap(groups, function(members, grp_label) {
@@ -1328,4 +1335,30 @@ get_miss <- function(t1,
   return(miss_tab)
   
   
+}
+
+
+#### Order groups like vars -------------------------------- 
+
+.order_groups_like_vars <- function(tidy_t1, group_similar_vars) {
+  ord <- tidy_t1 |>
+    dplyr::distinct(var) |>
+    dplyr::pull(var) |>
+    as.character()
+
+  grouped <- group_similar_vars(ord) |>
+    dplyr::filter(var %in% ord) |>
+    dplyr::mutate(var_pos = match(var, ord))
+
+  group_order <- grouped |>
+    dplyr::group_by(group_label_first) |>
+    dplyr::summarise(first_pos = min(var_pos), .groups = "drop") |>
+    dplyr::arrange(first_pos) |>
+    dplyr::pull(group_label_first)
+
+  grouped <- grouped |>
+    dplyr::mutate(group_label_first = factor(group_label_first, levels = group_order))
+
+  groups <- split(grouped$var, grouped$group_label_first)
+  lapply(groups, function(v) v[order(match(v, ord))])
 }

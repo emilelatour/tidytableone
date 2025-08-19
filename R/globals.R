@@ -10,5 +10,6 @@ utils::globalVariables(c(
   "group_label_first", "glue_formula",
   ".base_max_num", ".base_max_int",
   ".is_missing_level", ".is_any_selected",
-  "group_id", "tbl"
+  "group_id", "tbl", 
+  "var_pos", "first_pos"
 ))

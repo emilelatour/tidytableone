@@ -273,6 +273,34 @@
   }
   
   
+  # Extract variable labels for later use BEFORE any coercion that could drop them
+  var_lbls <- tibble::tibble(var = names(data)) |>
+    mutate(label = purrr::map_chr(.x = data[, var],
+                                  .f = ~ get_var_labels(x = .x)))
+  
+  
+  # normalize variable types (preserve intended levels) ----
+  # Characters -> factor with levels in order of appearance (stable)
+  # Logicals   -> factor with levels FALSE, TRUE
+  # Ordered    -> already converted above to plain factor (keeps existing level order)
+  data[vars] <- lapply(vars, function(v) {
+    x <- data[[v]]
+    lbl <- attr(x, "label", exact = TRUE)
+    
+    y <- if (is.character(x)) {
+      lv <- unique(x[!is.na(x)])
+      factor(x, levels = lv)
+    } else if (is.logical(x)) {
+      factor(x, levels = c(FALSE, TRUE))
+    } else {
+      x
+    }
+    
+    if (!is.null(lbl)) attr(y, "label") <- lbl
+    y
+  })
+  
+  
   # Handle missing values in the strata
   
   if (any(is.na(purrr::pluck(data, strata)))) {
@@ -296,11 +324,6 @@
   
   
   #### Get variable info --------------------------------
-  
-  # Extract variable labels for later use
-  var_lbls <- tibble::tibble(var = names(data)) |>
-    mutate(label = purrr::map_chr(.x = data[, var],
-                                  .f = ~ get_var_labels(x = .x)))
   
   # Get variable types and other meta-information
   var_info <- get_var_info(data = data,
@@ -351,11 +374,10 @@
     
   }
   
-  
   # Identify categorical and continuous variables
   cat_vars <- var_info |>
     dplyr::filter(var_type == "categorical",
-                  is.na(.data$class) | .data$class != "checkbox") |>
+                  is.na(class) | class != "checkbox") |>
     dplyr::pull(var) |>
     unique() |>
     setdiff(strata) |>
@@ -394,8 +416,6 @@
     
     
   }
-  
-  
   
   
   #### Calc SMD --------------------------------
@@ -516,8 +536,79 @@
     attr(res_stats, "checkbox_opts")   <- checkbox_opts
   }
   
+  #### Ensure zero-count rows exist for unobserved categorical levels --------------------------------
   
-  #### Combine results, Clean up and arrange --------------------------------
+  if (length(cat_vars) > 0) {
+    
+    # Desired levels per categorical var from the *normalized* data
+    lvl_tbl_cat <- purrr::map_dfr(cat_vars, function(v) {
+      lv <- levels(data[[v]])
+      tibble::tibble(var = v, level = lv, level_order = seq_along(lv))
+    })
+    
+    # Real strata column name (e.g., "healed_f")
+    strata_col  <- rlang::as_name(strata_sym)
+    strata_lvls <- if (!is.null(strata)) levels(data[[strata_col]]) else character(0)
+    all_strata  <- c("Overall", strata_lvls)
+    
+    # --- robust categorical slice (works with/without `class`) ---
+    has_class <- "class" %in% names(res_stats)
+    n_rs <- nrow(res_stats)
+    
+    cond_cat <- if (n_rs > 0) (res_stats$var %in% cat_vars) else logical(0)
+    cond_not_checkbox <- if (has_class && n_rs > 0) {
+      is.na(res_stats$class) | res_stats$class != "checkbox"
+    } else if (n_rs > 0) {
+      rep(TRUE, n_rs)
+    } else {
+      logical(0)
+    }
+    is_plain_cat <- if (n_rs > 0) cond_cat & cond_not_checkbox else logical(0)
+    
+    # Categorical piece to scaffold
+    res_cat <- if (n_rs > 0) res_stats[is_plain_cat, , drop = FALSE] else res_stats
+    
+    # ---- Ensure columns needed post-join exist on res_cat (types matter) ----
+    if (!"var_type"        %in% names(res_cat)) res_cat$var_type        <- NA_character_
+    if (!"n_level"         %in% names(res_cat)) res_cat$n_level         <- NA_integer_
+    if (!"n_level_valid"   %in% names(res_cat)) res_cat$n_level_valid   <- NA_integer_
+    if (!"pct"             %in% names(res_cat)) res_cat$pct             <- NA_real_
+    if (!"n_strata"        %in% names(res_cat)) res_cat$n_strata        <- NA_integer_
+    if (!"n_strata_valid"  %in% names(res_cat)) res_cat$n_strata_valid  <- NA_integer_
+    if (!"label"          %in% names(res_cat)) res_cat$label          <- NA_character_  
+    
+    # Full grid (var x level x strata) using actual strata column
+    scaffold <- lvl_tbl_cat %>%
+      dplyr::select(var, level) %>%
+      tidyr::crossing(!!rlang::sym(strata_col) := all_strata)
+    
+    join_keys <- c("var", "level", strata_col)
+    
+    res_cat_completed <- scaffold %>%
+      dplyr::left_join(res_cat, by = join_keys) %>%
+      # bring in data-defined labels and fill if missing
+      dplyr::left_join(var_lbls, by = "var", suffix = c("", ".from_data")) %>%
+      dplyr::mutate(
+        label          = dplyr::coalesce(.data$label, .data$label.from_data),
+        var_type       = dplyr::coalesce(.data$var_type, "categorical"),
+        n_level        = dplyr::coalesce(.data$n_level, 0L),
+        n_level_valid  = dplyr::coalesce(.data$n_level_valid, 0L),
+        pct            = dplyr::coalesce(.data$pct, 0)
+        # keep n_strata / n_strata_valid as-is (may remain NA here)
+      ) %>%
+      dplyr::select(-dplyr::any_of("label.from_data")) %>%
+      dplyr::arrange(factor(.data$var, levels = vars), .data$level, !!rlang::sym(strata_col))
+    
+    # Everything else (continuous + checkbox) unchanged
+    res_other <- if (n_rs > 0) res_stats[!is_plain_cat, , drop = FALSE] else res_stats
+    
+    # Recombine
+    res_stats <- dplyr::bind_rows(res_other, res_cat_completed)
+    
+  }
+  
+  
+  #### Arrange, combine, and clean up results --------------------------------
   
   res_stats <- arrange_results(res_stats,
                                htest_res,
@@ -568,6 +659,7 @@
   
   
   #### One last tidying -------------------------------- 
+  
   
   res_stats <- res_stats |> 
     dplyr::select(-level_var)
@@ -803,14 +895,24 @@ create_tidytableone_checkbox <- function(data,
 #' @export
 create_tidy_table_one <- function(...) {
   .Deprecated("create_tidytableone")
-  create_tidytableone(...)
+  dots <- list(...)
+  if (!is.null(dots$.vars)) {
+    dots$vars <- dots$.vars
+    dots$.vars <- NULL
+  }
+  do.call(create_tidytableone, dots)
 }
 
 #' @rdname tidytableone-deprecated
 #' @export
 create_tidy_table_one_checkbox <- function(...) {
   .Deprecated("create_tidytableone_checkbox")
-  create_tidytableone_checkbox(...)
+  dots <- list(...)
+  if (!is.null(dots$.vars)) {
+    dots$vars <- dots$.vars
+    dots$.vars <- NULL
+  }
+  do.call(create_tidytableone_checkbox, dots)
 }
 
 
