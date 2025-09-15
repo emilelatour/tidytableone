@@ -178,8 +178,7 @@ adorn_tidytableone <- function(tidy_t1,
   # Checkbox p‑adjust method for both header and per‑level display
   cb_padj_method <- checkbox_p_adjust
   
-  if (!"strata" %in% names(tidy_t1)) {
-    # stop("Currently, the function only works when a strata is given.")
+  if (.is_no_strata(tidy_t1)) {
     res_stats <- adorn_tidytableone_no_strata(tidy_t1 = tidy_t1,
                                               default_continuous = default_continuous,
                                               default_categorical = default_categorical,
@@ -1361,4 +1360,17 @@ get_miss <- function(t1,
 
   groups <- split(grouped$var, grouped$group_label_first)
   lapply(groups, function(v) v[order(match(v, ord))])
+}
+
+
+
+# helper (optional; you can inline the logic if you prefer)
+.is_no_strata <- function(t1) {
+  has_strata     <- "strata" %in% names(t1)
+  has_strata_var <- "strata_var" %in% names(t1)
+
+  only_overall <- has_strata && all(is.na(t1$strata) | t1$strata == "Overall")
+  svar_all_na  <- has_strata_var && all(is.na(t1$strata_var))
+
+  !has_strata || only_overall || svar_all_na
 }
