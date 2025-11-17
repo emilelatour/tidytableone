@@ -291,7 +291,7 @@
     y <- if (is.character(x)) {
       # For plain characters, convert to factor using levels in the *original* data
       # not the subset.
-      lv <- unique(data[[v]][!is.na(data[[v]])])   # <---- key line
+      lv <- sort(unique(data[[v]][!is.na(data[[v]])]))
       factor(x, levels = lv)
     } else if (is.logical(x)) {
       factor(x, levels = c(FALSE, TRUE))
