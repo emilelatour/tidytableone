@@ -53,22 +53,16 @@
 #'   "ifany" or "always". Default is "(Missing)".
 #' @param default_miss A glue statement that provides the formatting for
 #'   missing, Default is `"{n}"`
-#' @param checkbox_p Logical; show per‑level checkbox p‑values column (default FALSE).
-#' @param checkbox_p_adjust Character; p.adjust method for checkbox p‑values (default "none").
-#' @param checkbox_block_p Logical; show one overall p‑value per checkbox block (default FALSE).
+#' @param checkbox_p Logical; show per-level checkbox p-values column (default FALSE).
+#' @param checkbox_p_adjust Character; p.adjust method for checkbox p-values (default "none").
+#' @param checkbox_block_p Logical; show one overall p-value per checkbox block (default FALSE).
 #' @param range_sep Character string used to separate the lower and upper bounds
-#'   of ranges in continuous variable summaries (e.g., Min–Max, IQR).  
-#'   Defaults to an en dash surrounded by spaces (`" – "`).  
-#'   You may supply any separator, such as `"–"` (no spaces) or `" to "`.  
+#'   of ranges in continuous variable summaries (e.g., Min\\u2013Max, IQR).  
+#'   Defaults to an en dash surrounded by spaces (`" \\u2013 "`).  
+#'   You may supply any separator, such as `"\\u2013"` (no spaces) or `" to "`.  
 #'   The value is inserted literally into the formatted output, so setting
-#'   `range_sep = "–"` yields `"41.0–4556.0"`, while `range_sep = " – "`
-#'   yields `"41.0 – 4556.0"`.
-#' @param indent Logical; if TRUE, level labels in the combined variable/level
-#'   column are indented using *non-breaking spaces* (`"\u00A0"`).  
-#'   This makes indentation visible in HTML, Word, and `flextable` outputs,
-#'   which do not preserve regular spaces.  
-#'   If FALSE (default), indentation uses regular spaces, which display correctly
-#'   in plain text but may collapse in rich-text rendering.
+#'   `range_sep = "\\u2013"` yields `"41.0\\u20134556.0"`, while `range_sep = " \\u2013 "`
+#'   yields `"41.0 \\u2013 4556.0"`.
 #' @param ... Additional arguments. Not used.
 #'
 #' @importFrom dplyr across
@@ -106,7 +100,7 @@
 #'
 #' dplyr::glimpse(pbc_mayo)
 #'
-#' tab1 <- create_tidy_table_one(data = pbc_mayo,
+#' tab1 <- create_tidytableone(data = pbc_mayo,
 #'                               strata = "trt",
 #'                               vars = c("time",
 #'                                        "status",
@@ -180,8 +174,7 @@ adorn_tidytableone <- function(tidy_t1,
                                checkbox_p = c("none","per_level"),
                                checkbox_p_adjust = "none",
                                checkbox_block_p = c("any","min"),
-                               range_sep = " – ",
-                               indent = FALSE,
+                               range_sep = " \u2013 ",
                                ...) {
   
   # Silence no visible binding for global variable
@@ -514,17 +507,8 @@ adorn_tidytableone <- function(tidy_t1,
   
   if (combine_level_col) {
     
-    # regular spaces (A) vs non-breaking spaces (C)
-    indent_str <- if (isTRUE(indent)) "\u00A0\u00A0" else "  "
-    
     adorned_tidy_t1 <- adorned_tidy_t1 |>
-      dplyr::mutate(
-        var = dplyr::if_else(
-          level == "" | is.na(level),
-          var,                                # header row: just the var name
-          paste0(indent_str, level)           # stat / category rows: indented label
-        )
-      ) |>
+      mutate(var = glue::glue("{var}  {level}")) |>
       dplyr::select(-level)
     
   }
@@ -987,8 +971,7 @@ make_t1_pretty <- function(t1,
                            cat_trim = FALSE,
                            show_pct = TRUE,
                            missing = "ifany",
-                           range_sep = " – ",
-                           indent = FALSE,
+                           range_sep = " \u2013 ",
                            ...) {
   
   # Silence no visible binding for global variable

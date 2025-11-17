@@ -6,7 +6,7 @@
 \usage{
 adorn_tidytableone_no_strata(
   tidy_t1,
-  default_continuous = "{mean} ({sd})",
+  default_continuous = "{mean} ({sd})\\n{median} [{range}]",
   default_categorical = "{n} ({p})",
   fmt_vars = NULL,
   con_accuracy = 0.1,
@@ -34,6 +34,7 @@ adorn_tidytableone_no_strata(
   missing = "no",
   missing_text = "(Missing)",
   default_miss = "{n}",
+  range_sep = " – ",
   ...
 )
 }
@@ -60,7 +61,7 @@ Use (e.g.) 0.01 to show 2 decimal places of precision. Default is 0.001.}
 
 \item{prefix}{Additional text to display before the number. The suffix is
 applied to absolute value before style_positive and style_negative are
-processed so that prefix = "$" will yield (e.g.) ⁠-$1⁠ and ⁠($1)⁠.}
+processed so that prefix = "$" will yield (e.g.) -$1⁠ and ⁠($1)⁠.}
 
 \item{suffix}{Additional text to display after the number.}
 
@@ -114,6 +115,13 @@ Default is "no".}
 \item{default_miss}{A glue statement that provides the formatting for
 missing, Default is \code{"{n}"}}
 
+\item{range_sep}{Character string used to separate the lower and upper bounds
+of ranges in continuous variable summaries (e.g., Min\\u2013Max, IQR).
+Defaults to an en dash surrounded by spaces (\code{" \\\\u2013 "}).
+You may supply any separator, such as \code{"\\\\u2013"} (no spaces) or \code{" to "}.
+\code{range_sep = "\\\\u2013"} yields \code{"41.0\\\\u20134556.0"}, while \code{range_sep = " \\\\u2013 "}
+yields \code{"41.0 \\\\u2013 4556.0"}.}
+
 \item{...}{Additional arguments. Not used.}
 }
 \value{
@@ -128,26 +136,26 @@ library(dplyr)
 
 dplyr::glimpse(pbc_mayo)
 
-tab1 <- create_tidy_table_one(data = pbc_mayo,
-                              strata = "trt",
-                              vars = c("time",
-                                       "status",
-                                       "age",
-                                       "sex",
-                                       "ascites",
-                                       "hepato",
-                                       "spiders",
-                                       "edema",
-                                       "bili",
-                                       "chol",
-                                       "albumin",
-                                       "copper",
-                                       "alk_phos",
-                                       "ast",
-                                       "trig",
-                                       "platelet",
-                                       "protime",
-                                       "stage"))
+tab1 <- create_tidytableone(data = pbc_mayo,
+                            strata = "trt",
+                            vars = c("time",
+                                     "status",
+                                     "age",
+                                     "sex",
+                                     "ascites",
+                                     "hepato",
+                                     "spiders",
+                                     "edema",
+                                     "bili",
+                                     "chol",
+                                     "albumin",
+                                     "copper",
+                                     "alk_phos",
+                                     "ast",
+                                     "trig",
+                                     "platelet",
+                                     "protime",
+                                     "stage"))
 
 dplyr::glimpse(tab1)
 

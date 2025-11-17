@@ -37,6 +37,7 @@ adorn_tidytableone(
   checkbox_p = c("none", "per_level"),
   checkbox_p_adjust = "none",
   checkbox_block_p = c("any", "min"),
+  range_sep = " – ",
   ...
 )
 }
@@ -117,11 +118,19 @@ Default is "no".}
 \item{default_miss}{A glue statement that provides the formatting for
 missing, Default is \code{"{n}"}}
 
-\item{checkbox_p}{Logical; show per‑level checkbox p‑values column (default FALSE).}
+\item{checkbox_p}{Logical; show per-level checkbox p-values column (default FALSE).}
 
-\item{checkbox_p_adjust}{Character; p.adjust method for checkbox p‑values (default "none").}
+\item{checkbox_p_adjust}{Character; p.adjust method for checkbox p-values (default "none").}
 
-\item{checkbox_block_p}{Logical; show one overall p‑value per checkbox block (default FALSE).}
+\item{checkbox_block_p}{Logical; show one overall p-value per checkbox block (default FALSE).}
+
+\item{range_sep}{Character string used to separate the lower and upper bounds
+of ranges in continuous variable summaries (e.g., Min\\u2013Max, IQR).
+Defaults to an en dash surrounded by spaces (\code{" \\\\u2013 "}).
+You may supply any separator, such as \code{"\\\\u2013"} (no spaces) or \code{" to "}.
+The value is inserted literally into the formatted output, so setting
+\code{range_sep = "\\\\u2013"} yields \code{"41.0\\\\u20134556.0"}, while \code{range_sep = " \\\\u2013 "}
+yields \code{"41.0 \\\\u2013 4556.0"}.}
 
 \item{...}{Additional arguments. Not used.}
 }
@@ -137,7 +146,7 @@ library(dplyr)
 
 dplyr::glimpse(pbc_mayo)
 
-tab1 <- create_tidy_table_one(data = pbc_mayo,
+tab1 <- create_tidytableone(data = pbc_mayo,
                               strata = "trt",
                               vars = c("time",
                                        "status",
