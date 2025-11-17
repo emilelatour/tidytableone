@@ -56,90 +56,40 @@
 #'              .vars = c("status", "sex", "stage", "age"))
 
 
-get_var_info <- function(data,
-                         .vars = NULL) {
+get_var_info <- function(data, .vars = NULL) {
+  
+  if (is.null(.vars)) .vars <- names(data)
 
+  out <- lapply(.vars, function(v) {
+    x <- data[[v]]
+    cls <- class(x)[1]
 
-  if (is.null(.vars)) {
-    .vars = names(data)
-  }
+    if (is.factor(x)) {
+      tibble::tibble(
+        var = v,
+        level = as.character(levels(x)),
+        class = cls,
+        var_type = "categorical"
+      )
+    } else if (is.character(x)) {
+      lv <- sort(unique(x))
+      tibble::tibble(
+        var = v,
+        level = lv,
+        class = cls,
+        var_type = "categorical"
+      )
+    } else {
+      tibble::tibble(
+        var = v,
+        level = NA_character_,
+        class = cls,
+        var_type = "continuous"
+      )
+    }
+  })
 
-
-  #### Get variable names, class, and levels --------------------------------
-
-  ## Factor variables ----------------
-
-  names_fct <- data %>%
-    dplyr::select_if(function(col) is.factor(col)) %>%
-    purrr::map(.x = .,
-               .f = ~ levels(.x)) %>%
-    tibble::enframe(.,
-                    name = "var",
-                    value = "level") %>%
-    tidyr::unnest(cols = c(level)) %>%
-    mutate_all(as.character)
-
-
-  ## character variables ----------------
-
-  names_chr <- data %>%
-    dplyr::select_if(function(col) is.character(col)) %>%
-    mutate_all(.tbl = .,
-               .funs = list(~ as.factor(.))) %>%
-    purrr::map(.x = .,
-               .f = ~ levels(.x)) %>%
-    tibble::enframe(.,
-                    name = "var",
-                    value = "level") %>%
-    tidyr::unnest(cols = c(level)) %>%
-    mutate_all(as.character)
-
-
-  ## non-factor and non-character variables ----------------
-
-  names_num <- data %>%
-    dplyr::select_if(function(col) {!(is.factor(col) | is.character(col))}) %>%
-    names(.) %>%
-    tibble::tibble(var = .,
-                   level = NA_character_) %>%
-    mutate_all(as.character)
-
-
-  ## Get the variable classes ----------------
-
-  var_class <- data %>%
-    purrr::map(.x = .,
-               .f = ~ class(.x))
-
-
-  ## Combine them ----------------
-
-  var_info <-  var_class %>%
-    purrr::map_chr(.x = .,
-                   .f = ~ .x[[1]]) %>%
-    tibble::enframe(name = "var",
-                    value = "class") %>%
-    dplyr::left_join(dplyr::bind_rows(names_fct,
-                                      names_chr,
-                                      names_num),
-                     .,
-                     by = "var") %>%
-    dplyr::filter(var %in% .vars) %>%
-    mutate(var = factor(var,
-                        levels = .vars)) %>%
-    dplyr::arrange(var) %>%
-    mutate(var_type = dplyr::case_when(
-      class %in% c("factor", "character", "ordered") ~ "categorical",
-      TRUE ~ "continuous"),
-      var = as.character(var))
-
-
-  #### End of function --------------------------------
-
-  return(var_info)
-
+  dplyr::bind_rows(out)
 }
-
-
 
 

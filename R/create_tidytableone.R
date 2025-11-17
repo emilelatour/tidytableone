@@ -27,6 +27,7 @@
 #' @importFrom car leveneTest
 #' @importFrom dplyr bind_rows
 #' @importFrom dplyr count
+#' @importFrom dplyr cur_column
 #' @importFrom dplyr distinct
 #' @importFrom dplyr everything
 #' @importFrom dplyr filter
@@ -288,10 +289,15 @@
     lbl <- attr(x, "label", exact = TRUE)
     
     y <- if (is.character(x)) {
-      lv <- unique(x[!is.na(x)])
+      # For plain characters, convert to factor using levels in the *original* data
+      # not the subset.
+      lv <- unique(data[[v]][!is.na(data[[v]])])   # <---- key line
       factor(x, levels = lv)
     } else if (is.logical(x)) {
       factor(x, levels = c(FALSE, TRUE))
+    } else if (is.factor(x)) {
+      # Preserve ALL original factor levels unchanged
+      factor(x, levels = levels(x))
     } else {
       x
     }

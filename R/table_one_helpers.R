@@ -360,10 +360,8 @@ get_var_labels <- function(x) {
 # ensuring that all levels are included even if some are missing in certain strata.
 # The result is a tibble with counts per level and strata, including handling for missing values.
 do_one_cat_strata <- function(x, strata_sym) {
-  
-  # Silence no visible binding for global variable
-  n_level_valid <- NULL
-  
+
+  # If only a strata column exists, return empty structure
   if (ncol(x) <= 1L) {
     nm <- rlang::as_name(strata_sym)
     empty <- setNames(list(character()), nm)
@@ -377,25 +375,40 @@ do_one_cat_strata <- function(x, strata_sym) {
                n_strata_valid = integer()
              ))
   }
-  
-  x |>
+
+  # Pivot into long form
+  long <- x |>
     tidyr::pivot_longer(cols = - !! strata_sym,
                         names_to = "var",
-                        values_to = "level") |>
-    dplyr::count(!! strata_sym, var, level,
-                 name = "n_level",
-                 .drop = FALSE)  |>
-    group_by(var) |>
+                        values_to = "level")
+
+  # Enforce full factor levels 
+  long <- long %>%
+    dplyr::mutate(
+      level = if (is.factor(level)) {
+        # preserve full factor levels including unused ones
+        factor(level, levels = levels(level))
+      } else {
+        # for characters, treat all observed + NA distinctly
+        factor(level)
+      }
+    )
+
+  # Now count with full levels preserved
+  long %>%
+    dplyr::count(!! strata_sym, var, level, name = "n_level", .drop = FALSE) %>%
+    dplyr::group_by(var) %>%
     tidyr::complete(!! strata_sym, level,
-                    fill = list(n_level = 0)) |>
-    group_by(!! strata_sym, var) |>
-    mutate(n_strata = sum(n_level, na.rm = TRUE),
-           n_level_valid = dplyr::if_else(is.na(level), NA_integer_, n_level),
-           n_strata_valid = sum(n_level_valid, na.rm = TRUE)) |>
-    ungroup() |>
-    dplyr::select(!! strata_sym, dplyr::everything()) |>
-    mutate(!! strata_sym := as.character(!! strata_sym))
-  
+                    fill = list(n_level = 0)) %>%
+    dplyr::group_by(!! strata_sym, var) %>%
+    dplyr::mutate(
+      n_strata      = sum(n_level, na.rm = TRUE),
+      n_level_valid = ifelse(is.na(level), NA_integer_, n_level),
+      n_strata_valid = sum(n_level_valid, na.rm = TRUE)
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(!! strata_sym, dplyr::everything()) %>%
+    dplyr::mutate(!! strata_sym := as.character(!! strata_sym))
 }
 
 
@@ -427,44 +440,24 @@ validate_checkbox_opts <- function(opts) {
 #' @param checkbox  the checkbox mapping tibble (or NULL)
 #' @return          res_stats re-ordered
 order_within_vars_no_strata <- function(res_stats, vars = NULL, checkbox = NULL) {
-  var_levels <- vars
 
-  if (!is.null(var_levels) && !is.null(checkbox) && all(c("var","overall_lbl") %in% names(checkbox))) {
-    cb_map <- dplyr::distinct(checkbox, var, overall_lbl)
-    lookup <- stats::setNames(cb_map$overall_lbl, cb_map$var)
-
-    var_levels <- vapply(
-      var_levels,
-      function(v) if (!is.na(lookup[v])) lookup[[v]] else v,
-      character(1)
-    )
-
-    var_levels <- var_levels[!duplicated(var_levels)]
+  # maintain variable order
+  if (!is.null(vars)) {
+    res_stats <- res_stats %>%
+      dplyr::mutate(var = factor(var, levels = vars))
   }
-
-  existing <- unique(as.character(res_stats$var))
-  if (!is.null(var_levels)) {
-    var_levels <- var_levels[var_levels %in% existing]
-    if (length(var_levels) == 0L) var_levels <- NULL
-  }
-
-  # make sure we don't pass *named* args to fct_relevel()
-  if (!is.null(var_levels)) var_levels <- unname(var_levels)
 
   res_stats %>%
+    dplyr::group_by(var) %>%
     dplyr::mutate(
-      var = if (!is.null(var_levels)) forcats::fct_relevel(.data$var, !!!var_levels) else .data$var
+      # Actual levels *only for the current variable*
+      level = if (all(is.na(level))) level else factor(level, levels = unique(level[!is.na(level)])),
+      .is_missing = is.na(level),
+      .is_any = (class == "checkbox" & level == "Any selected")
     ) %>%
-    dplyr::group_by(.data$var) %>%
-    dplyr::mutate(
-      .is_missing_level = is.na(.data$level),
-      .is_any_selected  = (.data$class == "checkbox" &
-                           !is.na(.data$level) &
-                           .data$level == "Any selected")
-    ) %>%
-    dplyr::arrange(.data$var, .data$.is_any_selected, .data$.is_missing_level, .by_group = TRUE) %>%
+    dplyr::arrange(var, .is_any, .is_missing, level, .by_group = TRUE) %>%
     dplyr::ungroup() %>%
-    dplyr::select(-.is_missing_level, -.is_any_selected)
+    dplyr::select(-.is_missing, -.is_any)
 }
 
 

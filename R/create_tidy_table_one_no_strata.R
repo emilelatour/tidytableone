@@ -62,12 +62,12 @@
 #' @name create_tidytableone_no_strata
 #' @export
 create_tidytableone_no_strata <- function(data,
-                                            vars,
-                                            na_level = "(Missing)",
-                                            b_replicates = 2000,
-                                            ...,
-                                            checkbox = NULL,
-                                            checkbox_opts = NULL) {
+                                          vars,
+                                          na_level = "(Missing)",
+                                          b_replicates = 2000,
+                                          ...,
+                                          checkbox = NULL,
+                                          checkbox_opts = NULL) {
   
   stopifnot(is.null(checkbox))  # legacy: no checkbox handling here
   
@@ -79,12 +79,8 @@ create_tidytableone_no_strata <- function(data,
     dplyr::mutate(label = purrr::map_chr(data[, var], ~ get_var_labels(.x)))
   
   var_info <- get_var_info(data = data, .vars = vars) |>
-    dplyr::mutate(
-      sort1 = cumsum(var != dplyr::lag(var, default = dplyr::first(var))) + 1L
-    ) |>
-    dplyr::group_by(var) |>
-    dplyr::mutate(sort2 = dplyr::row_number()) |>
-    dplyr::ungroup()
+    dplyr::select(var, class, var_type) |>
+    dplyr::distinct()
   
   cat_vars <- var_info |>
     dplyr::filter(.data$var_type == "categorical") |>
@@ -130,8 +126,8 @@ create_tidytableone_no_strata <- function(data,
     )
   
   # join class/type & labels, order rows
-  class_and_type <- var_info |>
-    dplyr::select(-level, -sort1, -sort2) |>
+  class_and_type <- var_info %>%
+    dplyr::select(dplyr::any_of(c("var", "class", "var_type"))) %>%
     dplyr::distinct()
   
   res_stats <- res_stats |>
@@ -141,22 +137,22 @@ create_tidytableone_no_strata <- function(data,
   # Ensure columns for downstream uniformity
   if (!"level" %in% names(res_stats)) res_stats$level <- NA_character_
   
-  # ordering
-  if ("level" %in% names(var_info)) {
-    sort_vars <- var_info |>
-      dplyr::select(var, level, sort1, sort2)
-    res_stats <- res_stats |>
-      dplyr::left_join(sort_vars, by = c("var","level")) |>
-      dplyr::arrange(.data$sort1, .data$sort2) |>
-      dplyr::select(-sort1, -sort2)
-  } else {
-    sort_vars <- var_info |>
-      dplyr::select(var, sort1, sort2)
-    res_stats <- res_stats |>
-      dplyr::left_join(sort_vars, by = "var") |>
-      dplyr::arrange(.data$sort1, .data$sort2) |>
-      dplyr::select(-sort1, -sort2)
-  }
+  # # ordering
+  # if ("level" %in% names(var_info)) {
+  #   sort_vars <- var_info |>
+  #     dplyr::select(var, level, sort1, sort2)
+  #   res_stats <- res_stats |>
+  #     dplyr::left_join(sort_vars, by = c("var","level")) |>
+  #     dplyr::arrange(.data$sort1, .data$sort2) |>
+  #     dplyr::select(-sort1, -sort2)
+  # } else {
+  #   sort_vars <- var_info |>
+  #     dplyr::select(var, sort1, sort2)
+  #   res_stats <- res_stats |>
+  #     dplyr::left_join(sort_vars, by = "var") |>
+  #     dplyr::arrange(.data$sort1, .data$sort2) |>
+  #     dplyr::select(-sort1, -sort2)
+  # }
   
   res_stats <- .ensure_cols(
     res_stats,
@@ -296,26 +292,26 @@ create_tidytableone_no_strata <- function(data,
 #' @name create_tidytableone_no_strata_checkbox
 #' @export
 create_tidytableone_no_strata_checkbox <- function(data,
-                                                     vars,
-                                                     na_level = "(Missing)",
-                                                     b_replicates = 2000,
-                                                     checkbox = NULL,
-                                                     checkbox_opts = list(
-                                                       denom   = "group",
-                                                       pvals   = "per_level",  # ignored (no groups)
-                                                       test    = "auto",       # ignored (no groups)
-                                                       p_adjust = "none",
-                                                       show_any = TRUE,
-                                                       note     = "Participants could select more than one option; percentages may exceed 100%."
-                                                     ),
-                                                     ...) {
+                                                   vars,
+                                                   na_level = "(Missing)",
+                                                   b_replicates = 2000,
+                                                   checkbox = NULL,
+                                                   checkbox_opts = list(
+                                                     denom   = "group",
+                                                     pvals   = "per_level",  # ignored (no groups)
+                                                     test    = "auto",       # ignored (no groups)
+                                                     p_adjust = "none",
+                                                     show_any = TRUE,
+                                                     note     = "Participants could select more than one option; percentages may exceed 100%."
+                                                   ),
+                                                   ...) {
   # Use all variables if vars is not provided
   if (missing(vars)) vars <- names(data)
-
+  
   # labels & var info (this already contains the original checkbox columns)
   var_lbls <- tibble::tibble(var = names(data)) |>
     dplyr::mutate(label = purrr::map_chr(data[, var], ~ get_var_labels(.x)))
-
+  
   var_info <- get_var_info(data = data, .vars = vars) |>
     dplyr::mutate(
       sort1 = cumsum(var != dplyr::lag(var, default = dplyr::first(var))) + 1L
@@ -323,7 +319,7 @@ create_tidytableone_no_strata_checkbox <- function(data,
     dplyr::group_by(var) |>
     dplyr::mutate(sort2 = dplyr::row_number()) |>
     dplyr::ungroup()
-
+  
   # checkbox spec (optional)
   cb_blocks <- list()
   cb_vars   <- character(0)
@@ -333,21 +329,21 @@ create_tidytableone_no_strata_checkbox <- function(data,
     # IMPORTANT: cb_spec$var should be the original checkbox columns (race___1, ...)
     cb_vars   <- unique(cb_spec$var)
   }
-
+  
   # regular variables (exclude the individual checkbox columns from standard cat path)
   cat_vars <- var_info |>
     dplyr::filter(.data$var_type == "categorical") |>
     dplyr::pull(var) |>
     unique() |>
     setdiff(cb_vars)
-
+  
   con_vars <- var_info |>
     dplyr::filter(.data$var_type == "continuous") |>
     dplyr::pull(var) |>
     unique()
-
+  
   res_stats <- list()
-
+  
   if (length(con_vars) > 0) {
     res_stats <- dplyr::bind_rows(
       res_stats,
@@ -355,7 +351,7 @@ create_tidytableone_no_strata_checkbox <- function(data,
         dplyr::mutate(strata = "Overall")
     )
   }
-
+  
   if (length(cat_vars) > 0) {
     res_stats <- dplyr::bind_rows(
       res_stats,
@@ -363,7 +359,7 @@ create_tidytableone_no_strata_checkbox <- function(data,
         dplyr::mutate(strata = "Overall")
     )
   }
-
+  
   # checkbox block rows (overall only)
   if (length(cb_blocks) > 0) {
     res_cb <- process_checkbox_blocks_overall(
@@ -372,16 +368,16 @@ create_tidytableone_no_strata_checkbox <- function(data,
       opts   = checkbox_opts
     ) |>
       dplyr::mutate(strata = "Overall")  # class/var_type already set by helper
-
+    
     res_stats <- dplyr::bind_rows(res_stats, res_cb)
-
+    
     # keep footnote attrs like the strata’d path
     attr(res_stats, "checkbox_blocks") <- cb_blocks
     attr(res_stats, "checkbox_opts")   <- checkbox_opts
   }
-
+  
   res_stats <- tibble::as_tibble(res_stats)
-
+  
   # test columns are NA (no between-group tests)
   res_stats <- res_stats |>
     dplyr::mutate(
@@ -398,19 +394,19 @@ create_tidytableone_no_strata_checkbox <- function(data,
       levene_test = NA_real_,
       smd = NA_real_
     )
-
+  
   # join class/type & labels (checkbox rows already carry class/var_type; coalesce after)
-  class_and_type <- var_info |>
-    dplyr::select(-level, -sort1, -sort2) |>
+  class_and_type <- var_info %>%
+    dplyr::select(dplyr::any_of(c("var", "class", "var_type"))) %>%
     dplyr::distinct()
-
+  
   res_stats <- res_stats |>
     dplyr::left_join(class_and_type, by = "var") |>
     dplyr::left_join(var_lbls,       by = "var") |>
     safe_merge_cols("label",    c("label.x", "label.y", "label")) |>
     safe_merge_cols("var_type", c("var_type.x", "var_type.y", "var_type")) |>
     safe_merge_cols("class",    c("class.x", "class.y", "class"))
-
+  
   # guarantee metadata cols exist for relocate()
   res_stats <- .ensure_cols(
     res_stats,
@@ -420,9 +416,9 @@ create_tidytableone_no_strata_checkbox <- function(data,
       label    = NA_character_
     )
   )
-
+  
   if (!"level" %in% names(res_stats)) res_stats$level <- NA_character_
-
+  
   # order to match var_info (checkbox rows that don't match var_info keep stable insertion order)
   if ("level" %in% names(var_info)) {
     sort_vars <- var_info |>
@@ -439,7 +435,7 @@ create_tidytableone_no_strata_checkbox <- function(data,
       dplyr::arrange(.data$sort1, .data$sort2) |>
       dplyr::select(-sort1, -sort2)
   }
-
+  
   res_stats <- .ensure_cols(
     res_stats,
     cols_types = list(
@@ -463,11 +459,11 @@ create_tidytableone_no_strata_checkbox <- function(data,
       class = NA_character_, var_type = NA_character_, label = NA_character_
     )
   )
-
+  
   # Final, no-strata ordering helper (keeps NA level with its own var,
   # and ensures checkbox “Any selected” is last within its block)
   res_stats <- order_within_vars_no_strata(res_stats, vars = vars, checkbox = checkbox)
-
+  
   # final column order
   res_stats <- res_stats |>
     dplyr::mutate(strata = factor("Overall", levels = "Overall"),
@@ -485,7 +481,7 @@ create_tidytableone_no_strata_checkbox <- function(data,
       .before = dplyr::everything()
     ) |>
     dplyr::relocate(class, var_type, label, .after = dplyr::last_col())
-
+  
   return(res_stats)
 }
 
@@ -518,21 +514,29 @@ process_continuous_nostrata <- function(data, con_vars) {
 }
 
 process_categorical_nostrata <- function(data, cat_vars) {
-  data |>
-    dplyr::mutate(dplyr::across(dplyr::all_of(cat_vars), ~ as.character(.))) |>
-    dplyr::select(dplyr::all_of(cat_vars)) |>
-    tidyr::pivot_longer(dplyr::everything(),
-                        names_to = "var", values_to = "level") |>
-    dplyr::count(.data$var, .data$level, name = "n_level", .drop = FALSE) |>
-    dplyr::group_by(.data$var) |>
-    dplyr::mutate(
-      n_strata = sum(.data$n_level, na.rm = TRUE),
-      n_level_valid = dplyr::if_else(is.na(.data$level), NA_integer_, .data$n_level),
-      n_strata_valid = sum(.data$n_level_valid, na.rm = TRUE),
-      pct = .data$n_level / .data$n_strata,
-      pct_valid = .data$n_level_valid / .data$n_strata_valid
-    ) |>
-    dplyr::ungroup()
+
+  out <- lapply(cat_vars, function(v) {
+    x <- data[[v]]
+
+    # Extract true levels
+    lvl <- if (is.factor(x)) levels(x) else sort(unique(x))
+
+    # Force factor with full level set
+    f <- factor(x, levels = lvl)
+
+    tibble::tibble(
+      var      = v,
+      level    = lvl,
+      n_level  = as.integer(tabulate(as.integer(f), nbins = length(lvl))),
+      n_strata = length(x),
+      n_level_valid = as.integer(tabulate(as.integer(f), nbins = length(lvl))),
+      n_strata_valid = sum(!is.na(x)),
+      pct       = n_level / n_strata,
+      pct_valid = n_level_valid / n_strata_valid
+    )
+  })
+
+  dplyr::bind_rows(out)
 }
 
 # overall‑only checkbox rows
@@ -609,10 +613,10 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
     sel_mat <- as.data.frame(lapply(bl$vars, function(v)
       as.integer(data[[v]] == bl$select_txt[[v]])))
     names(sel_mat) <- bl$vars
-
+    
     # Numerators per level (by original column)
     n_level <- colSums(sel_mat, na.rm = TRUE)
-
+    
     # Display denominator for pct
     display_N <- switch(
       denom,
@@ -620,7 +624,7 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
       responders = sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE),
       nonmissing = nrow(data)  # display denom; "valid" handled per-level below
     )
-
+    
     # Valid % pieces
     n_level_valid     <- n_level
     nonmiss_per_level <- colSums(!is.na(raw_mat), na.rm = TRUE)
@@ -630,10 +634,10 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
       responders = rep(sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE), length(n_level)),
       nonmissing = as.integer(nonmiss_per_level)
     )
-
+    
     # Base name for synthetic “Any selected” var (e.g., "race")
     base_name <- sub("___.*$", "", bl$vars[1])
-
+    
     df <- tibble::tibble(
       strata   = "Overall",
       var      = names(n_level),                                    # <- original checkbox columns
@@ -641,15 +645,15 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
       n_level  = as.integer(n_level),
       n_strata = as.integer(display_N),
       pct      = dplyr::if_else(n_strata > 0L, n_level / n_strata, NA_real_),
-
+      
       n_level_valid  = as.integer(n_level_valid),
       n_strata_valid = as.integer(valid_denom),
       pct_valid      = dplyr::if_else(n_strata_valid > 0L, n_level_valid / n_strata_valid, NA_real_),
-
+      
       label    = bl$overall_lbl,                                    # <- block heading in label
       level_var = names(n_level)                                     # <- keep the original var for helpers
     )
-
+    
     # Optional “Any selected”
     any_count <- sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE)
     if (isTRUE(opts$show_any)) {
@@ -662,7 +666,7 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
                                   group      = any_display_denom,
                                   responders = any_count,
                                   nonmissing = any_nonmissing)
-
+      
       df <- dplyr::bind_rows(
         df,
         tibble::tibble(
@@ -672,20 +676,20 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
           n_level  = as.integer(any_count),
           n_strata = as.integer(any_display_denom),
           pct      = ifelse(any_display_denom > 0, any_count / any_display_denom, NA_real_),
-
+          
           n_level_valid  = as.integer(any_count),
           n_strata_valid = as.integer(any_valid_denom),
           pct_valid      = ifelse(any_valid_denom > 0, any_count / any_valid_denom, NA_real_),
-
+          
           label    = bl$overall_lbl,
           level_var = NA_character_
         )
       )
     }
-
+    
     df
   })
-
+  
   dplyr::bind_rows(out) %>%
     dplyr::mutate(
       var_type = "categorical",
