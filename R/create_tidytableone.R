@@ -611,6 +611,9 @@
     # Recombine
     res_stats <- dplyr::bind_rows(res_other, res_cat_completed)
     
+    # Drop any ghost rows with missing var name
+    res_stats <- res_stats |> dplyr::filter(!is.na(var) & var != "")
+    
   }
   
   

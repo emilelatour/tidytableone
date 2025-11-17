@@ -640,6 +640,37 @@ adorn_tidytableone <- function(tidy_t1,
       dplyr::select(-class)
   }
   
+  # Fix strata column order
+  
+  # Identify all strata columns in the table
+  strata_cols <- setdiff(names(adorned_tidy_t1),
+                         c("var", "num_not_miss", "p_value", "test", "smd"))
+  
+  # Keep only the strata cols that actually appear in tidy_t1, in order
+  true_strata_lvls <- tidy_t1 |>
+    dplyr::distinct(strata) |>
+    dplyr::pull(strata) |>
+    unique() |>
+    as.character()
+  
+  # Remove "Overall" if present, reinsert explicitly later
+  true_strata_lvls <- true_strata_lvls[true_strata_lvls != "Overall"]
+  
+  # Compute final desired order
+  desired_order <- c(
+    "var",
+    "num_not_miss",
+    "Overall",
+    intersect(true_strata_lvls, strata_cols),   # strata in correct order
+    "p_value",
+    "test",
+    "smd"
+  )
+  
+  # Reorder columns (ignore any that don't exist)
+  adorned_tidy_t1 <- adorned_tidy_t1 |>
+    dplyr::relocate(dplyr::any_of(desired_order))
+  
   
   #### Return table --------------------------------
   
@@ -1344,20 +1375,20 @@ get_miss <- function(t1,
     dplyr::distinct(var) |>
     dplyr::pull(var) |>
     as.character()
-
+  
   grouped <- group_similar_vars(ord) |>
     dplyr::filter(var %in% ord) |>
     dplyr::mutate(var_pos = match(var, ord))
-
+  
   group_order <- grouped |>
     dplyr::group_by(group_label_first) |>
     dplyr::summarise(first_pos = min(var_pos), .groups = "drop") |>
     dplyr::arrange(first_pos) |>
     dplyr::pull(group_label_first)
-
+  
   grouped <- grouped |>
     dplyr::mutate(group_label_first = factor(group_label_first, levels = group_order))
-
+  
   groups <- split(grouped$var, grouped$group_label_first)
   lapply(groups, function(v) v[order(match(v, ord))])
 }
@@ -1368,9 +1399,9 @@ get_miss <- function(t1,
 .is_no_strata <- function(t1) {
   has_strata     <- "strata" %in% names(t1)
   has_strata_var <- "strata_var" %in% names(t1)
-
+  
   only_overall <- has_strata && all(is.na(t1$strata) | t1$strata == "Overall")
   svar_all_na  <- has_strata_var && all(is.na(t1$strata_var))
-
+  
   !has_strata || only_overall || svar_all_na
 }
