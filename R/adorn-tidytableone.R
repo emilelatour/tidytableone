@@ -56,6 +56,19 @@
 #' @param checkbox_p Logical; show per‑level checkbox p‑values column (default FALSE).
 #' @param checkbox_p_adjust Character; p.adjust method for checkbox p‑values (default "none").
 #' @param checkbox_block_p Logical; show one overall p‑value per checkbox block (default FALSE).
+#' @param range_sep Character string used to separate the lower and upper bounds
+#'   of ranges in continuous variable summaries (e.g., Min–Max, IQR).  
+#'   Defaults to an en dash surrounded by spaces (`" – "`).  
+#'   You may supply any separator, such as `"–"` (no spaces) or `" to "`.  
+#'   The value is inserted literally into the formatted output, so setting
+#'   `range_sep = "–"` yields `"41.0–4556.0"`, while `range_sep = " – "`
+#'   yields `"41.0 – 4556.0"`.
+#' @param indent Logical; if TRUE, level labels in the combined variable/level
+#'   column are indented using *non-breaking spaces* (`"\u00A0"`).  
+#'   This makes indentation visible in HTML, Word, and `flextable` outputs,
+#'   which do not preserve regular spaces.  
+#'   If FALSE (default), indentation uses regular spaces, which display correctly
+#'   in plain text but may collapse in rich-text rendering.
 #' @param ... Additional arguments. Not used.
 #'
 #' @importFrom dplyr across
@@ -77,6 +90,7 @@
 #' @importFrom purrr map_df
 #' @importFrom scales number
 #' @importFrom scales pvalue
+#' @importFrom stringr fixed
 #' @importFrom stringr str_replace
 #' @importFrom stringr str_replace_all
 #' @importFrom tibble tibble
@@ -166,6 +180,8 @@ adorn_tidytableone <- function(tidy_t1,
                                checkbox_p = c("none","per_level"),
                                checkbox_p_adjust = "none",
                                checkbox_block_p = c("any","min"),
+                               range_sep = " – ",
+                               indent = FALSE,
                                ...) {
   
   # Silence no visible binding for global variable
@@ -245,7 +261,8 @@ adorn_tidytableone <- function(tidy_t1,
                               con_trim = con_trim,
                               cat_trim = cat_trim,
                               show_pct = show_pct,
-                              missing = missing)
+                              missing = missing, 
+                              range_sep = range_sep)
   
   tab_stats <- tab_stats |> 
     dplyr::left_join(var_class, 
@@ -497,8 +514,17 @@ adorn_tidytableone <- function(tidy_t1,
   
   if (combine_level_col) {
     
+    # regular spaces (A) vs non-breaking spaces (C)
+    indent_str <- if (isTRUE(indent)) "\u00A0\u00A0" else "  "
+    
     adorned_tidy_t1 <- adorned_tidy_t1 |>
-      mutate(var = glue::glue("{var}  {level}")) |>
+      dplyr::mutate(
+        var = dplyr::if_else(
+          level == "" | is.na(level),
+          var,                                # header row: just the var name
+          paste0(indent_str, level)           # stat / category rows: indented label
+        )
+      ) |>
       dplyr::select(-level)
     
   }
@@ -960,7 +986,10 @@ make_t1_pretty <- function(t1,
                            con_trim = TRUE,
                            cat_trim = FALSE,
                            show_pct = TRUE,
-                           missing = "ifany", ...) {
+                           missing = "ifany",
+                           range_sep = " – ",
+                           indent = FALSE,
+                           ...) {
   
   # Silence no visible binding for global variable
   glue_formula <- pct_fmt <- cv <- strata <- glue_formula2 <- NULL
@@ -1000,8 +1029,8 @@ make_t1_pretty <- function(t1,
       glue_formula = stringr::str_replace_all(glue_formula, "median|Median|med|Med", "p50"),
       glue_formula = stringr::str_replace_all(glue_formula, "min|Min|minimum|Minimum", "p0"),
       glue_formula = stringr::str_replace_all(glue_formula, "max|Max|maximum|Maximum", "p100"),
-      glue_formula = stringr::str_replace_all(glue_formula, "\\{iqr\\}|\\{IQR\\}", "{p25} to {p75}"),
-      glue_formula = stringr::str_replace_all(glue_formula, "\\{range\\}", "{p0} to {p100}"),
+      glue_formula = stringr::str_replace_all(glue_formula, "\\{iqr\\}|\\{IQR\\}", "{p25}{range_sep}{p75}"),
+      glue_formula = stringr::str_replace_all(glue_formula, "\\{range\\}", "{p0}{range_sep}{p100}"),
       # IMPORTANT: point placeholders to *formatted* aliases
       glue_formula = stringr::str_replace_all(glue_formula, "\\{p\\}", "{pct_fmt}"),
       glue_formula = stringr::str_replace_all(glue_formula, "\\{n\\}", "{n_fmt}"),
@@ -1101,7 +1130,8 @@ make_t1_pretty <- function(t1,
       glue_formula = stringr::str_replace(glue_formula, "\\{n_fmt\\}", "n"),
       glue_formula = stringr::str_replace(glue_formula, "\\{N_fmt\\}", "N"),
       glue_formula = stringr::str_replace(glue_formula, "\\{pct_fmt\\}", "%"),
-      glue_formula = stringr::str_replace(glue_formula, "\\{p25\\} to \\{p75\\}", "IQR")
+      glue_formula = stringr::str_replace(glue_formula, "\\{p25\\}\\{range_sep\\}\\{p75\\}", "IQR"), 
+      glue_formula = stringr::str_replace(glue_formula, "\\{range_sep\\}", range_sep)
     )
 }
 
