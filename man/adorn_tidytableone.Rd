@@ -6,7 +6,7 @@
 \usage{
 adorn_tidytableone(
   tidy_t1,
-  default_continuous = "{mean} ({sd})",
+  default_continuous = "{mean} ({sd})\\n{median} [{range}]",
   default_categorical = "{n} ({p})",
   fmt_vars = NULL,
   con_accuracy = 0.1,

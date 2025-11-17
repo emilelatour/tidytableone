@@ -96,7 +96,7 @@ create_tidytableone_checkbox(
   )
 )
 
-\dontshow{if (interactive()) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 # Larger, fully worked example (runs only in interactive sessions)
 set.seed(42)
 df2 <- tibble(
