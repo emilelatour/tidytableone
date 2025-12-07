@@ -441,24 +441,60 @@ validate_checkbox_opts <- function(opts) {
 #' @return          res_stats re-ordered
 order_within_vars_no_strata <- function(res_stats, vars = NULL, checkbox = NULL) {
 
-  # maintain variable order
+  # Maintain variable order as supplied by `vars`
   if (!is.null(vars)) {
     res_stats <- res_stats %>%
       dplyr::mutate(var = factor(var, levels = vars))
   }
 
+  # Ensure `level` is at least a factor (so arrange() by level uses factor order)
+  if ("level" %in% names(res_stats) && !is.factor(res_stats$level)) {
+    res_stats$level <- factor(res_stats$level)
+  }
+
   res_stats %>%
     dplyr::group_by(var) %>%
     dplyr::mutate(
-      # Actual levels *only for the current variable*
-      level = if (all(is.na(level))) level else factor(level, levels = unique(level[!is.na(level)])),
-      .is_missing = is.na(level),
-      .is_any = (class == "checkbox" & level == "Any selected")
+      .is_any     = (class == "checkbox" & level == "Any selected"),
+      .is_missing = is.na(level)
+      # IMPORTANT: we do NOT re-factor `level` here.
+      # We rely on whatever ordering was established earlier
+      # (e.g., in process_categorical_nostrata()).
     ) %>%
     dplyr::arrange(var, .is_any, .is_missing, level, .by_group = TRUE) %>%
     dplyr::ungroup() %>%
-    dplyr::select(-.is_missing, -.is_any)
+    dplyr::select(-.is_any, -.is_missing)
 }
+
+
+
+
+# order_within_vars_no_strata <- function(res_stats, vars = NULL, checkbox = NULL) {
+# 
+#   # maintain variable order
+#   if (!is.null(vars)) {
+#     res_stats <- res_stats %>%
+#       dplyr::mutate(var = factor(var, levels = vars))
+#   }
+#   
+#   # ensure `level` is at least a factor column so type resolution inside mutate
+#   # doesn't fall back to <chr> when some groups are all-NA
+#   if ("level" %in% names(res_stats) && !is.factor(res_stats$level)) {
+#     res_stats$level <- factor(res_stats$level)
+#   }
+# 
+#   res_stats %>%
+#     dplyr::group_by(var) %>%
+#     dplyr::mutate(
+#       # Actual levels *only for the current variable*
+#       level = if (all(is.na(level))) level else factor(level, levels = unique(level[!is.na(level)])),
+#       .is_missing = is.na(level),
+#       .is_any = (class == "checkbox" & level == "Any selected")
+#     ) %>%
+#     dplyr::arrange(var, .is_any, .is_missing, level, .by_group = TRUE) %>%
+#     dplyr::ungroup() %>%
+#     dplyr::select(-.is_missing, -.is_any)
+# }
 
 
 
