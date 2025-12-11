@@ -656,12 +656,15 @@ adorn_tidytableone <- function(tidy_t1,
   strata_cols <- setdiff(names(adorned_tidy_t1),
                          c("var", "num_not_miss", "p_value", "test", "smd"))
   
-  # Keep only the strata cols that actually appear in tidy_t1, in order
-  true_strata_lvls <- tidy_t1 |>
-    dplyr::distinct(strata) |>
-    dplyr::pull(strata) |>
-    unique() |>
-    as.character()
+  # Get the "true" order of strata levels from tidy_t1
+  if (is.factor(tidy_t1$strata)) {
+    true_strata_lvls <- levels(tidy_t1$strata)
+  } else {
+    true_strata_lvls <- tidy_t1 |>
+      dplyr::distinct(strata) |>
+      dplyr::pull(strata) |>
+      as.character()
+  }
   
   # Remove "Overall" if present, reinsert explicitly later
   true_strata_lvls <- true_strata_lvls[true_strata_lvls != "Overall"]
