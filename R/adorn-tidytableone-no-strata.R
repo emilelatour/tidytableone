@@ -174,10 +174,25 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
   
   #### get variable labels --------------------------------
   
+  var_lbls_cb <- tidy_t1 |>
+    dplyr::filter(!is.na(class) & class == "checkbox") |>
+    dplyr::distinct(label) |>
+    dplyr::transmute(
+      var      = as.character(label),   # e.g., "Site of recurrence"
+      var_type = "categorical",
+      label    = as.character(label)
+    )
+  
   var_lbls <- tidy_t1 |>
     dplyr::select(var, var_type, label) |>
     dplyr::distinct() |>
-    mutate(label = dplyr::if_else(is.na(label), var, label))
+    dplyr::mutate(
+      var      = as.character(var),
+      var_type = as.character(var_type),
+      label    = dplyr::if_else(is.na(label), as.character(var), label)
+    ) |>
+    dplyr::bind_rows(var_lbls_cb) |>
+    dplyr::distinct(var, .keep_all = TRUE)
   
   #### Get the stats --------------------------------
   
@@ -227,7 +242,7 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
     dplyr::filter(class == "checkbox") |>
     dplyr::distinct(var, label) |>
     dplyr::mutate(label = dplyr::if_else(is.na(label), var, label))
-
+  
   # cb_labels <- cb_groups |>
   #   dplyr::distinct(label) |>
   #   dplyr::pull(label) |>
@@ -498,15 +513,11 @@ build_tab1_no_strata <- function(tab_var,
                                  tab_miss,
                                  missing = "no") {
   
-  num_not_miss <- NULL
-  
+  # Stats rows (levels) for this variable
   s_i <- tab_stats |>
     dplyr::filter(var == tab_var) |>
-    dplyr::select(-var,
-                  -var_type) |>
-    mutate(var = NA_character_)
-  
-  
+    dplyr::select(-var, -var_type) |>
+    dplyr::mutate(var = "")
   
   if (missing == "no") {
     
@@ -514,12 +525,12 @@ build_tab1_no_strata <- function(tab_var,
       dplyr::filter(var == tab_var) |>
       dplyr::pull(num_not_miss)
     
-    res <- tibble::tibble(var = tab_var,
-                          num_not_miss = m_i) |>
+    res <- tibble::tibble(
+      var = tab_var,
+      num_not_miss = m_i
+    ) |>
       dplyr::bind_rows(s_i) |>
-      dplyr::select(var,
-                    dplyr::everything()) |>
-      dplyr::add_row()
+      dplyr::select(var, dplyr::everything())
     
   } else {
     
@@ -530,17 +541,14 @@ build_tab1_no_strata <- function(tab_var,
     res <- tibble::tibble(var = tab_var) |>
       dplyr::bind_rows(s_i) |>
       dplyr::bind_rows(m_i) |>
-      dplyr::select(var,
-                    dplyr::everything()) |>
-      dplyr::add_row()
-    
+      dplyr::select(var, dplyr::everything())
   }
   
+  # Add one explicit blank spacer row (never introduces NA)
+  blank <- tibble::as_tibble(lapply(res, function(x) ""))
+  res <- dplyr::bind_rows(res, blank)
   
-  
-  
-  return(res)
-  
+  res
 }
 
 
@@ -550,23 +558,21 @@ build_tab1_checkbox_no_strata <- function(cb_label,
                                           tab_miss,
                                           missing = "no") {
   
-  # all vars that belong to this checkbox group label (e.g., Race)
+  # All vars that belong to this checkbox group label (e.g., "Race")
   cb_vars <- cb_groups |>
     dplyr::filter(label == cb_label) |>
     dplyr::pull(var) |>
     as.character()
   
-  # Build the stats rows for ALL member vars, but only keep the level rows
-  # (the header row is created once below)
+  # All checkbox level rows for member vars (no per-var header rows)
   s_all <- tab_stats |>
     dplyr::filter(var %in% cb_vars) |>
     dplyr::select(-var, -var_type) |>
-    dplyr::mutate(var = NA_character_)
+    dplyr::mutate(var = "")
   
-  # Add one header row for the group (var = cb_label)
-  # Choose num_not_miss from the "any_selected" var if present, else first member
   if (missing == "no") {
     
+    # Choose num_not_miss from "___any_selected" if present; otherwise first member
     miss_var <- cb_vars[1]
     any_var <- cb_vars[grepl("___any_selected$", cb_vars)]
     if (length(any_var) > 0) miss_var <- any_var[1]
@@ -575,21 +581,25 @@ build_tab1_checkbox_no_strata <- function(cb_label,
       dplyr::filter(var == miss_var) |>
       dplyr::pull(num_not_miss)
     
-    res <- tibble::tibble(var = cb_label,
-                          num_not_miss = m_i) |>
+    res <- tibble::tibble(
+      var = cb_label,
+      num_not_miss = m_i
+    ) |>
       dplyr::bind_rows(s_all) |>
-      dplyr::select(var, dplyr::everything()) |>
-      dplyr::add_row()
+      dplyr::select(var, dplyr::everything())
     
   } else {
     
-    # if you show missing rows, you probably want missing per member var;
-    # simplest is: do not append missing rows for checkbox blocks (or implement if needed)
+    # If showing missing rows, simplest is no missing rows for checkbox blocks
+    # (you could add per-member missing later if you ever want that)
     res <- tibble::tibble(var = cb_label) |>
       dplyr::bind_rows(s_all) |>
-      dplyr::select(var, dplyr::everything()) |>
-      dplyr::add_row()
+      dplyr::select(var, dplyr::everything())
   }
+  
+  # Add one explicit blank spacer row (never introduces NA)
+  blank <- tibble::as_tibble(lapply(res, function(x) ""))
+  res <- dplyr::bind_rows(res, blank)
   
   res
 }
