@@ -98,12 +98,12 @@ create_tidytableone_no_strata <- function(data,
   })
   
   cat_vars <- var_info |>
-    dplyr::filter(.data$var_type == "categorical") |>
+    dplyr::filter(var_type == "categorical") |>
     dplyr::pull(var) |>
     unique()
   
   con_vars <- var_info |>
-    dplyr::filter(.data$var_type == "continuous") |>
+    dplyr::filter(var_type == "continuous") |>
     dplyr::pull(var) |>
     unique()
   
@@ -158,14 +158,14 @@ create_tidytableone_no_strata <- function(data,
   #     dplyr::select(var, level, sort1, sort2)
   #   res_stats <- res_stats |>
   #     dplyr::left_join(sort_vars, by = c("var","level")) |>
-  #     dplyr::arrange(.data$sort1, .data$sort2) |>
+  #     dplyr::arrange(sort1, sort2) |>
   #     dplyr::select(-sort1, -sort2)
   # } else {
   #   sort_vars <- var_info |>
   #     dplyr::select(var, sort1, sort2)
   #   res_stats <- res_stats |>
   #     dplyr::left_join(sort_vars, by = "var") |>
-  #     dplyr::arrange(.data$sort1, .data$sort2) |>
+  #     dplyr::arrange(sort1, sort2) |>
   #     dplyr::select(-sort1, -sort2)
   # }
   
@@ -194,7 +194,12 @@ create_tidytableone_no_strata <- function(data,
   )
   
   # --- Final, no-strata ordering (keep NA level with its own var, without relabeling)
-  res_stats <- order_within_vars_no_strata(res_stats, vars = vars, checkbox = checkbox)
+  # res_stats <- order_within_vars_no_strata(res_stats, vars = vars, checkbox = checkbox)
+  res_stats <- res_stats |>
+    dplyr::mutate(var = factor(var, levels = vars)) |>
+    dplyr::arrange(var)
+  
+  res_stats <- order_rows_no_strata(res_stats, vars = vars)
   
   # uniform column order and strata_var = NA (no strata used)
   res_stats <- res_stats |>
@@ -347,13 +352,13 @@ create_tidytableone_no_strata_checkbox <- function(data,
   
   # regular variables (exclude the individual checkbox columns from standard cat path)
   cat_vars <- var_info |>
-    dplyr::filter(.data$var_type == "categorical") |>
+    dplyr::filter(var_type == "categorical") |>
     dplyr::pull(var) |>
     unique() |>
     setdiff(cb_vars)
   
   con_vars <- var_info |>
-    dplyr::filter(.data$var_type == "continuous") |>
+    dplyr::filter(var_type == "continuous") |>
     dplyr::pull(var) |>
     unique()
   
@@ -434,72 +439,7 @@ create_tidytableone_no_strata_checkbox <- function(data,
   
   if (!"level" %in% names(res_stats)) res_stats$level <- NA_character_
   
-  # # order to match var_info (checkbox rows that don't match var_info keep stable insertion order)
-  # if ("level" %in% names(var_info)) {
-  #   sort_vars <- var_info |>
-  #     dplyr::select(var, level, sort1, sort2)
-  #   res_stats <- res_stats |>
-  #     dplyr::left_join(sort_vars, by = c("var","level")) |>
-  #     dplyr::arrange(.data$sort1, .data$sort2) |>
-  #     dplyr::select(-sort1, -sort2)
-  # } else {
-  #   sort_vars <- var_info |>
-  #     dplyr::select(var, sort1, sort2)
-  #   res_stats <- res_stats |>
-  #     dplyr::left_join(sort_vars, by = "var") |>
-  #     dplyr::arrange(.data$sort1, .data$sort2) |>
-  #     dplyr::select(-sort1, -sort2)
-  # }
-  
-  # res_stats <- .ensure_cols(
-  #   res_stats,
-  #   cols_types = list(
-  #     strata      = "Overall",
-  #     strata_var  = NA_character_,
-  #     level       = NA_character_,
-  #     # wide stats (continuous)
-  #     n = NA_integer_, n_distinct = NA_integer_, complete = NA_integer_, missing = NA_integer_,
-  #     mean = NA_real_, sd = NA_real_, p0 = NA_real_, p25 = NA_real_, p50 = NA_real_,
-  #     p75 = NA_real_, p100 = NA_real_, cv = NA_real_,
-  #     # categorical tall stats
-  #     n_level = NA_integer_, n_strata = NA_integer_, n_level_valid = NA_integer_, n_strata_valid = NA_integer_,
-  #     pct = NA_real_, pct_valid = NA_real_,
-  #     # tests (kept for schema symmetry)
-  #     chisq_test = NA_real_, chisq_test_no_correction = NA_real_, chisq_test_simulated = NA_real_,
-  #     fisher_test = NA_real_, fisher_test_simulated = NA_real_, check_categorical_test = NA_character_,
-  #     oneway_test_unequal_var = NA_real_, oneway_test_equal_var = NA_real_,
-  #     kruskal_test = NA_real_, bartlett_test = NA_real_, levene_test = NA_real_,
-  #     smd = NA_real_,
-  #     # meta
-  #     class = NA_character_, var_type = NA_character_, label = NA_character_
-  #   )
-  # )
-  # 
-  # # Final, no-strata ordering helper (keeps NA level with its own var,
-  # # and ensures checkbox “Any selected” is last within its block)
-  # res_stats <- order_within_vars_no_strata(res_stats, vars = vars, checkbox = checkbox)
-  # 
-  # # final column order
-  # res_stats <- res_stats |>
-  #   dplyr::mutate(strata = factor("Overall", levels = "Overall"),
-  #                 strata_var = NA_character_) |>
-  #   dplyr::relocate(
-  #     strata_var, strata, var, level,
-  #     n, n_distinct, complete, missing,
-  #     n_level, n_strata, n_level_valid, n_strata_valid,
-  #     mean, sd, p0, p25, p50, p75, p100, cv,
-  #     pct, pct_valid,
-  #     chisq_test, chisq_test_no_correction, chisq_test_simulated,
-  #     fisher_test, fisher_test_simulated, check_categorical_test,
-  #     oneway_test_unequal_var, oneway_test_equal_var,
-  #     kruskal_test, bartlett_test, levene_test, smd,
-  #     .before = dplyr::everything()
-  #   ) |>
-  #   dplyr::relocate(class, var_type, label, .after = dplyr::last_col())
-  # 
-  # return(res_stats)
-  
-    res_stats <- .ensure_cols(
+  res_stats <- .ensure_cols(
     res_stats,
     cols_types = list(
       strata      = "Overall",
@@ -522,11 +462,25 @@ create_tidytableone_no_strata_checkbox <- function(data,
     )
   )
   
-  # For the no-strata + checkbox variant, keep the row order produced by
-  # the processing helpers, and just ensure `level` is a factor.
-  if ("level" %in% names(res_stats) && !is.factor(res_stats$level)) {
-    res_stats$level <- factor(res_stats$level)
-  }
+  # # For the no-strata + checkbox variant, keep the row order produced by
+  # # the processing helpers, and just ensure `level` is a factor.
+  # if ("level" %in% names(res_stats) && !is.factor(res_stats$level)) {
+  #   res_stats$level <- factor(res_stats$level)
+  # }
+  
+  # Force var ordering to match input vars, with ___any_selected inside its block
+  var_levels <- .make_var_levels_with_any(
+    vars      = vars,
+    cb_blocks = cb_blocks,
+    show_any  = checkbox_opts$show_any %||% TRUE
+  )
+  
+  res_stats <- res_stats |>
+    dplyr::mutate(var = factor(var, levels = var_levels)) |>
+    dplyr::arrange(var)
+  
+  # Pass var_levels, not vars
+  res_stats <- order_within_vars_no_strata(res_stats, vars = var_levels)
   
   # final column order
   res_stats <- res_stats |>
@@ -556,33 +510,33 @@ process_continuous_nostrata <- function(data, con_vars) {
     dplyr::select(dplyr::all_of(con_vars)) |>
     tidyr::pivot_longer(dplyr::everything(),
                         names_to = "var", values_to = "value") |>
-    dplyr::group_by(.data$var) |>
+    dplyr::group_by(var) |>
     dplyr::summarise(
       n = dplyr::n(),
-      n_distinct = dplyr::n_distinct(.data$value),
-      complete = sum(!is.na(.data$value)),
-      missing = sum(is.na(.data$value)),
-      mean = mean(.data$value, na.rm = TRUE),
-      sd = stats::sd(.data$value, na.rm = TRUE),
-      p0 = custom_min(.data$value, na.rm = TRUE),
-      p25 = stats::quantile(.data$value, 0.25, na.rm = TRUE),
-      p50 = stats::quantile(.data$value, 0.50, na.rm = TRUE),
-      p75 = stats::quantile(.data$value, 0.75, na.rm = TRUE),
-      p100 = custom_max(.data$value, na.rm = TRUE),
+      n_distinct = dplyr::n_distinct(value),
+      complete = sum(!is.na(value)),
+      missing = sum(is.na(value)),
+      mean = mean(value, na.rm = TRUE),
+      sd = stats::sd(value, na.rm = TRUE),
+      p0 = custom_min(value, na.rm = TRUE),
+      p25 = stats::quantile(value, 0.25, na.rm = TRUE),
+      p50 = stats::quantile(value, 0.50, na.rm = TRUE),
+      p75 = stats::quantile(value, 0.75, na.rm = TRUE),
+      p100 = custom_max(value, na.rm = TRUE),
       cv = sd / mean,
-      shapiro_test = calc_shapiro_test(.data$value),
-      ks_test = calc_ks_test(.data$value),
-      ad_test = calc_ad_test(.data$value),
+      shapiro_test = calc_shapiro_test(value),
+      ks_test = calc_ks_test(value),
+      ad_test = calc_ad_test(value),
       .groups = "drop"
     )
 }
 
 
 process_categorical_nostrata <- function(data, cat_vars) {
-
+  
   out <- lapply(cat_vars, function(v) {
     x <- data[[v]]
-
+    
     # Respect existing factor levels if present; otherwise build
     # levels from the observed values (sorted).
     if (is.factor(x)) {
@@ -592,13 +546,13 @@ process_categorical_nostrata <- function(data, cat_vars) {
       lvl <- sort(unique(x))
       f   <- factor(x, levels = lvl)
     }
-
+    
     # Tabulate over the full level set
     n_level        <- as.integer(tabulate(as.integer(f), nbins = length(lvl)))
     n_strata       <- length(f)
     n_level_valid  <- n_level   # we do not include a separate "Missing" row
     n_strata_valid <- sum(!is.na(f))
-
+    
     tibble::tibble(
       var            = v,
       # Keep level as a factor with the original ordering
@@ -611,7 +565,7 @@ process_categorical_nostrata <- function(data, cat_vars) {
       pct_valid      = n_level_valid / n_strata_valid
     )
   })
-
+  
   dplyr::bind_rows(out)
 }
 
@@ -640,8 +594,8 @@ process_checkbox_blocks_nostrata <- function(data, blocks, opts) {
       tidyr::pivot_longer(dplyr::everything(),
                           names_to = "level_var",
                           values_to = "selected") |>
-      dplyr::group_by(.data$level_var) |>
-      dplyr::summarise(n_level = sum(.data$selected, na.rm = TRUE), .groups = "drop") |>
+      dplyr::group_by(level_var) |>
+      dplyr::summarise(n_level = sum(selected, na.rm = TRUE), .groups = "drop") |>
       dplyr::mutate(
         group_n = overall_denom,
         pct     = ifelse(group_n > 0, n_level / group_n, NA_real_),

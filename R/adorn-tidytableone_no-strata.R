@@ -219,19 +219,107 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
   
   #### Make the table --------------------------------
   
-  tab_vars <- dplyr::distinct(tidy_t1, var) |>
-    dplyr::pull() |>
-    as.character()
+  stopifnot("class" %in% names(tidy_t1))  # optional but helpful
   
+  # Checkbox vars are identified via `class == "checkbox"` and grouped by `label`
+  # (eg, label = "Race" shared across race___1, race___2, race___any_selected).
+  cb_groups <- tidy_t1 |>
+    dplyr::filter(class == "checkbox") |>
+    dplyr::distinct(var, label) |>
+    dplyr::mutate(label = dplyr::if_else(is.na(label), var, label))
+
+  # cb_labels <- cb_groups |>
+  #   dplyr::distinct(label) |>
+  #   dplyr::pull(label) |>
+  #   as.character()
+  # 
+  # non_cb_vars <- tidy_t1 |>
+  #   dplyr::distinct(var, class) |>
+  #   dplyr::filter(class != "checkbox") |>
+  #   dplyr::pull(var) |>
+  #   as.character()
+  # 
+  # # Render non-checkbox vars as usual
+  # out_non_cb <- purrr::map_df(
+  #   .x = non_cb_vars,
+  #   .f = ~ build_tab1_no_strata(
+  #     tab_var = .x,
+  #     tab_stats = tab_stats,
+  #     tab_miss  = tab_miss,
+  #     missing   = missing
+  #   )
+  # )
+  # 
+  # # Render checkbox blocks: one block per checkbox label
+  # out_cb <- purrr::map_df(
+  #   .x = cb_labels,
+  #   .f = ~ build_tab1_checkbox_no_strata(
+  #     cb_label = .x,
+  #     cb_groups = cb_groups,
+  #     tab_stats = tab_stats,
+  #     tab_miss  = tab_miss,
+  #     missing   = missing
+  #   )
+  # )
+  # 
+  # adorned_tidy_t1 <- dplyr::bind_rows(out_non_cb, out_cb) |>
+  #   dplyr::mutate(dplyr::across(.cols = dplyr::everything(),
+  #                               .fns = ~ dplyr::if_else(is.na(.), "", .)))
   
-  adorned_tidy_t1 <- purrr::map_df(.x = tab_vars,
-                                   .f = ~ build_tab1_no_strata(tab_var = .x,
-                                                               tab_stats = tab_stats,
-                                                               tab_miss = tab_miss,
-                                                               missing = missing)) |>
+  # Desired order comes from tidy_t1$var levels (if factor), else first appearance
+  var_levels <- if (is.factor(tidy_t1$var)) levels(tidy_t1$var) else unique(as.character(tidy_t1$var))
+  var_levels <- as.character(var_levels)
+  
+  # Map checkbox member var -> checkbox label (block)
+  cb_map <- cb_groups |>
+    dplyr::distinct(var, label) |>
+    dplyr::mutate(var = as.character(var),
+                  label = as.character(label))
+  
+  # Build a single render plan in order:
+  # - normal vars appear as themselves
+  # - checkbox member vars are collapsed to a single label (block) at the position
+  #   of the first member encountered in var_levels
+  seen_blocks <- character(0)
+  render_plan <- character(0)
+  
+  for (v in var_levels) {
+    idx <- match(v, cb_map$var)
+    if (!is.na(idx)) {
+      lab <- cb_map$label[[idx]]
+      if (!lab %in% seen_blocks) {
+        render_plan <- c(render_plan, lab)
+        seen_blocks <- c(seen_blocks, lab)
+      }
+    } else {
+      render_plan <- c(render_plan, v)
+    }
+  }
+  
+  # Render in the planned order
+  adorned_tidy_t1 <- purrr::map_df(
+    .x = render_plan,
+    .f = function(item) {
+      if (item %in% cb_map$label) {
+        build_tab1_checkbox_no_strata(
+          cb_label  = item,
+          cb_groups = cb_groups,
+          tab_stats = tab_stats,
+          tab_miss  = tab_miss,
+          missing   = missing
+        )
+      } else {
+        build_tab1_no_strata(
+          tab_var   = item,
+          tab_stats = tab_stats,
+          tab_miss  = tab_miss,
+          missing   = missing
+        )
+      }
+    }
+  ) |>
     dplyr::mutate(dplyr::across(.cols = dplyr::everything(),
                                 .fns = ~ dplyr::if_else(is.na(.), "", .)))
-  
   
   
   #### Apply labels --------------------------------
@@ -239,10 +327,9 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
   if (use_labels) {
     
     adorned_tidy_t1 <- adorned_tidy_t1 |>
-      dplyr::left_join(var_lbls,
-                       by = "var") |>
+      dplyr::left_join(var_lbls, by = "var") |>
       dplyr::mutate(label = dplyr::if_else(is.na(label), "", label),
-                    var = label)
+                    var = dplyr::if_else(label == "", var, label))
     
   } else {
     
@@ -454,6 +541,57 @@ build_tab1_no_strata <- function(tab_var,
   
   return(res)
   
+}
+
+
+build_tab1_checkbox_no_strata <- function(cb_label,
+                                          cb_groups,
+                                          tab_stats,
+                                          tab_miss,
+                                          missing = "no") {
+  
+  # all vars that belong to this checkbox group label (e.g., Race)
+  cb_vars <- cb_groups |>
+    dplyr::filter(label == cb_label) |>
+    dplyr::pull(var) |>
+    as.character()
+  
+  # Build the stats rows for ALL member vars, but only keep the level rows
+  # (the header row is created once below)
+  s_all <- tab_stats |>
+    dplyr::filter(var %in% cb_vars) |>
+    dplyr::select(-var, -var_type) |>
+    dplyr::mutate(var = NA_character_)
+  
+  # Add one header row for the group (var = cb_label)
+  # Choose num_not_miss from the "any_selected" var if present, else first member
+  if (missing == "no") {
+    
+    miss_var <- cb_vars[1]
+    any_var <- cb_vars[grepl("___any_selected$", cb_vars)]
+    if (length(any_var) > 0) miss_var <- any_var[1]
+    
+    m_i <- tab_miss |>
+      dplyr::filter(var == miss_var) |>
+      dplyr::pull(num_not_miss)
+    
+    res <- tibble::tibble(var = cb_label,
+                          num_not_miss = m_i) |>
+      dplyr::bind_rows(s_all) |>
+      dplyr::select(var, dplyr::everything()) |>
+      dplyr::add_row()
+    
+  } else {
+    
+    # if you show missing rows, you probably want missing per member var;
+    # simplest is: do not append missing rows for checkbox blocks (or implement if needed)
+    res <- tibble::tibble(var = cb_label) |>
+      dplyr::bind_rows(s_all) |>
+      dplyr::select(var, dplyr::everything()) |>
+      dplyr::add_row()
+  }
+  
+  res
 }
 
 

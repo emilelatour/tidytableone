@@ -519,7 +519,7 @@
     
     # res_checkbox <- res_checkbox %>%
     #   dplyr::left_join(smd_cb, by = "var", suffix = c("", ".cb")) %>%
-    #   dplyr::mutate(smd = dplyr::coalesce(.data$smd, .data$smd.cb)) %>%
+    #   dplyr::mutate(smd = dplyr::coalesce(smd, smd.cb)) %>%
     #   dplyr::select(-dplyr::any_of("smd.cb"))
     
     res_checkbox <- res_checkbox %>%
@@ -595,15 +595,15 @@
       # bring in data-defined labels and fill if missing
       dplyr::left_join(var_lbls, by = "var", suffix = c("", ".from_data")) %>%
       dplyr::mutate(
-        label          = dplyr::coalesce(.data$label, .data$label.from_data),
-        var_type       = dplyr::coalesce(.data$var_type, "categorical"),
-        n_level        = dplyr::coalesce(.data$n_level, 0L),
-        n_level_valid  = dplyr::coalesce(.data$n_level_valid, 0L),
-        pct            = dplyr::coalesce(.data$pct, 0)
+        label          = dplyr::coalesce(label, label.from_data),
+        var_type       = dplyr::coalesce(var_type, "categorical"),
+        n_level        = dplyr::coalesce(n_level, 0L),
+        n_level_valid  = dplyr::coalesce(n_level_valid, 0L),
+        pct            = dplyr::coalesce(pct, 0)
         # keep n_strata / n_strata_valid as-is (may remain NA here)
       ) %>%
       dplyr::select(-dplyr::any_of("label.from_data")) %>%
-      dplyr::arrange(factor(.data$var, levels = vars), .data$level, !!rlang::sym(strata_col))
+      dplyr::arrange(factor(var, levels = vars), level, !!rlang::sym(strata_col))
     
     # Everything else (continuous + checkbox) unchanged
     res_other <- if (n_rs > 0) res_stats[!is_plain_cat, , drop = FALSE] else res_stats
@@ -638,18 +638,18 @@
     if ("check_categorical_test" %in% names(res_stats)) {
       
       flagged_rows <- res_stats %>%
-        dplyr::filter(.data$check_categorical_test == "warning")
+        dplyr::filter(check_categorical_test == "warning")
       
       if (nrow(flagged_rows) > 0) {
         vars_to_report <- flagged_rows %>%
           dplyr::mutate(
             var_for_msg = dplyr::if_else(
-              .data$class == "checkbox" & !is.na(.data$level_var) & .data$level_var != "",
-              .data$level_var,                      # e.g., "race___5"
-              as.character(.data$var)               # e.g., "gender"
+              class == "checkbox" & !is.na(level_var) & level_var != "",
+              level_var,                      # e.g., "race___5"
+              as.character(var)               # e.g., "gender"
             )
           ) %>%
-          dplyr::pull(.data$var_for_msg) %>%
+          dplyr::pull(var_for_msg) %>%
           unique() %>%
           stats::na.omit()
         
@@ -689,10 +689,43 @@
   if ("smd.x" %in% names(res_stats) || "smd.y" %in% names(res_stats)) {
     res_stats <- res_stats %>%
       dplyr::mutate(
-        smd = dplyr::coalesce(.data$smd, .data$smd.y, .data$smd.x)
+        smd = dplyr::coalesce(smd, smd.y, smd.x)
       ) %>%
       dplyr::select(-dplyr::any_of(c("smd.y", "smd.x")))
   }
+  
+  #### Final ordering: respect user-supplied `vars` -------------------------------- 
+  
+  # strata ordering (Overall first)
+  if ("strata" %in% names(res_stats)) {
+    strata_levels <- unique(as.character(res_stats$strata))
+    strata_levels <- c("Overall", setdiff(strata_levels, "Overall"))
+    res_stats <- res_stats |>
+      dplyr::mutate(strata = factor(strata, levels = strata_levels))
+  }
+  
+  # variable ordering (vars vector)
+  res_stats <- res_stats |>
+    dplyr::mutate(
+      var_order = match(var, vars),
+      var_order = dplyr::if_else(is.na(var_order), 1e9, var_order)
+    )
+  
+  # within-var ordering: if level_order exists, use it; otherwise preserve current row order
+  has_level_order <- "level_order" %in% names(res_stats)
+  
+  res_stats <- res_stats |>
+    dplyr::group_by(var) |>
+    dplyr::mutate(
+      .row_in_var = dplyr::row_number(),
+      level_order2 = if (has_level_order) dplyr::coalesce(level_order, .row_in_var) else .row_in_var
+    ) |>
+    dplyr::ungroup()
+  
+  res_stats <- res_stats |>
+    dplyr::arrange(var_order, level_order2, strata) |>
+    dplyr::select(-var_order, -.row_in_var, -dplyr::any_of("level_order2"))
+  
   
   
   #### Return results --------------------------------

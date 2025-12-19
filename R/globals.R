@@ -12,5 +12,10 @@ utils::globalVariables(c(
   ".is_missing_level", ".is_any_selected",
   "group_id", "tbl", 
   "var_pos", "first_pos", 
-  ".is_any", ".is_missing"
+  ".is_any", ".is_missing", 
+  "label.from_data", "var_for_msg", "smd.y", "smd.x",
+  "var_order", "level_order", ".row_in_var", "level_order2",
+  "chisq_test_ht", "chisq_test_no_correction_ht", "chisq_test_simulated_ht",
+  "fisher_test_ht", "fisher_test_simulated_ht",
+  "num_not_miss", "is_any"
 ))
