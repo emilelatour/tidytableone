@@ -441,15 +441,10 @@ validate_checkbox_opts <- function(opts) {
 #' @return          res_stats re-ordered
 order_within_vars_no_strata <- function(res_stats, vars = NULL, checkbox = NULL) {
 
-  # Maintain variable order as supplied by `vars`
   if (!is.null(vars)) {
+    extra_vars <- setdiff(unique(res_stats$var), vars)
     res_stats <- res_stats %>%
-      dplyr::mutate(var = factor(var, levels = vars))
-  }
-
-  # Ensure `level` is at least a factor (so arrange() by level uses factor order)
-  if ("level" %in% names(res_stats) && !is.factor(res_stats$level)) {
-    res_stats$level <- factor(res_stats$level)
+      dplyr::mutate(var = factor(var, levels = c(vars, extra_vars)))
   }
 
   res_stats %>%
@@ -457,9 +452,6 @@ order_within_vars_no_strata <- function(res_stats, vars = NULL, checkbox = NULL)
     dplyr::mutate(
       .is_any     = (class == "checkbox" & level == "Any selected"),
       .is_missing = is.na(level)
-      # IMPORTANT: we do NOT re-factor `level` here.
-      # We rely on whatever ordering was established earlier
-      # (e.g., in process_categorical_nostrata()).
     ) %>%
     dplyr::arrange(var, .is_any, .is_missing, level, .by_group = TRUE) %>%
     dplyr::ungroup() %>%
@@ -467,61 +459,150 @@ order_within_vars_no_strata <- function(res_stats, vars = NULL, checkbox = NULL)
 }
 
 
+#' Order table by `vars`
+#' @param res_stats tibble from the no-strata engine
+#' @param vars      original vars vector the user passed (or NULL)
+order_rows_no_strata <- function(res_stats, vars) {
+  stopifnot(is.character(vars), length(vars) > 0)
+
+  res_stats <- res_stats |>
+    dplyr::mutate(
+      var = as.character(.data$var),
+      var_order = match(.data$var, vars)
+    )
+
+  # Put ___any_selected immediately after the last checkbox var in its block
+  any_idx <- which(is.na(res_stats$var_order) & grepl("___any_selected$", res_stats$var))
+  if (length(any_idx) > 0) {
+    for (i in any_idx) {
+      base <- sub("___any_selected$", "", res_stats$var[i])          # e.g. "race"
+      block_vars <- vars[grepl(paste0("^", base, "___"), vars)]      # e.g. race___1, race___2, ...
+      if (length(block_vars) > 0) {
+        res_stats$var_order[i] <- max(match(block_vars, vars), na.rm = TRUE) + 0.5
+      } else {
+        res_stats$var_order[i] <- 1e9
+      }
+    }
+  }
+
+  # Anything else not in vars goes to the end, but stable
+  res_stats$var_order[is.na(res_stats$var_order)] <- 1e9
+
+  # Within-var ordering:
+  # - if level is a factor, keep factor order
+  # - otherwise keep current row order (stable)
+  res_stats <- res_stats |>
+    dplyr::group_by(.data$var) |>
+    dplyr::mutate(
+      .row_in_var = dplyr::row_number(),
+      level_order2 = dplyr::if_else(is.factor(.data$level),
+                                    as.numeric(.data$level),
+                                    .row_in_var),
+      # push "Any selected" to the bottom of its block within the same var
+      is_any = dplyr::if_else(!is.na(.data$class) & .data$class == "checkbox" &
+                                !is.na(.data$level) & .data$level == "Any selected",
+                              1L, 0L)
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::arrange(.data$var_order, .data$is_any, .data$level_order2, .data$.row_in_var) |>
+    dplyr::select(-.data$var_order, -dplyr::any_of(c(".row_in_var", "level_order2", "is_any")))
+
+  res_stats
+}
 
 
-# order_within_vars_no_strata <- function(res_stats, vars = NULL, checkbox = NULL) {
-# 
-#   # maintain variable order
-#   if (!is.null(vars)) {
-#     res_stats <- res_stats %>%
-#       dplyr::mutate(var = factor(var, levels = vars))
-#   }
-#   
-#   # ensure `level` is at least a factor column so type resolution inside mutate
-#   # doesn't fall back to <chr> when some groups are all-NA
-#   if ("level" %in% names(res_stats) && !is.factor(res_stats$level)) {
-#     res_stats$level <- factor(res_stats$level)
-#   }
-# 
-#   res_stats %>%
-#     dplyr::group_by(var) %>%
-#     dplyr::mutate(
-#       # Actual levels *only for the current variable*
-#       level = if (all(is.na(level))) level else factor(level, levels = unique(level[!is.na(level)])),
-#       .is_missing = is.na(level),
-#       .is_any = (class == "checkbox" & level == "Any selected")
-#     ) %>%
-#     dplyr::arrange(var, .is_any, .is_missing, level, .by_group = TRUE) %>%
-#     dplyr::ungroup() %>%
-#     dplyr::select(-.is_missing, -.is_any)
-# }
+#' @title
+#' Get info about variables in a data frame
+#'
+#' @description
+#' Mostly a helper function for other tidy_table_one functions. The function
+#' takes a data frame or tibble and returns a descriptive tibble with the
+#' variable names, class, binary type (categorical or continuous), and the
+#' factor levels.
+#'
+#' @param data A data.frame or tbl_df
+#' @param .vars A character string of variable/column names. If empty, all
+#'   columns are used
+#'
+#' @importFrom dplyr arrange
+#' @importFrom dplyr bind_rows
+#' @importFrom dplyr case_when
+#' @importFrom dplyr filter
+#' @importFrom dplyr left_join
+#' @importFrom dplyr mutate
+#' @importFrom dplyr mutate_all
+#' @importFrom dplyr select_if
+#' @importFrom purrr map
+#' @importFrom purrr map_chr
+#' @importFrom tibble enframe
+#' @importFrom tibble tibble
+#' @importFrom tidyr unnest
+#'
+#' @return
+#' A tbl_df with colums for
+#' \describe{
+#'   \item{var}{name of the variable/column}
+#'   \item{level}{factor level if applicable, character levels too}
+#'   \item{class}{variable class}
+#'   \item{var_type}{variable type: categorical or continuous}
+#' }
+#' @export
+#'
+#' @examples
+#' library(dplyr)
+#' library(ggplot2)
+#' lapply(diamonds, class)
+#' get_var_info(data = diamonds,
+#'              .vars = c("carat",
+#'                        "cut",
+#'                        "color",
+#'                        "clarity",
+#'                        "depth",
+#'                        "table",
+#'                        "price")) %>%
+#'   print(n = Inf)
+#'
+#'
+#' get_var_info(data = pbc_mayo)
+#'
+#' get_var_info(data = pbc_mayo,
+#'              .vars = c("status", "sex", "stage", "age"))
 
 
+get_var_info <- function(data, .vars = NULL) {
+  
+  if (is.null(.vars)) .vars <- names(data)
 
-# order_within_vars_no_strata <- function(res_stats, vars = NULL, checkbox = NULL) {
-#   # desired ordering = original var names in `vars` (when provided)
-#   var_levels <- if (!is.null(vars)) {
-#     vars
-#   } else {
-#     unique(as.character(res_stats$var))
-#   }
-# 
-#   # Keep only those that actually appear
-#   var_levels <- var_levels[var_levels %in% unique(as.character(res_stats$var))]
-#   if (length(var_levels)) var_levels <- unname(var_levels)
-# 
-#   res_stats %>%
-#     dplyr::mutate(
-#       var = if (length(var_levels)) forcats::fct_relevel(.data$var, !!!var_levels) else .data$var
-#     ) %>%
-#     dplyr::group_by(.data$var) %>%
-#     dplyr::mutate(
-#       .is_missing_level = is.na(.data$level),
-#       .is_any_selected  = .data$class == "checkbox" &
-#                           !is.na(.data$level) &
-#                           .data$level == "Any selected"
-#     ) %>%
-#     dplyr::arrange(.data$var, .data$.is_any_selected, .data$.is_missing_level, .by_group = TRUE) %>%
-#     dplyr::ungroup() %>%
-#     dplyr::select(-.is_missing_level, -.is_any_selected)
-# }
+  out <- lapply(.vars, function(v) {
+    x <- data[[v]]
+    cls <- class(x)[1]
+
+    if (is.factor(x)) {
+      tibble::tibble(
+        var = v,
+        level = as.character(levels(x)),
+        class = cls,
+        var_type = "categorical"
+      )
+    } else if (is.character(x)) {
+      lv <- sort(unique(x))
+      tibble::tibble(
+        var = v,
+        level = lv,
+        class = cls,
+        var_type = "categorical"
+      )
+    } else {
+      tibble::tibble(
+        var = v,
+        level = NA_character_,
+        class = cls,
+        var_type = "continuous"
+      )
+    }
+  })
+
+  dplyr::bind_rows(out)
+}
+
+
