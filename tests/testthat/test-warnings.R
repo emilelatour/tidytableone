@@ -41,18 +41,3 @@ test_that("no chi-sq warning emitted when custom warning is disabled", {
   expect_length(msgs, 0)
 })
 
-test_that("legacy create_tidy_table_one() triggers a deprecation warning", {
-  msgs <- character()
-  withCallingHandlers({
-    create_tidy_table_one(
-      data = tiny_df,
-      strata = "group",
-      vars = c("x_cat", "race___1", "race___2")
-    )
-  }, warning = function(w) {
-    msgs <<- c(msgs, conditionMessage(w))
-    invokeRestart("muffleWarning")
-  })
-
-  expect_true(any(grepl("is deprecated", msgs)))
-})

@@ -8,7 +8,7 @@ test_that("create_tidytableone routes to checkbox path (strata present)", {
     ~var,       ~overall_lbl, ~checkbox_lbl, ~checkbox_txt,
     "race___1", "Race",       "White",       "Checked"
   )
-  tab <- create_tidy_table_one(
+  tab <- create_tidytableone(
     data = df, strata = "group", vars = c("age","race___1"),
     checkbox = cb
   )

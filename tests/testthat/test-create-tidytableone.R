@@ -47,7 +47,7 @@ test_that("legacy respects variable label attribute when present", {
   
   df_lab <- tiny_df
   attr(df_lab$x_num, "label") <- "Numeric X"
-  tt <- create_tidy_table_one(
+  tt <- create_tidytableone(
     data = df_lab,
     strata = "group",
     vars = c("x_num","x_cat")

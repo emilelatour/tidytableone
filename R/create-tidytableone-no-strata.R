@@ -259,13 +259,13 @@ create_tidytableone_no_strata <- function(data,
 #'      not computed in no‑strata mode.
 #' @param ... Reserved for future arguments; currently ignored.
 #'
-#' @return A tibble with the same schema as [create_tidy_table_one()], containing
+#' @return A tibble with the same schema as [create_tidytableone()], containing
 #'   overall summaries for continuous and categorical variables and appended rows
 #'   for each checkbox block (marked with `class == "checkbox"` and
 #'   `var_type == "categorical"`). For checkbox rows, denominators and
 #'   percentages obey `checkbox_opts$denom`.
 #'
-#' @seealso [create_tidytableone_no_strata()], [create_tidy_table_one()],
+#' @seealso [create_tidytableone_no_strata()], [create_tidytableone()],
 #'   [adorn_tidytableone()]
 #'
 #' @examples

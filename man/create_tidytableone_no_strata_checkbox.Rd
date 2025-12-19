@@ -56,7 +56,7 @@ not computed in no‑strata mode.
 \item{...}{Reserved for future arguments; currently ignored.}
 }
 \value{
-A tibble with the same schema as \code{\link[=create_tidy_table_one]{create_tidy_table_one()}}, containing
+A tibble with the same schema as \code{\link[=create_tidytableone]{create_tidytableone()}}, containing
 overall summaries for continuous and categorical variables and appended rows
 for each checkbox block (marked with \code{class == "checkbox"} and
 \code{var_type == "categorical"}). For checkbox rows, denominators and
@@ -111,6 +111,6 @@ head(tab_cb_resp)
 
 }
 \seealso{
-\code{\link[=create_tidytableone_no_strata]{create_tidytableone_no_strata()}}, \code{\link[=create_tidy_table_one]{create_tidy_table_one()}},
+\code{\link[=create_tidytableone_no_strata]{create_tidytableone_no_strata()}}, \code{\link[=create_tidytableone]{create_tidytableone()}},
 \code{\link[=adorn_tidytableone]{adorn_tidytableone()}}
 }

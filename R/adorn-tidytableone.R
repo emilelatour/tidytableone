@@ -3,10 +3,10 @@
 #' @title Format tidytableone for display and reporting
 #'
 #' @description
-#' Take the raw summary statistics from `create_tidy_table_one` and format them
+#' Take the raw summary statistics from `create_tidytableone` and format them
 #' for inclusion in a presentable table.
 #'
-#' @param tidy_t1 Results in a tibble from `create_tidy_table_one`
+#' @param tidy_t1 Results in a tibble from `create_tidytableone`
 #' @param default_continuous A glue statement that provides the formatting for
 #'   continuous variables, Default is `"{mean} ({sd})"`
 #' @param default_categorical A glue statement that provides the formatting for
@@ -124,7 +124,7 @@
 #' dplyr::glimpse(tab1)
 #'
 #' # Check to see if assumptions may be violated
-#' check_tests <- calc_table_one_tests(tab1)
+#' check_tests <- calc_tableone_tests(tab1)
 #'
 #'
 #' dplyr::distinct(tab1, var)

@@ -39,7 +39,7 @@ adorn_tidytableone_no_strata(
 )
 }
 \arguments{
-\item{tidy_t1}{Results in a tibble from \code{create_tidy_table_one}}
+\item{tidy_t1}{Results in a tibble from \code{create_tidytableone}}
 
 \item{default_continuous}{A glue statement that provides the formatting for
 continuous variables, Default is \code{"{mean} ({sd})"}}
@@ -128,7 +128,7 @@ yields \code{"41.0 \\\\u2013 4556.0"}.}
 A tibble
 }
 \description{
-Take the raw summary statistics from \code{create_tidy_table_one} and format them
+Take the raw summary statistics from \code{create_tidytableone} and format them
 for inclusion in a presentable table.
 }
 \examples{
@@ -160,7 +160,7 @@ tab1 <- create_tidytableone(data = pbc_mayo,
 dplyr::glimpse(tab1)
 
 # Check to see if assumptions may be violated
-check_tests <- calc_table_one_tests(tab1)
+check_tests <- calc_tableone_tests(tab1)
 
 
 dplyr::distinct(tab1, var)

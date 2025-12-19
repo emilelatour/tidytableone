@@ -21,9 +21,9 @@
 #' @examples
 #' library(dplyr)
 #'
-#' tab1 <- create_tidy_table_one(data = pbc_mayo,
+#' tab1 <- create_tidytableone(data = pbc_mayo,
 #'                               strata = "trt",
-#'                               .vars = c("time",
+#'                               vars = c("time",
 #'                                         "status",
 #'                                         "trt",
 #'                                         "age",
@@ -45,8 +45,8 @@
 #'
 #' dplyr::glimpse(tab1)
 #'
-#' calc_table_one_tests(tab1)
-calc_table_one_tests <- function(table_one) {
+#' calc_tableone_tests(tab1)
+calc_tableone_tests <- function(table_one) {
 
 #### shapiro_test --------------------------------
 
