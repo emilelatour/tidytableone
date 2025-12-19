@@ -220,11 +220,11 @@
                                       b_replicates = 2000,
                                       checkbox = NULL,
                                       checkbox_opts = list(
-                                        denom = "group",
+                                        denom = "responders",
                                         pvals = "per_level",
                                         test  = "auto",
                                         p_adjust = "none",
-                                        show_any = TRUE,
+                                        show_any = FALSE,
                                         note = "Participants could select more than one option; percentages may exceed 100%."
                                       ),
                                       ...) {
@@ -979,7 +979,7 @@ create_tidytableone_checkbox <- function(data,
                                          b_replicates = 2000,
                                          checkbox = NULL,
                                          checkbox_opts = list(
-                                           denom   = "group",
+                                           denom   = "responders",
                                            pvals   = "per_level",
                                            test    = "auto",
                                            p_adjust = "none",

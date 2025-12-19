@@ -11,8 +11,8 @@
   na_level = "(Missing)",
   b_replicates = 2000,
   checkbox = NULL,
-  checkbox_opts = list(denom = "group", pvals = "per_level", test = "auto", p_adjust =
-    "none", show_any = TRUE, note =
+  checkbox_opts = list(denom = "responders", pvals = "per_level", test = "auto", p_adjust
+    = "none", show_any = FALSE, note =
     "Participants could select more than one option; percentages may exceed 100\%."),
   ...
 )
