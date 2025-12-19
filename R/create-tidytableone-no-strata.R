@@ -728,14 +728,12 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
 }
 
 #' @rdname tidytableone-deprecated
-#' @export
 create_tidy_table_one_no_strata <- function(...) {
   .Deprecated("create_tidytableone_no_strata")
   create_tidytableone_no_strata(...)
 }
 
 #' @rdname tidytableone-deprecated
-#' @export
 create_tidy_table_one_no_strata_checkbox <- function(...) {
   .Deprecated("create_tidytableone_no_strata_checkbox")
   create_tidytableone_no_strata_checkbox(...)
