@@ -98,6 +98,12 @@ create_tidytableone_checkbox(
 
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 # Larger, fully worked example (runs only in interactive sessions)
+
+library(dplyr)
+library(sjlabelled)
+library(tibble)
+library(tidyr)
+
 set.seed(42)
 df2 <- tibble(
   record_id = 1:100,
@@ -137,7 +143,7 @@ create_tidytableone_checkbox(
 )
 
 # With variable labels
-df2_labelled <- set_variable_labels(
+df2_labelled <- sjlabelled::var_labels(
   df2,
   gender = "Gender", age = "Age (years)", education = "Education",
   ethnicity = "Ethnicity", income = "Income", marital_status = "Marital status",

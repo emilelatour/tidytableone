@@ -20,6 +20,7 @@ Suggests:
     knitr,
     rmarkdown,
     roxygen2,
+    sjlabelled, 
     testthat (>= 3.0.0), 
     withr
 Imports: 

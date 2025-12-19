@@ -43,3 +43,66 @@ columns \code{var} (the checkbox column name), \code{overall_lbl} (group label t
 \description{
 Create a tidy “Table 1”
 }
+\examples{
+# Basic Table 1 using built-in example data
+tab1 <- create_tidytableone(
+  data = pbc_mayo,
+  strata = "trt",
+  vars = c(
+    "time","status","trt","age","sex","ascites","hepato","spiders","edema",
+    "bili","chol","albumin","copper","alk_phos","ast","trig","platelet",
+    "protime","stage"
+  )
+)
+tab1
+
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
+library(dplyr)
+
+dplyr::glimpse(tab1)
+tab1 |> adorn_tidytableone()
+
+# With checkboxes (multi-select style)
+set.seed(1)
+pbc_mayo2 <- pbc_mayo |>
+  mutate(
+    race___1 = sample(c("Checked","Unchecked"), n(), TRUE),
+    race___2 = sample(c("Checked","Unchecked"), n(), TRUE)
+  )
+
+tab2 <- create_tidytableone(
+  data = pbc_mayo2,
+  strata = "trt",
+  vars = c("trt","age","sex","race___1","race___2"),
+  checkbox = tibble::tribble(
+    ~var,       ~overall_lbl, ~checkbox_lbl, ~checkbox_txt,
+    "race___1", "Race",       "White",       "Checked",
+    "race___2", "Race",       "Black",       "Checked"
+  )
+)
+
+dplyr::glimpse(tab2)
+tab2 |> adorn_tidytableone()
+
+# With variable labels
+library(sjlabelled)
+pbc_mayo2 <- sjlabelled::var_labels(
+  x = pbc_mayo2,
+  sex = "Gender",
+  age = "Age (years)"
+)
+
+tab3 <- create_tidytableone(
+  data = pbc_mayo2,
+  strata = "trt",
+  vars = c("trt","age","sex","race___1","race___2"),
+  checkbox = tibble::tribble(
+    ~var,       ~overall_lbl, ~checkbox_lbl, ~checkbox_txt,
+    "race___1", "Race",       "White",       "Checked",
+    "race___2", "Race",       "Black",       "Checked"
+  )
+)
+
+tab3 |> adorn_tidytableone()
+\dontshow{\}) # examplesIf}
+}
