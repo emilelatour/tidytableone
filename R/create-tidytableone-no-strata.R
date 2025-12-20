@@ -3,8 +3,7 @@
 #' Produce the same schema as [create_tidytableone()] but with a single
 #' overall group (every row has `strata = "Overall"`). No between‑group tests
 #' are computed in this variant. This *legacy* function does **not** process
-#' checkbox (multi‑response) blocks — see
-#' [create_tidytableone_no_strata_checkbox()] for that.
+#' checkbox (multi‑response) blocks.
 #'
 #' @param data A data frame with the variables to summarise.
 #' @param vars Character vector of column names to include. If omitted,
@@ -24,8 +23,6 @@
 #'   (`n_level`, `pct`, `pct_valid`, …), testing columns present but `NA`
 #'   (since there are no groups), and metadata (`class`, `var_type`, `label`).
 #'
-#' @seealso [create_tidytableone()], [create_tidytableone_no_strata_checkbox()],
-#'   [adorn_tidytableone()]
 #'
 #' @examples
 #' # Minimal example with one continuous and one categorical variable
@@ -36,21 +33,21 @@
 #'   misc = rnorm(100)  # ignored below
 #' )
 #'
-#' tab <- create_tidytableone_no_strata(
+#' tab <- create_tidytableone(
 #'   data = df,
 #'   vars = c("age", "sex")
 #' )
 #' head(tab)
 #'
 #' # Continuous only
-#' tab_num <- create_tidytableone_no_strata(
+#' tab_num <- create_tidytableone(
 #'   data = df,
 #'   vars = "age"
 #' )
 #' head(tab_num)
 #'
 #' # Categorical only
-#' tab_cat <- create_tidytableone_no_strata(
+#' tab_cat <- create_tidytableone(
 #'   data = df,
 #'   vars = "sex"
 #' )
@@ -60,7 +57,8 @@
 #' # adorn_tidytableone(tab)
 #'
 #' @name create_tidytableone_no_strata
-#' @export
+# #' @export
+#' @noRd
 create_tidytableone_no_strata <- function(data,
                                           vars,
                                           na_level = "(Missing)",
@@ -265,8 +263,6 @@ create_tidytableone_no_strata <- function(data,
 #'   `var_type == "categorical"`). For checkbox rows, denominators and
 #'   percentages obey `checkbox_opts$denom`.
 #'
-#' @seealso [create_tidytableone_no_strata()], [create_tidytableone()],
-#'   [adorn_tidytableone()]
 #'
 #' @examples
 #' # Small no‑strata checkbox example
@@ -289,7 +285,7 @@ create_tidytableone_no_strata <- function(data,
 #'   stringsAsFactors = FALSE
 #' )
 #'
-#' tab_cb <- create_tidytableone_no_strata_checkbox(
+#' tab_cb <- create_tidytableone(
 #'   data = dfc,
 #'   vars = c("age","gender","race___1","race___2","race___3","race___98"),
 #'   checkbox = cb,
@@ -298,7 +294,7 @@ create_tidytableone_no_strata <- function(data,
 #' head(tab_cb)
 #'
 #' # Change denominator to "responders" for the checkbox block
-#' tab_cb_resp <- create_tidytableone_no_strata_checkbox(
+#' tab_cb_resp <- create_tidytableone(
 #'   data = dfc,
 #'   vars = c("age","gender","race___1","race___2","race___3","race___98"),
 #'   checkbox = cb,
@@ -310,7 +306,8 @@ create_tidytableone_no_strata <- function(data,
 #' # adorn_tidytableone(tab_cb)
 #'
 #' @name create_tidytableone_no_strata_checkbox
-#' @export
+# #' @export
+#' @noRd
 create_tidytableone_no_strata_checkbox <- function(data,
                                                    vars,
                                                    na_level = "(Missing)",

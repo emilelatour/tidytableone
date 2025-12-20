@@ -88,7 +88,7 @@
 #'
 #' @return A tibble
 #'
-#' @export
+# #' @export
 #'
 #' @examples
 #' library(dplyr)

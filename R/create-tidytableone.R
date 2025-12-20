@@ -109,7 +109,7 @@
 #'   \item{levene_test}{Levene's test for homogeneity of variances: p-value}
 #'   \item{smd}{Standarized mean difference for all pairwise comparisons}
 #' }
-#' @export
+# #' @export
 #'
 #' @examples
 #' # Minimal smoke test (always runs)
@@ -738,7 +738,7 @@
 
 
 
-#' Create a tidy “Table 1”
+#' Create a tidy "Table 1"
 #'
 #' @inheritParams .create_tidytableone_core
 #' @export
@@ -884,95 +884,98 @@ create_tidytableone <- function(data,
 #' @seealso [create_tidytableone()]
 #'
 #' @return A tibble in the same format as [create_tidytableone()].
-#' @export
+#' 
+#' @noRd
+#' 
+# #' @export
 #'
-#' @examples
-#' # Minimal smoke test (always runs quickly)
-#' set.seed(123)
-#' tiny <- tibble::tibble(
-#'   group = sample(c("A","B"), 20, TRUE),
-#'   gender = sample(c("Female","Male"), 20, TRUE),
-#'   age = sample(18:80, 20, TRUE),
-#'   race___1 = sample(c("Checked","Unchecked"), 20, TRUE),
-#'   race___2 = sample(c("Checked","Unchecked"), 20, TRUE)
-#' )
-#'
-#' create_tidytableone_checkbox(
-#'   data = tiny,
-#'   strata = "group",
-#'   vars = c("gender","age","race___1","race___2"),
-#'   checkbox = tibble::tribble(
-#'     ~var,       ~overall_lbl, ~checkbox_lbl, ~checkbox_txt,
-#'     "race___1", "Race",       "White",       "Checked",
-#'     "race___2", "Race",       "Black",       "Checked"
-#'   )
-#' )
-#'
-#' @examplesIf interactive()
-#' # Larger, fully worked example (runs only in interactive sessions)
-#' 
-#' library(dplyr)
-#' library(sjlabelled)
-#' library(tibble)
-#' library(tidyr)
-#' 
-#' set.seed(42)
-#' df2 <- tibble(
-#'   record_id = 1:100,
-#'   gender = sample(c("Female", "Male"), 100, TRUE),
-#'   age = sample(18:85, 100, TRUE),
-#'   education = sample(c("High-school", "College", "Graduate school"), 100, TRUE),
-#'   ethnicity = sample(c("Hispanic", "Non-hispanic"), 100, TRUE),
-#'   income = sample(20000:120000, 100, TRUE),
-#'   marital_status = sample(c("Married", "Single"), 100, TRUE),
-#'   group = sample(c("Treatment", "Control"), 100, TRUE),
-#'   key = sample(paste0("race___", c(1:6, 98)), 100, TRUE),
-#'   value = "Checked"
-#' ) %>%
-#'   mutate(key = factor(key, levels = paste0("race___", c(1:6, 98)))) %>%
-#'   spread(key, value) %>%
-#'   mutate(across(starts_with("race___"), ~ replace_na(., "Unchecked")))
-#' 
-#' # Checkbox mapping
-#' cb_map <- tribble(
-#'   ~var,        ~overall_lbl, ~checkbox_lbl,                              ~checkbox_txt,
-#'   "race___1",  "Race",       "White",                                    "Checked",
-#'   "race___2",  "Race",       "Black or African-American",                "Checked",
-#'   "race___3",  "Race",       "American Indian or Alaska Native",         "Checked",
-#'   "race___4",  "Race",       "Asian",                                    "Checked",
-#'   "race___5",  "Race",       "Native Hawaiian or Pacific Islander",      "Checked",
-#'   "race___6",  "Race",       "Other",                                    "Checked",
-#'   "race___98", "Race",       "Prefer not to answer",                     "Checked"
-#' )
-#' 
-#' # Basic table with checkboxes
-#' create_tidytableone_checkbox(
-#'   data = df2,
-#'   strata = "group",
-#'   vars = c("gender", "age", "education", "ethnicity", "income", "marital_status",
-#'            paste0("race___", c(1:6, 98))),
-#'   checkbox = cb_map
-#' )
-#' 
-#' # With variable labels
-#' df2_labelled <- sjlabelled::var_labels(
-#'   df2,
-#'   gender = "Gender", age = "Age (years)", education = "Education",
-#'   ethnicity = "Ethnicity", income = "Income", marital_status = "Marital status",
-#'   race___1 = "Race (White)", race___2 = "Race (Black)", race___3 = "Race (American Indian)",
-#'   race___4 = "Race (Asian)", race___5 = "Race (Native Hawaiian)", race___6 = "Race (Other)",
-#'   race___98 = "Race (Prefer not to answer)"
-#' )
-#' 
-#' create_tidytableone_checkbox(
-#'   data = df2_labelled,
-#'   strata = "group",
-#'   vars = c("gender", "age", "education", "ethnicity", "income", "marital_status",
-#'            paste0("race___", c(1:6, 98))),
-#'   checkbox = cb_map
-#' )
-#' 
-#'
+# #' @examples
+# #' # Minimal smoke test (always runs quickly)
+# #' set.seed(123)
+# #' tiny <- tibble::tibble(
+# #'   group = sample(c("A","B"), 20, TRUE),
+# #'   gender = sample(c("Female","Male"), 20, TRUE),
+# #'   age = sample(18:80, 20, TRUE),
+# #'   race___1 = sample(c("Checked","Unchecked"), 20, TRUE),
+# #'   race___2 = sample(c("Checked","Unchecked"), 20, TRUE)
+# #' )
+# #' 
+# #' create_tidytableone_checkbox(
+# #'   data = tiny,
+# #'   strata = "group",
+# #'   vars = c("gender","age","race___1","race___2"),
+# #'   checkbox = tibble::tribble(
+# #'     ~var,       ~overall_lbl, ~checkbox_lbl, ~checkbox_txt,
+# #'     "race___1", "Race",       "White",       "Checked",
+# #'     "race___2", "Race",       "Black",       "Checked"
+# #'   )
+# #' )
+# #' 
+# #' @examplesIf interactive()
+# #' # Larger, fully worked example (runs only in interactive sessions)
+# #' 
+# #' library(dplyr)
+# #' library(sjlabelled)
+# #' library(tibble)
+# #' library(tidyr)
+# #' 
+# #' set.seed(42)
+# #' df2 <- tibble(
+# #'   record_id = 1:100,
+# #'   gender = sample(c("Female", "Male"), 100, TRUE),
+# #'   age = sample(18:85, 100, TRUE),
+# #'   education = sample(c("High-school", "College", "Graduate school"), 100, TRUE),
+# #'   ethnicity = sample(c("Hispanic", "Non-hispanic"), 100, TRUE),
+# #'   income = sample(20000:120000, 100, TRUE),
+# #'   marital_status = sample(c("Married", "Single"), 100, TRUE),
+# #'   group = sample(c("Treatment", "Control"), 100, TRUE),
+# #'   key = sample(paste0("race___", c(1:6, 98)), 100, TRUE),
+# #'   value = "Checked"
+# #' ) %>%
+# #'   mutate(key = factor(key, levels = paste0("race___", c(1:6, 98)))) %>%
+# #'   spread(key, value) %>%
+# #'   mutate(across(starts_with("race___"), ~ replace_na(., "Unchecked")))
+# #' 
+# #' # Checkbox mapping
+# #' cb_map <- tribble(
+# #'   ~var,        ~overall_lbl, ~checkbox_lbl,                              ~checkbox_txt,
+# #'   "race___1",  "Race",       "White",                                    "Checked",
+# #'   "race___2",  "Race",       "Black or African-American",                "Checked",
+# #'   "race___3",  "Race",       "American Indian or Alaska Native",         "Checked",
+# #'   "race___4",  "Race",       "Asian",                                    "Checked",
+# #'   "race___5",  "Race",       "Native Hawaiian or Pacific Islander",      "Checked",
+# #'   "race___6",  "Race",       "Other",                                    "Checked",
+# #'   "race___98", "Race",       "Prefer not to answer",                     "Checked"
+# #' )
+# #' 
+# #' # Basic table with checkboxes
+# #' create_tidytableone_checkbox(
+# #'   data = df2,
+# #'   strata = "group",
+# #'   vars = c("gender", "age", "education", "ethnicity", "income", "marital_status",
+# #'            paste0("race___", c(1:6, 98))),
+# #'   checkbox = cb_map
+# #' )
+# #' 
+# #' # With variable labels
+# #' df2_labelled <- sjlabelled::var_labels(
+# #'   df2,
+# #'   gender = "Gender", age = "Age (years)", education = "Education",
+# #'   ethnicity = "Ethnicity", income = "Income", marital_status = "Marital status",
+# #'   race___1 = "Race (White)", race___2 = "Race (Black)", race___3 = "Race (American Indian)",
+# #'   race___4 = "Race (Asian)", race___5 = "Race (Native Hawaiian)", race___6 = "Race (Other)",
+# #'   race___98 = "Race (Prefer not to answer)"
+# #' )
+# #' 
+# #' create_tidytableone_checkbox(
+# #'   data = df2_labelled,
+# #'   strata = "group",
+# #'   vars = c("gender", "age", "education", "ethnicity", "income", "marital_status",
+# #'            paste0("race___", c(1:6, 98))),
+# #'   checkbox = cb_map
+# #' )
+# #' 
+
 create_tidytableone_checkbox <- function(data,
                                          strata = NULL,
                                          vars,

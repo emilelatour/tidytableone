@@ -2,7 +2,7 @@
 % Please edit documentation in R/create-tidytableone.R
 \name{create_tidytableone}
 \alias{create_tidytableone}
-\title{Create a tidy “Table 1”}
+\title{Create a tidy "Table 1"}
 \usage{
 create_tidytableone(
   data,
@@ -41,7 +41,7 @@ columns \code{var} (the checkbox column name), \code{overall_lbl} (group label t
 \item{...}{Additional arguments. Not used.}
 }
 \description{
-Create a tidy “Table 1”
+Create a tidy "Table 1"
 }
 \examples{
 # Basic Table 1 using built-in example data

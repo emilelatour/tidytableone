@@ -564,7 +564,7 @@ order_within_vars_no_strata <- function(res_stats, vars) {
 #'   \item{class}{variable class}
 #'   \item{var_type}{variable type: categorical or continuous}
 #' }
-#' @export
+# #' @export
 #'
 #' @examples
 #' library(dplyr)
@@ -585,8 +585,7 @@ order_within_vars_no_strata <- function(res_stats, vars) {
 #'
 #' get_var_info(data = pbc_mayo,
 #'              .vars = c("status", "sex", "stage", "age"))
-
-
+#' @noRd
 get_var_info <- function(data, .vars = NULL) {
   
   if (is.null(.vars)) .vars <- names(data)
@@ -657,7 +656,8 @@ get_var_info <- function(data, .vars = NULL) {
 #' @importFrom dplyr group_by group_modify ungroup arrange first bind_rows
 #' @importFrom tibble tibble
 #' @importFrom cluster silhouette
-#' @export
+# #' @export
+#' @noRd
 group_similar_vars <- function(
   x,
   method = "jw",

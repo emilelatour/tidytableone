@@ -24,9 +24,6 @@ Use the replacements instead:
 \details{
 \itemize{
 \item \code{\link[=create_tidytableone]{create_tidytableone()}} replaces \code{\link[=create_tidy_table_one]{create_tidy_table_one()}}.
-\item \code{\link[=create_tidytableone_checkbox]{create_tidytableone_checkbox()}} replaces \code{\link[=create_tidy_table_one_checkbox]{create_tidy_table_one_checkbox()}}.
-\item \code{\link[=create_tidytableone_no_strata]{create_tidytableone_no_strata()}} replaces \code{\link[=create_tidy_table_one_no_strata]{create_tidy_table_one_no_strata()}}.
-\item \code{\link[=create_tidytableone_no_strata_checkbox]{create_tidytableone_no_strata_checkbox()}} replaces \code{\link[=create_tidy_table_one_no_strata_checkbox]{create_tidy_table_one_no_strata_checkbox()}}.
 }
 }
 \keyword{internal}
