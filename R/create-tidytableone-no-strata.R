@@ -1,4 +1,4 @@
-#' Create a tidy “Table 1” without strata
+#' Create a tidy "Table 1" without strata
 #'
 #' Produce the same schema as [create_tidytableone()] but with a single
 #' overall group (every row has `strata = "Overall"`). No between‑group tests
@@ -223,7 +223,7 @@ create_tidytableone_no_strata <- function(data,
   
 }
 
-#' Create a tidy “Table 1” without strata, with checkbox (multi‑response) blocks
+#' Create a tidy "Table 1" without strata, with checkbox (multi‑response) blocks
 #'
 #' Summarise variables with a single overall group (`strata = "Overall"`) and
 #' add multi‑response "checkbox" blocks (e.g., multiple race selections).
@@ -254,7 +254,7 @@ create_tidytableone_no_strata <- function(data,
 #'      Controls the denominator used for percentages. In no‑strata mode,
 #'      `"group"` and `"nonmissing"` both use `nrow(data)`; `"responders"`
 #'      uses the number with any selection in the block.
-#'   - `show_any`: logical; include an `"Any selected"` row. Default `TRUE`.
+#'   - `show_any`: logical; include an `"Any selected"` row. Default `FALSE`.
 #'   - `pvals`, `test`, `p_adjust`, `note`: kept for API symmetry; p‑values are
 #'      not computed in no‑strata mode.
 #' @param ... Reserved for future arguments; currently ignored.
@@ -635,6 +635,9 @@ process_checkbox_blocks_nostrata <- function(data, blocks, opts) {
 }
 
 process_checkbox_blocks_overall <- function(data, blocks, opts) {
+  
+  opts  <- normalize_checkbox_opts(opts)
+  opts  <- validate_checkbox_opts(opts)
   denom <- match.arg(opts$denom, c("group","nonmissing","responders"))
   
   out <- lapply(blocks, function(bl) {
@@ -648,10 +651,14 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
     n_level <- colSums(sel_mat, na.rm = TRUE)
     
     # Display denominator for pct
+    # responders_N <- sum(rowSums(!is.na(raw_mat)) > 0L)
+    any_selected <- rowSums(sel_mat, na.rm = TRUE) > 0L
+    responders_N <- as.integer(sum(any_selected, na.rm = TRUE))
+    
     display_N <- switch(
       denom,
       group      = nrow(data),
-      responders = sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE),
+      responders = responders_N,
       nonmissing = nrow(data)  # display denom; "valid" handled per-level below
     )
     
@@ -661,12 +668,13 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
     valid_denom <- switch(
       denom,
       group      = rep(display_N, length(n_level)),
-      responders = rep(sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE), length(n_level)),
+      responders = rep(responders_N, length(n_level)),
       nonmissing = as.integer(nonmiss_per_level)
     )
     
-    # Base name for synthetic “Any selected” var (e.g., "race")
+    # Base name for synthetic "Any selected" var (e.g., "race")
     base_name <- sub("___.*$", "", bl$vars[1])
+    var_any   <- paste0(tolower(base_name), "___any_selected")
     
     df <- tibble::tibble(
       strata   = "Overall",
@@ -684,24 +692,32 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
       level_var = names(n_level)                                     # <- keep the original var for helpers
     )
     
-    # Optional “Any selected”
-    any_count <- sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE)
+    # Optional "Any selected"
+    # any_count <- sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE)
+    any_count <- responders_N
+    
     if (isTRUE(opts$show_any)) {
-      any_nonmissing <- sum(rowSums(!is.na(raw_mat)) > 0L, na.rm = TRUE)
-      any_display_denom <- switch(denom,
-                                  group      = nrow(data),
-                                  responders = any_count,
-                                  nonmissing = nrow(data))
-      any_valid_denom   <- switch(denom,
-                                  group      = any_display_denom,
-                                  responders = any_count,
-                                  nonmissing = any_nonmissing)
+      any_nonmissing <- sum(rowSums(!is.na(raw_mat)) > 0L)
+      
+      any_display_denom <- switch(
+        denom,
+        group      = nrow(data),
+        responders = responders_N,
+        nonmissing = nrow(data)
+      )
+      
+      any_valid_denom <- switch(
+        denom,
+        group      = any_display_denom,
+        responders = responders_N,
+        nonmissing = any_nonmissing
+      )
       
       df <- dplyr::bind_rows(
         df,
         tibble::tibble(
           strata   = "Overall",
-          var      = paste0(base_name, "___any_selected"),           # <- synthetic var (stable)
+          var      = var_any, 
           level    = "Any selected",
           n_level  = as.integer(any_count),
           n_strata = as.integer(any_display_denom),

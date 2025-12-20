@@ -413,27 +413,6 @@ do_one_cat_strata <- function(x, strata_sym) {
 
 
 
-
-normalize_checkbox_opts <- function(x) {
-  defaults <- list(
-    denom    = "group",
-    pvals    = "per_level",  # used only when strata is present
-    test     = "auto",
-    p_adjust = "none",
-    show_any = TRUE,
-    note     = "Participants could select more than one option; percentages may exceed 100%."
-  )
-  utils::modifyList(defaults, x %||% list())
-}
-
-validate_checkbox_opts <- function(opts) {
-  opts$denom <- match.arg(opts$denom, c("group","nonmissing","responders"))
-  opts$pvals <- match.arg(opts$pvals, c("none","per_level"))
-  opts$test  <- match.arg(opts$test,  c("auto","chisq","fisher"))
-  opts
-}
-
-
 #' Order vars for no-strata output (no relabeling of NA)
 #' @param res_stats tibble from the no-strata engine
 #' @param vars      original vars vector the user passed (or NULL)

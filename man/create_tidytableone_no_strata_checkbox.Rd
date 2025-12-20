@@ -2,7 +2,7 @@
 % Please edit documentation in R/create-tidytableone-no-strata.R
 \name{create_tidytableone_no_strata_checkbox}
 \alias{create_tidytableone_no_strata_checkbox}
-\title{Create a tidy “Table 1” without strata, with checkbox (multi‑response) blocks}
+\title{Create a tidy "Table 1" without strata, with checkbox (multi‑response) blocks}
 \usage{
 create_tidytableone_no_strata_checkbox(
   data,
@@ -48,7 +48,7 @@ Each row corresponds to one checkbox column in \code{data} (e.g., \code{race___1
 Controls the denominator used for percentages. In no‑strata mode,
 \code{"group"} and \code{"nonmissing"} both use \code{nrow(data)}; \code{"responders"}
 uses the number with any selection in the block.
-\item \code{show_any}: logical; include an \code{"Any selected"} row. Default \code{TRUE}.
+\item \code{show_any}: logical; include an \code{"Any selected"} row. Default \code{FALSE}.
 \item \code{pvals}, \code{test}, \code{p_adjust}, \code{note}: kept for API symmetry; p‑values are
 not computed in no‑strata mode.
 }}

@@ -224,7 +224,7 @@
                                         pvals = "per_level",
                                         test  = "auto",
                                         p_adjust = "none",
-                                        show_any = FALSE,
+                                        show_any = TRUE,
                                         note = "Participants could select more than one option; percentages may exceed 100%."
                                       ),
                                       ...) {
@@ -504,7 +504,8 @@
         data       = data,
         strata_var = rlang::as_name(strata_sym),
         blocks     = cb_blocks,
-        test       = checkbox_opts$test    %||% "auto",
+        denom      = checkbox_opts$denom %||% "responders",
+        test       = checkbox_opts$test %||% "auto",
         p_adjust   = checkbox_opts$p_adjust %||% "none",
         B          = 2000
       )

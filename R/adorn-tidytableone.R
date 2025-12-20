@@ -230,7 +230,7 @@ adorn_tidytableone <- function(tidy_t1,
   var_lbls <- tidy_t1 |>
     dplyr::select(var, var_type, label) |>
     dplyr::distinct() |>
-    mutate(label = dplyr::if_else(is.na(label), var, label))
+    mutate(label = dplyr::if_else(is.na(label) | label == "", var, label))
   
   #### keep class per var (for checkbox de-dup) -------------------------
   var_class <- tidy_t1 |>
@@ -426,7 +426,53 @@ adorn_tidytableone <- function(tidy_t1,
   # # Build a list: names = group label; values = member vars in that group
   # groups <- split(grouped_tidy_t1_vars$var, grouped_tidy_t1_vars$group_label_first)
   
-  groups <- .order_groups_like_vars(tidy_t1, group_similar_vars)
+  # --- NEW: build display groups that collapse checkbox blocks by their label ---
+  
+  ord <- tidy_t1 |>
+    dplyr::distinct(var) |>
+    dplyr::pull(var) |>
+    as.character()
+  
+  # map checkbox member var -> checkbox label
+  cb_map <- tidy_t1 |>
+    dplyr::filter(class == "checkbox") |>
+    dplyr::distinct(var, label) |>
+    dplyr::mutate(
+      var   = as.character(var),
+      label = dplyr::coalesce(dplyr::na_if(as.character(label), ""), var)
+    )
+  
+  # build an ordered list of "display keys":
+  # - non-checkbox vars use themselves
+  # - checkbox member vars collapse to the label, once, at first encounter
+  seen_blocks <- character(0)
+  display_keys <- character(0)
+  
+  for (v in ord) {
+    idx <- match(v, cb_map$var)
+    if (!is.na(idx)) {
+      lab <- cb_map$label[[idx]]
+      if (!lab %in% seen_blocks) {
+        display_keys <- c(display_keys, lab)
+        seen_blocks  <- c(seen_blocks, lab)
+      }
+    } else {
+      display_keys <- c(display_keys, v)
+    }
+  }
+  
+  # turn into "groups" list so your imap() code can stay mostly the same
+  # - for checkbox blocks, members are the checkbox vars in that block
+  # - for non-checkbox, members is just that var
+  groups <- setNames(vector("list", length(display_keys)), display_keys)
+  
+  for (k in display_keys) {
+    if (k %in% cb_map$label) {
+      groups[[k]] <- cb_map$var[cb_map$label == k]
+    } else {
+      groups[[k]] <- k
+    }
+  }
   
   
   ## Proceed making the table ---------------- 
@@ -437,8 +483,12 @@ adorn_tidytableone <- function(tidy_t1,
     
     if (length(grp_cb_vars) > 0) {
       # This group is a checkbox block: build a single block using only the group’s checkbox vars
+      rep_var <- grp_cb_vars[1]
+      any_var <- grp_cb_vars[grepl("___any_selected$", grp_cb_vars)]
+      if (length(any_var) > 0) rep_var <- any_var[1]
+      
       build_tab1_cb(
-        tab_var   = grp_label,
+        tab_var   = rep_var,          # <- real var name, not grp_label
         cb_vars   = grp_cb_vars,            # <- pass ONLY this group’s checkbox members
         tab_pvals = tab_pvals,
         tab_stats = tab_stats,
@@ -472,10 +522,11 @@ adorn_tidytableone <- function(tidy_t1,
   if (use_labels) {
     
     adorned_tidy_t1 <- adorned_tidy_t1 |>
-      dplyr::left_join(var_lbls,
-                       by = "var") |>
-      dplyr::mutate(label = dplyr::if_else(is.na(label), "", label),
-                    var = label)
+      dplyr::left_join(var_lbls, by = "var") |>
+      dplyr::mutate(
+        label = dplyr::if_else(is.na(label), "", label),
+        var   = dplyr::if_else(label == "", var, label)
+      )
     
   } else {
     
@@ -508,7 +559,9 @@ adorn_tidytableone <- function(tidy_t1,
   if (combine_level_col) {
     
     adorned_tidy_t1 <- adorned_tidy_t1 |>
-      mutate(var = glue::glue("{var}  {level}")) |>
+      dplyr::mutate(
+        var = paste0(dplyr::coalesce(var, ""), "  ", dplyr::coalesce(level, ""))
+      ) |>
       dplyr::select(-level)
     
   }
@@ -760,10 +813,8 @@ build_tab1_noncb <- function(tab_var,
   
   s_i <- tab_stats |>
     dplyr::filter(var == tab_var) |>
-    dplyr::select(-var,
-                  -var_type) |>
-    mutate(var = NA_character_,
-           p_value = NA_character_)
+    dplyr::select(-var, -var_type) |>
+    dplyr::mutate(var = "", p_value = "")
   
   t_i <- tab_pvals |>
     dplyr::filter(var == tab_var) |>
@@ -785,6 +836,7 @@ build_tab1_noncb <- function(tab_var,
                           test = t_i,
                           smd = smd_i) |>
       dplyr::bind_rows(s_i) |>
+      dplyr::mutate(var = dplyr::if_else(is.na(var), "", var)) |>
       dplyr::select(var,
                     dplyr::everything(),
                     -p_value,
@@ -792,8 +844,10 @@ build_tab1_noncb <- function(tab_var,
                     -smd,
                     p_value,
                     test,
-                    smd) |>
-      dplyr::add_row()
+                    smd) 
+    
+    blank <- tibble::as_tibble(lapply(res, function(x) ""))
+    res <- dplyr::bind_rows(res, blank)
     
   } else {
     
@@ -814,8 +868,10 @@ build_tab1_noncb <- function(tab_var,
                     -smd,
                     p_value,
                     test,
-                    smd) |>
-      dplyr::add_row()
+                    smd) 
+    
+    blank <- tibble::as_tibble(lapply(res, function(x) ""))
+    res <- dplyr::bind_rows(res, blank)
     
   }
   
@@ -835,6 +891,13 @@ build_tab1_noncb <- function(tab_var,
     
   }
   
+  res <- res |>
+    dplyr::mutate(var = dplyr::coalesce(var, ""))
+  
+  if ("level" %in% names(res)) {
+    res <- res |>
+      dplyr::mutate(level = dplyr::coalesce(level, ""))
+  }
   
   
   return(res)
@@ -881,16 +944,21 @@ build_tab1_cb <- function(tab_var,
   
   if (missing == "no") {
     
+    miss_var <- cb_vars[1]
+    any_var  <- cb_vars[grepl("___any_selected$", cb_vars)]
+    if (length(any_var) > 0) miss_var <- any_var[1]
+    
     m_i <- tab_miss |>
-      dplyr::filter(var %in% cb_vars) |>
+      dplyr::filter(var == miss_var) |>
       dplyr::pull(num_not_miss)
     
-    res <- tibble::tibble(var = cb_vars[[1]],
-                          num_not_miss = m_i[1],   # NEeds to be fixed later
+    res <- tibble::tibble(var = tab_var,
+                          num_not_miss = m_i[1],   
                           p_value = NA_character_,  # NA for now. Maybe an overall p-value if that ever gets implemented
                           test = t_i[1],            # Maybe will get revised later
                           smd = NA_character_) |>
       dplyr::bind_rows(s_i) |>
+      dplyr::mutate(var = dplyr::if_else(is.na(var), "", var)) |>
       dplyr::select(var,
                     dplyr::everything(),
                     -p_value,
@@ -898,8 +966,10 @@ build_tab1_cb <- function(tab_var,
                     -smd,
                     p_value,
                     test,
-                    smd) |>
-      dplyr::add_row() |>
+                    smd) 
+    
+    blank <- tibble::as_tibble(lapply(res, function(x) ""))
+    res <- dplyr::bind_rows(res, blank) |>
       tidyr::fill(glue_formula,
                   .direction = "up") |>
       mutate(glue_formula = dplyr::if_else(dplyr::row_number() == 1, glue_formula, NA_character_))
@@ -911,7 +981,7 @@ build_tab1_cb <- function(tab_var,
       dplyr::select(-var) |>
       dplyr::distinct()
     
-    res <- tibble::tibble(var = cb_vars[[1]],
+    res <- tibble::tibble(var = tab_var,
                           p_value = NA_character_,  # NA for now. Maybe an overall p-value if that ever gets implemented
                           test = t_i[1],            # Maybe will get revised later
                           smd = NA_character_) |>
@@ -924,8 +994,10 @@ build_tab1_cb <- function(tab_var,
                     -smd,
                     p_value,
                     test,
-                    smd) |>
-      dplyr::add_row() |>
+                    smd) 
+    
+    blank <- tibble::as_tibble(lapply(res, function(x) ""))
+    res <- dplyr::bind_rows(res, blank) |>
       tidyr::fill(glue_formula,
                   .direction = "up") |>
       mutate(glue_formula = dplyr::if_else(dplyr::row_number() == 1, glue_formula, NA_character_))
@@ -949,6 +1021,13 @@ build_tab1_cb <- function(tab_var,
   }
   
   
+  res <- res |>
+    dplyr::mutate(var = dplyr::coalesce(var, ""))
+  
+  if ("level" %in% names(res)) {
+    res <- res |>
+      dplyr::mutate(level = dplyr::coalesce(level, ""))
+  }
   
   return(res)
   

@@ -2,7 +2,7 @@
 % Please edit documentation in R/create-tidytableone-no-strata.R
 \name{create_tidytableone_no_strata}
 \alias{create_tidytableone_no_strata}
-\title{Create a tidy “Table 1” without strata}
+\title{Create a tidy "Table 1" without strata}
 \usage{
 create_tidytableone_no_strata(
   data,

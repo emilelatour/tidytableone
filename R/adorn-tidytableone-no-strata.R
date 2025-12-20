@@ -391,73 +391,65 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
   
   #### Top row (n) --------------------------------
   
-  if (any(tidy_t1$var_type == "continuous") & any(tidy_t1$var_type == "categorical")) {
+  fmt_n <- function(x) {
+    scales::number(
+      x = x,
+      accuracy = 1.0,
+      scale = 1,
+      prefix = "",
+      suffix = "",
+      big.mark = "",
+      decimal.mark = ".",
+      style_positive = "none",
+      style_negative = "hyphen",
+      scale_cut = NULL,
+      trim = FALSE
+    )
+  }
+  
+  if (any(tidy_t1$var_type == "continuous") && any(tidy_t1$var_type == "categorical")) {
     
-    top_row <- tidy_t1 |>
-      dplyr::distinct(n) |>
-      dplyr::filter(!is.na(n)) |>
-      dplyr::rename(Overall = n) |>
-      mutate(Overall = scales::number(x = Overall,
-                                      accuracy = 1.0,
-                                      scale = 1,
-                                      prefix = "",
-                                      suffix = "",
-                                      big.mark = "",
-                                      decimal.mark = ".",
-                                      style_positive = "none",
-                                      style_negative = "hyphen",
-                                      scale_cut = NULL,
-                                      trim = FALSE)) |>
-      mutate(var = "n") |>
-      dplyr::select(var,
-                    dplyr::everything())
+    # In mixed tables, n should be the overall record count (comes from continuous rows).
+    n_overall <- tidy_t1 |>
+      dplyr::summarise(n = suppressWarnings(max(.data$n, na.rm = TRUE))) |>
+      dplyr::pull(.data$n)
+    
+    # Fallback: if n is all NA for some reason, use n_strata
+    if (!is.finite(n_overall)) {
+      n_overall <- tidy_t1 |>
+        dplyr::summarise(n = suppressWarnings(max(.data$n_strata, na.rm = TRUE))) |>
+        dplyr::pull(.data$n)
+    }
+    
+    top_row <- tibble::tibble(
+      var = "n",
+      Overall = fmt_n(n_overall)
+    )
     
   } else if (any(tidy_t1$var_type == "continuous")) {
     
-    top_row <- tidy_t1 |>
-      dplyr::distinct(n) |>
-      dplyr::filter(!is.na(n)) |>
-      dplyr::rename(Overall = n) |>
-      mutate(Overall = scales::number(x = Overall,
-                                      accuracy = 1.0,
-                                      scale = 1,
-                                      prefix = "",
-                                      suffix = "",
-                                      big.mark = "",
-                                      decimal.mark = ".",
-                                      style_positive = "none",
-                                      style_negative = "hyphen",
-                                      scale_cut = NULL,
-                                      trim = FALSE)) |>
-      mutate(var = "n") |>
-      dplyr::select(var,
-                    dplyr::everything())
+    n_overall <- tidy_t1 |>
+      dplyr::summarise(n = suppressWarnings(max(.data$n, na.rm = TRUE))) |>
+      dplyr::pull(.data$n)
     
+    top_row <- tibble::tibble(
+      var = "n",
+      Overall = fmt_n(n_overall)
+    )
     
   } else if (any(tidy_t1$var_type == "categorical")) {
     
-    top_row <- tidy_t1 |>
-      dplyr::distinct(n_strata) |>
-      dplyr::rename(n = n_strata) |>
-      dplyr::filter(!is.na(n)) |>
-      dplyr::rename(Overall = n) |>
-      mutate(Overall = scales::number(x = Overall,
-                                      accuracy = 1.0,
-                                      scale = 1,
-                                      prefix = "",
-                                      suffix = "",
-                                      big.mark = "",
-                                      decimal.mark = ".",
-                                      style_positive = "none",
-                                      style_negative = "hyphen",
-                                      scale_cut = NULL,
-                                      trim = FALSE)) |>
-      mutate(var = "n") |>
-      dplyr::select(var,
-                    dplyr::everything())
+    # Categorical-only: n_strata can vary across vars (eg checkbox responders).
+    # The table-level N should be the maximum n_strata observed.
+    n_overall <- tidy_t1 |>
+      dplyr::summarise(n = suppressWarnings(max(.data$n_strata, na.rm = TRUE))) |>
+      dplyr::pull(.data$n)
     
+    top_row <- tibble::tibble(
+      var = "n",
+      Overall = fmt_n(n_overall)
+    )
   }
-  
   
   empty_row <- tibble::as_tibble(lapply(top_row, function(x) ""))
   
