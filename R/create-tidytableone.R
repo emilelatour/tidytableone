@@ -697,12 +697,20 @@
   
   #### Final ordering: respect user-supplied `vars` -------------------------------- 
   
-  # strata ordering (Overall first)
+  # strata ordering (Overall first, then preserve original factor level order)
   if ("strata" %in% names(res_stats)) {
-    strata_levels <- unique(as.character(res_stats$strata))
-    strata_levels <- c("Overall", setdiff(strata_levels, "Overall"))
+    strata_col <- rlang::as_name(strata_sym)
+    
+    strata_levels <- if (is.factor(data[[strata_col]])) {
+      levels(data[[strata_col]])
+    } else {
+      unique(as.character(data[[strata_col]]))
+    }
+    
     res_stats <- res_stats |>
-      dplyr::mutate(strata = factor(strata, levels = strata_levels))
+      dplyr::mutate(
+        strata = factor(strata, levels = c("Overall", strata_levels))
+      )
   }
   
   # variable ordering (vars vector)
