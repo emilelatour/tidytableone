@@ -191,13 +191,26 @@ create_tidytableone_no_strata <- function(data,
     )
   )
   
+  level_map <- make_level_map_no_strata(
+    data = data,
+    vars = vars,
+    cb_blocks = list(),
+    show_any = FALSE
+  )
+  
+  
   # --- Final, no-strata ordering (keep NA level with its own var, without relabeling)
   # res_stats <- order_within_vars_no_strata(res_stats, vars = vars, checkbox = checkbox)
   res_stats <- res_stats |>
     dplyr::mutate(var = factor(var, levels = vars)) |>
     dplyr::arrange(var)
   
-  res_stats <- order_rows_no_strata(res_stats, vars = vars)
+  # res_stats <- order_rows_no_strata(res_stats, vars = vars)
+  res_stats <- order_within_vars_no_strata(
+    res_stats = res_stats,
+    vars = vars,
+    level_map = level_map
+  )
   
   # uniform column order and strata_var = NA (no strata used)
   res_stats <- res_stats |>
@@ -472,12 +485,24 @@ create_tidytableone_no_strata_checkbox <- function(data,
     show_any  = checkbox_opts$show_any %||% TRUE
   )
   
+  level_map <- make_level_map_no_strata(
+    data = data,
+    vars = var_levels,
+    cb_blocks = cb_blocks,
+    show_any = checkbox_opts$show_any %||% TRUE
+  )
+  
   res_stats <- res_stats |>
     dplyr::mutate(var = factor(var, levels = var_levels)) |>
     dplyr::arrange(var)
   
   # Pass var_levels, not vars
-  res_stats <- order_within_vars_no_strata(res_stats, vars = var_levels)
+  # res_stats <- order_within_vars_no_strata(res_stats, vars = var_levels)
+  res_stats <- order_within_vars_no_strata(
+    res_stats = res_stats,
+    vars = var_levels,
+    level_map = level_map
+  )
   
   # final column order
   res_stats <- res_stats |>
@@ -671,7 +696,8 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
     
     # Base name for synthetic "Any selected" var (e.g., "race")
     base_name <- sub("___.*$", "", bl$vars[1])
-    var_any   <- paste0(tolower(base_name), "___any_selected")
+    # var_any   <- paste0(tolower(base_name), "___any_selected")
+    var_any   <- paste0(base_name, "___any_selected")
     
     df <- tibble::tibble(
       strata   = "Overall",

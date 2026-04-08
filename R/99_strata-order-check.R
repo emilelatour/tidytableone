@@ -138,3 +138,144 @@
 #                                               "ever_long_stay",
 #                                               "death")) %>%
 #   janitor::tabyl(strata)
+
+
+
+
+#### 2026-04-08 -------------------------------- 
+
+
+# #### Packages -----------------------------
+# 
+# pacman::p_load(
+#   tidyverse,     # packages ggplot2, dplyr, tidyr, readr, purrr, tibble, 
+#                  # stringr, and forcats
+#   broom,         # functions tidy(), glance(), augment()
+#   flextable,     # Easily create tables for reporting and publications.
+#   fs,            # Cross-platform interface to file system operations
+#   ggokabeito,    # Discrete scales for the colorblind-friendly 'Okabe-Ito' palette
+#   glue,          # Glue strings to data in R
+#   gt,            # Easily Create Presentation-Ready Display Tables
+#   here,          # Constructs paths to your project's files
+#   janitor,       # for working with dirty data 
+#   khroma,        # Colour Schemes for Scientific Data Visualization
+#   lubridate,     # Functions to work with date-times and time-spans 
+#   mice,          # Multiple imputation using Fully Conditional Specification
+#   naniar,        # structures, summaries, and visualisations for missing data 
+#   patchwork,     # combine separate ggplots into the same graphic
+#   readxl,        # read in excel files
+#   rstatix,       # Pipe-Friendly Framework for Basic Statistical Tests
+#   scales,        # Scale functions for visualization
+#   skimr,         # Compact and Flexible Summaries of Data
+#   smplot2,       # Creating and annotating a composite plot in ggplot2
+#   install = FALSE
+# )
+#   
+# 
+# 
+# df <- readr::read_rds('/Users/latour/Library/CloudStorage/OneDrive-OregonHealth&ScienceUniversity/emile-temp/dupi-and-ruxo-chart-review/data/01_valdata.rds')
+# 
+# glimpse(df)
+# 
+# t2_vars <- c("d_diagnosis___1",
+#              "d_diagnosis___2",
+#              "d_diagnosis___3",
+#              "dupi_insurance_decision",
+#              "d_initiation_reason",
+#              "d_easi",
+#              "d_easi_banding",
+#              "d_iga_score",
+#              "d_bsa",
+#              "d_bsa_banding",
+#              "d_disease_assessment",
+#              "concurrent_immunosuppressive___1",
+#              "concurrent_immunosuppressive___2",
+#              "concurrent_immunosuppressive___3",
+#              "concurrent_immunosuppressive___4",
+#              "concurrent_immunosuppressive___5",
+#              "concurrent_immunosuppressive___6",
+#              "d_comorbidities___1",
+#              "d_comorbidities___2",
+#              "d_comorbidities___3",
+#              "d_comorbidities___4",
+#              "d_comorbidities___5",
+#              "d_comorbidities___6",
+#              "d_comorbidities___7",
+#              "d_comorbidities___8",
+#              "d_comorbidities___9",
+#              "d_comorbidities___10")
+# 
+# t2_cb_vars <- tibble::tribble(
+#                                               ~var,                            ~overall_lbl,                         ~checkbox_lbl, ~checkbox_txt,
+#                                  "d_diagnosis___1",            "Diagnosis for Indication *",                   "Atopic Dermatitis",     "Checked",
+#                                  "d_diagnosis___2",            "Diagnosis for Indication *",                   "Prurigo Nodularis",     "Checked",
+#                                  "d_diagnosis___3",            "Diagnosis for Indication *",                               "Other",     "Checked",
+#                 "concurrent_immunosuppressive___1", "Concurrent Treatments at Initiation *",                        "Azathioprine",     "Checked",
+#                 "concurrent_immunosuppressive___2", "Concurrent Treatments at Initiation *",                        "Cyclosporine",     "Checked",
+#                 "concurrent_immunosuppressive___3", "Concurrent Treatments at Initiation *",                        "Methotrexate",     "Checked",
+#                 "concurrent_immunosuppressive___4", "Concurrent Treatments at Initiation *",                   "Systemic Steroids",     "Checked",
+#                 "concurrent_immunosuppressive___5", "Concurrent Treatments at Initiation *",                         "Ruxolitinib",     "Checked",
+#                 "concurrent_immunosuppressive___6", "Concurrent Treatments at Initiation *",                        "Phototherapy",     "Checked",
+#                              "d_comorbidities___1",         "Comorbidities At Initiation *",          "History of Skin Infections",     "Checked",
+#                              "d_comorbidities___2",         "Comorbidities At Initiation *",                        "Hypertension",     "Checked",
+#                              "d_comorbidities___3",         "Comorbidities At Initiation *",            "Diabetes Mellitus Type 1",     "Checked",
+#                              "d_comorbidities___4",         "Comorbidities At Initiation *",            "Diabetes Mellitus Type 2",     "Checked",
+#                              "d_comorbidities___5",         "Comorbidities At Initiation *",                          "Depression",     "Checked",
+#                              "d_comorbidities___6",         "Comorbidities At Initiation *",                             "Anxiety",     "Checked",
+#                              "d_comorbidities___7",         "Comorbidities At Initiation *",     "History of Deep Vein Thrombosis",     "Checked",
+#                              "d_comorbidities___8",         "Comorbidities At Initiation *",    "History of Myocardial Infarction",     "Checked",
+#                              "d_comorbidities___9",         "Comorbidities At Initiation *", "History of Cerebrovascular Accident",     "Checked",
+#                             "d_comorbidities___10",         "Comorbidities At Initiation *",                   "History of Cancer",     "Checked"
+#                 )
+# 
+# 
+# 
+# 
+# t2_vars <- c("d_diagnosis___1",
+#              "d_diagnosis___2",
+#              "d_diagnosis___3",
+#              "d_initiation_reason")
+# 
+# 
+# t2_cb_vars <- t2_cb_vars %>% 
+#   dplyr::filter(var %in% t2_vars)
+# 
+# levels(df$d_initiation_reason)
+# 
+# df %>% 
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>% 
+# create_tidytableone(strata = NULL, 
+#                                   vars = t2_vars) %>% 
+#   dplyr::select(strata:level)
+# 
+# 
+# 
+# df %>% 
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>% 
+# create_tidytableone(strata = NULL, 
+#                                   vars = t2_vars, 
+#                                   checkbox = t2_cb_vars, 
+#                                   checkbox_opts = list(show_any = FALSE)
+# ) %>% 
+#   dplyr::select(strata:level)
+# 
+# 
+# df %>% 
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>% 
+# create_tidytableone(strata = "biological_sex", 
+#                                   vars = t2_vars) %>% 
+#   dplyr::select(strata:level)
+# 
+# 
+# 
+# df %>% 
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>% 
+# create_tidytableone(strata = "biological_sex", 
+#                                   vars = t2_vars, 
+#                                   checkbox = t2_cb_vars, 
+#                                   checkbox_opts = list(show_any = FALSE)
+# ) %>% 
+#   dplyr::select(strata:level)
+# 
+# 
+# 

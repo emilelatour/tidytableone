@@ -720,20 +720,40 @@
       var_order = dplyr::if_else(is.na(var_order), 1e9, var_order)
     )
   
-  # within-var ordering: if level_order exists, use it; otherwise preserve current row order
+  # # within-var ordering: if level_order exists, use it; otherwise preserve current row order
+  # has_level_order <- "level_order" %in% names(res_stats)
+  # 
+  # res_stats <- res_stats |>
+  #   dplyr::group_by(var) |>
+  #   dplyr::mutate(
+  #     .row_in_var = dplyr::row_number(),
+  #     level_order2 = if (has_level_order) dplyr::coalesce(level_order, .row_in_var) else .row_in_var
+  #   ) |>
+  #   dplyr::ungroup()
+  # 
+  # res_stats <- res_stats |>
+  #   dplyr::arrange(var_order, level_order2, strata) |>
+  #   dplyr::select(-var_order, -.row_in_var, -dplyr::any_of("level_order2"))
+  
+  # within-var ordering: use level_order when available; otherwise preserve
+  # the current order of unique levels, not individual rows
   has_level_order <- "level_order" %in% names(res_stats)
   
   res_stats <- res_stats |>
-    dplyr::group_by(var) |>
-    dplyr::mutate(
-      .row_in_var = dplyr::row_number(),
-      level_order2 = if (has_level_order) dplyr::coalesce(level_order, .row_in_var) else .row_in_var
-    ) |>
-    dplyr::ungroup()
+    dplyr::mutate(.orig_row = dplyr::row_number())
   
   res_stats <- res_stats |>
-    dplyr::arrange(var_order, level_order2, strata) |>
-    dplyr::select(-var_order, -.row_in_var, -dplyr::any_of("level_order2"))
+    dplyr::group_by(var, level) |>
+    dplyr::mutate(
+      .level_first_row = min(.orig_row, na.rm = TRUE)
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(
+      level_order2 = if (has_level_order) dplyr::coalesce(level_order, .level_first_row) else .level_first_row,
+      strata_order = as.integer(strata)
+    ) |>
+    dplyr::arrange(var_order, level_order2, strata_order, .orig_row) |>
+    dplyr::select(-var_order, -.orig_row, -.level_first_row, -strata_order, -dplyr::any_of("level_order2"))
   
   
   

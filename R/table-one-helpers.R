@@ -465,36 +465,177 @@ order_rows_no_strata <- function(res_stats, vars) {
   res_stats
 }
 
+
+
+make_level_map_no_strata <- function(data, vars, cb_blocks = list(), show_any = TRUE) {
+  out <- list()
+
+  cb_vars <- unlist(purrr::map(cb_blocks, "vars"), use.names = FALSE)
+
+  regular_vars <- setdiff(vars, cb_vars)
+
+  # Regular variables
+  for (v in regular_vars) {
+    if (!v %in% names(data)) next
+
+    x <- data[[v]]
+
+    if (is.factor(x)) {
+      lvl <- levels(x)
+    } else if (is.logical(x)) {
+      lvl <- c(FALSE, TRUE)
+    } else if (is.character(x)) {
+      lvl <- sort(unique(x[!is.na(x)]))
+    } else {
+      next
+    }
+
+    out[[length(out) + 1]] <- tibble::tibble(
+      var = v,
+      level = as.character(lvl),
+      level_id = seq_along(lvl)
+    )
+  }
+
+  # Checkbox variables
+  if (length(cb_blocks) > 0) {
+    for (bl in cb_blocks) {
+      out[[length(out) + 1]] <- tibble::tibble(
+        var = bl$vars,
+        level = unname(bl$labels[bl$vars]),
+        level_id = 1L
+      )
+
+      if (isTRUE(show_any)) {
+        base_name <- sub("___.*$", "", bl$vars[1])
+        any_var   <- paste0(base_name, "___any_selected")
+
+        out[[length(out) + 1]] <- tibble::tibble(
+          var = any_var,
+          level = "Any selected",
+          level_id = 1L
+        )
+      }
+    }
+  }
+
+  dplyr::bind_rows(out)
+}
+
 #' Order within-vars for no-strata output (no relabeling of NA)
 #' @param res_stats tibble from the no-strata engine
 #' @param vars      original vars vector the user passed (or NULL)
 #' @return          res_stats re-ordered
-order_within_vars_no_strata <- function(res_stats, vars) {
+# order_within_vars_no_strata <- function(res_stats, vars) {
+#   stopifnot(is.character(vars), length(vars) > 0)
+# 
+#   # Keep the incoming var ordering exactly as provided
+#   res_stats <- res_stats |>
+#     dplyr::mutate(var = factor(as.character(var), levels = vars))
+# 
+#   # Preserve factor level order for level when present
+#   if ("level" %in% names(res_stats) && !is.factor(res_stats$level)) {
+#     res_stats <- res_stats |>
+#       dplyr::mutate(level = factor(level))
+#   }
+# 
+#   # Within each var:
+#   # - push "Any selected" last
+#   # - push NA levels last
+#   res_stats |>
+#     dplyr::group_by(var) |>
+#     dplyr::mutate(
+#       .is_any     = !is.na(class) & class == "checkbox" &
+#                     !is.na(level) & level == "Any selected",
+#       .is_missing = is.na(level)
+#     ) |>
+#     dplyr::arrange(var, .is_any, .is_missing, level, .by_group = TRUE) |>
+#     dplyr::ungroup() |>
+#     dplyr::select(-.is_any, -dplyr::all_of(".is_missing"))
+# }
+
+# order_within_vars_no_strata <- function(res_stats, vars) {
+#   stopifnot(is.character(vars), length(vars) > 0)
+# 
+#   res_stats <- res_stats |>
+#     dplyr::mutate(var = factor(as.character(var), levels = vars))
+# 
+#   res_stats <- res_stats |>
+#     dplyr::group_by(var) |>
+#     dplyr::mutate(
+#       .row_in_var = dplyr::row_number(),
+#       .is_any     = !is.na(class) & class == "checkbox" &
+#                     !is.na(level) & as.character(level) == "Any selected",
+#       .is_missing = is.na(level)
+#     ) |>
+#     dplyr::arrange(var, .is_any, .is_missing, .row_in_var, .by_group = TRUE) |>
+#     dplyr::ungroup() |>
+#     dplyr::select(-.row_in_var, -.is_any, -.is_missing)
+# 
+#   if ("level" %in% names(res_stats)) {
+#     res_stats <- res_stats |>
+#       dplyr::mutate(
+#         level = factor(as.character(level), levels = unique(as.character(level)))
+#       )
+#   }
+# 
+#   res_stats
+# }
+
+order_within_vars_no_strata <- function(res_stats, vars, level_map = NULL) {
   stopifnot(is.character(vars), length(vars) > 0)
 
-  # Keep the incoming var ordering exactly as provided
   res_stats <- res_stats |>
-    dplyr::mutate(var = factor(as.character(var), levels = vars))
+    dplyr::mutate(
+      var = factor(as.character(var), levels = vars),
+      level_chr = as.character(level)
+    )
 
-  # Preserve factor level order for level when present
-  if ("level" %in% names(res_stats) && !is.factor(res_stats$level)) {
+  if (!is.null(level_map)) {
+    level_map <- level_map |>
+      dplyr::mutate(
+        var = as.character(var),
+        level = as.character(level)
+      )
+
     res_stats <- res_stats |>
-      dplyr::mutate(level = factor(level))
+      dplyr::left_join(
+        level_map,
+        by = c("var" = "var", "level_chr" = "level")
+      )
   }
 
-  # Within each var:
-  # - push "Any selected" last
-  # - push NA levels last
-  res_stats |>
+  res_stats <- res_stats |>
     dplyr::group_by(var) |>
     dplyr::mutate(
+      .row_in_var = dplyr::row_number(),
       .is_any     = !is.na(class) & class == "checkbox" &
-                    !is.na(level) & level == "Any selected",
-      .is_missing = is.na(level)
+        !is.na(level_chr) & level_chr == "Any selected",
+      .is_missing = is.na(level_chr),
+      .level_id   = dplyr::coalesce(level_id, .row_in_var)
     ) |>
-    dplyr::arrange(var, .is_any, .is_missing, level, .by_group = TRUE) |>
-    dplyr::ungroup() |>
-    dplyr::select(-.is_any, -dplyr::all_of(".is_missing"))
+    dplyr::arrange(var, .is_any, .is_missing, .level_id, .row_in_var, .by_group = TRUE) |>
+    dplyr::ungroup()
+
+  if (!is.null(level_map)) {
+    global_level_order <- level_map |>
+      dplyr::mutate(var = factor(as.character(var), levels = vars)) |>
+      dplyr::arrange(var, level_id) |>
+      dplyr::pull(level)
+
+    res_stats <- res_stats |>
+      dplyr::mutate(
+        level = factor(level_chr, levels = unique(global_level_order))
+      )
+  } else {
+    res_stats <- res_stats |>
+      dplyr::mutate(
+        level = factor(level_chr, levels = unique(level_chr))
+      )
+  }
+
+  res_stats |>
+    dplyr::select(-level_chr, -level_id, -.row_in_var, -.is_any, -.is_missing, -.level_id)
 }
 
 
