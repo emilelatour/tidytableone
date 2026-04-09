@@ -158,17 +158,17 @@ arrange_results <- function(res_stats,
                             data,
                             strata,
                             strata_sym) {
-
+  
   # Silence no visible binding notes
   sort1 <- sort2 <- label <- strata_var <- NULL
-
+  
   # Strata levels (Overall first)
   if (is.factor(purrr::pluck(data, strata))) {
     strata_lvls <- c("Overall", levels(purrr::pluck(data, strata)))
   } else {
     strata_lvls <- c("Overall", unique(purrr::pluck(data, strata)))
   }
-
+  
   # ---- Join hypothesis tests (once), guarantee *_ht columns, coalesce into main
   res_stats <- res_stats %>%
     dplyr::left_join(htest_res, by = "var", suffix = c("", "_ht")) %>%
@@ -198,26 +198,26 @@ arrange_results <- function(res_stats,
     dplyr::rename("strata" = !!strata_sym) %>%
     dplyr::left_join(smd_res, by = "var") %>%
     dplyr::mutate(strata = factor(strata, levels = strata_lvls))
-
+  
   # ---- Add class/type + labels
   class_and_type <- var_info %>%
     dplyr::select(-level, -sort1, -sort2) %>%
     dplyr::distinct()
-
+  
   res_stats <- res_stats %>%
     dplyr::left_join(class_and_type, by = "var") %>%
     dplyr::left_join(var_lbls, by = "var")
-
+  
   for (nm in c("class", "var_type", "label")) {
     if (!nm %in% names(res_stats)) {
       res_stats[[nm]] <- if (nm == "label") NA_character_ else NA_character_
     }
   }
-
+  
   # ---- Arrange with resilient sort2 fill (works even if join didn't supply sort2)
   if (length(cat_vars) > 0) {
     sort_vars <- var_info %>% dplyr::select(var, level, sort1, sort2)
-
+    
     res_stats <- res_stats %>%
       dplyr::left_join(sort_vars, by = c("var", "level"), relationship = "many-to-many") %>%
       dplyr::group_by(var) %>%
@@ -248,7 +248,7 @@ arrange_results <- function(res_stats,
       dplyr::relocate(class, var_type, label, .after = dplyr::everything())
   } else {
     sort_vars <- var_info %>% dplyr::select(var, sort1, sort2)
-
+    
     res_stats <- res_stats %>%
       dplyr::left_join(sort_vars, by = "var", relationship = "many-to-many") %>%
       dplyr::group_by(var) %>%
@@ -268,14 +268,14 @@ arrange_results <- function(res_stats,
       dplyr::select(-sort1, -sort2, -.base_max_num, -.base_max_int) %>%
       dplyr::relocate(class, var_type, label, .after = dplyr::last_col())
   }
-
+  
   # ---- Merge dup columns & drop helpers (keep p_value_level/level_var intact)
   res_stats <- res_stats %>%
     safe_merge_cols("label",    c("label.x", "label.y", "label")) %>%
     safe_merge_cols("var_type", c("var_type.x", "var_type.y", "var_type")) %>%
     safe_merge_cols("class",    c("class.x", "class.y", "class")) %>%
     dplyr::select(-dplyr::any_of(c(".strata", "group_n", "p_value")))
-
+  
   # ---- Guarantee denom/percent columns BEFORE computing/coercing
   res_stats <- .ensure_cols(
     res_stats,
@@ -288,7 +288,7 @@ arrange_results <- function(res_stats,
       p75 = NA_real_, p100 = NA_real_, cv = NA_real_
     )
   )
-
+  
   # ---- Now safe to coerce & compute pct
   res_stats <- res_stats %>%
     dplyr::mutate(
@@ -301,7 +301,7 @@ arrange_results <- function(res_stats,
       pct_valid      = dplyr::coalesce(pct_valid,
                                        dplyr::if_else(n_strata_valid > 0L, n_level_valid / n_strata_valid, NA_real_))
     )
-
+  
   # ---- Ensure ALL columns referenced by relocate() exist
   res_stats <- .ensure_cols(
     res_stats,
@@ -314,7 +314,7 @@ arrange_results <- function(res_stats,
       smd = NA_real_
     )
   )
-
+  
   # ---- Final column order
   res_stats <- res_stats %>%
     dplyr::relocate(
@@ -330,7 +330,7 @@ arrange_results <- function(res_stats,
       .before = dplyr::everything()
     ) %>%
     dplyr::relocate(class, var_type, label, .after = dplyr::last_col())
-
+  
   # Fill strata var name
   res_stats %>%
     dplyr::mutate(strata_var = rlang::quo_name(strata_sym)) %>%
@@ -360,7 +360,7 @@ get_var_labels <- function(x) {
 # ensuring that all levels are included even if some are missing in certain strata.
 # The result is a tibble with counts per level and strata, including handling for missing values.
 do_one_cat_strata <- function(x, strata_sym) {
-
+  
   # If only a strata column exists, return empty structure
   if (ncol(x) <= 1L) {
     nm <- rlang::as_name(strata_sym)
@@ -375,13 +375,13 @@ do_one_cat_strata <- function(x, strata_sym) {
                n_strata_valid = integer()
              ))
   }
-
+  
   # Pivot into long form
   long <- x |>
     tidyr::pivot_longer(cols = - !! strata_sym,
                         names_to = "var",
                         values_to = "level")
-
+  
   # Enforce full factor levels 
   long <- long %>%
     dplyr::mutate(
@@ -393,7 +393,7 @@ do_one_cat_strata <- function(x, strata_sym) {
         factor(level)
       }
     )
-
+  
   # Now count with full levels preserved
   long %>%
     dplyr::count(!! strata_sym, var, level, name = "n_level", .drop = FALSE) %>%
@@ -416,21 +416,74 @@ do_one_cat_strata <- function(x, strata_sym) {
 #' Order vars for no-strata output (no relabeling of NA)
 #' @param res_stats tibble from the no-strata engine
 #' @param vars      original vars vector the user passed (or NULL)
+# order_rows_no_strata <- function(res_stats, vars) {
+#   stopifnot(is.character(vars), length(vars) > 0)
+# 
+#   # res_stats <- res_stats |>
+#   #   dplyr::mutate(
+#   #     var = as.character(var),
+#   #     var_order = match(var, vars)
+#   #   )
+#   
+#   res_stats <- res_stats |>
+#   dplyr::mutate(
+#     var_order = match(as.character(var), vars)
+#   )
+# 
+#   # Put ___any_selected immediately after the last checkbox var in its block
+#   any_idx <- which(is.na(res_stats$var_order) & grepl("___any_selected$", res_stats$var))
+#   if (length(any_idx) > 0) {
+#     for (i in any_idx) {
+#       base <- sub("___any_selected$", "", res_stats$var[i])          # e.g. "race"
+#       block_vars <- vars[grepl(paste0("^", base, "___"), vars)]      # e.g. race___1, race___2, ...
+#       if (length(block_vars) > 0) {
+#         res_stats$var_order[i] <- max(match(block_vars, vars), na.rm = TRUE) + 0.5
+#       } else {
+#         res_stats$var_order[i] <- 1e9
+#       }
+#     }
+#   }
+# 
+#   # Anything else not in vars goes to the end, but stable
+#   res_stats$var_order[is.na(res_stats$var_order)] <- 1e9
+# 
+#   # Within-var ordering:
+#   # - if level is a factor, keep factor order
+#   # - otherwise keep current row order (stable)
+#   level_is_factor <- is.factor(res_stats$level)
+# 
+#   res_stats <- res_stats |>
+#     dplyr::group_by(var) |>
+#     dplyr::mutate(
+#       .row_in_var = dplyr::row_number(),
+#       level_order2 = if (level_is_factor) as.numeric(level) else .row_in_var,
+#       is_any = dplyr::if_else(
+#         !is.na(class) & class == "checkbox" &
+#           !is.na(level) & level == "Any selected",
+#         1L, 0L
+#       )
+#     ) |>
+#     dplyr::ungroup() |>
+#     dplyr::arrange(var_order, is_any, level_order2, .row_in_var) |>
+#     dplyr::select(-var_order, -dplyr::any_of(c(".row_in_var", "level_order2", "is_any")))
+# 
+#   res_stats
+# }
+
 order_rows_no_strata <- function(res_stats, vars) {
   stopifnot(is.character(vars), length(vars) > 0)
-
+  
   res_stats <- res_stats |>
     dplyr::mutate(
-      var = as.character(var),
-      var_order = match(var, vars)
+      var_order = match(as.character(var), vars)
     )
-
+  
   # Put ___any_selected immediately after the last checkbox var in its block
-  any_idx <- which(is.na(res_stats$var_order) & grepl("___any_selected$", res_stats$var))
+  any_idx <- which(is.na(res_stats$var_order) & grepl("___any_selected$", as.character(res_stats$var)))
   if (length(any_idx) > 0) {
     for (i in any_idx) {
-      base <- sub("___any_selected$", "", res_stats$var[i])          # e.g. "race"
-      block_vars <- vars[grepl(paste0("^", base, "___"), vars)]      # e.g. race___1, race___2, ...
+      base <- sub("___any_selected$", "", as.character(res_stats$var[i]))
+      block_vars <- vars[grepl(paste0("^", base, "___"), vars)]
       if (length(block_vars) > 0) {
         res_stats$var_order[i] <- max(match(block_vars, vars), na.rm = TRUE) + 0.5
       } else {
@@ -438,15 +491,11 @@ order_rows_no_strata <- function(res_stats, vars) {
       }
     }
   }
-
-  # Anything else not in vars goes to the end, but stable
+  
   res_stats$var_order[is.na(res_stats$var_order)] <- 1e9
-
-  # Within-var ordering:
-  # - if level is a factor, keep factor order
-  # - otherwise keep current row order (stable)
+  
   level_is_factor <- is.factor(res_stats$level)
-
+  
   res_stats <- res_stats |>
     dplyr::group_by(var) |>
     dplyr::mutate(
@@ -460,8 +509,9 @@ order_rows_no_strata <- function(res_stats, vars) {
     ) |>
     dplyr::ungroup() |>
     dplyr::arrange(var_order, is_any, level_order2, .row_in_var) |>
+    dplyr::mutate(var = factor(as.character(var), levels = vars)) |>
     dplyr::select(-var_order, -dplyr::any_of(c(".row_in_var", "level_order2", "is_any")))
-
+  
   res_stats
 }
 
@@ -469,17 +519,17 @@ order_rows_no_strata <- function(res_stats, vars) {
 
 make_level_map_no_strata <- function(data, vars, cb_blocks = list(), show_any = TRUE) {
   out <- list()
-
+  
   cb_vars <- unlist(purrr::map(cb_blocks, "vars"), use.names = FALSE)
-
+  
   regular_vars <- setdiff(vars, cb_vars)
-
+  
   # Regular variables
   for (v in regular_vars) {
     if (!v %in% names(data)) next
-
+    
     x <- data[[v]]
-
+    
     if (is.factor(x)) {
       lvl <- levels(x)
     } else if (is.logical(x)) {
@@ -489,14 +539,14 @@ make_level_map_no_strata <- function(data, vars, cb_blocks = list(), show_any = 
     } else {
       next
     }
-
+    
     out[[length(out) + 1]] <- tibble::tibble(
       var = v,
       level = as.character(lvl),
       level_id = seq_along(lvl)
     )
   }
-
+  
   # Checkbox variables
   if (length(cb_blocks) > 0) {
     for (bl in cb_blocks) {
@@ -505,11 +555,11 @@ make_level_map_no_strata <- function(data, vars, cb_blocks = list(), show_any = 
         level = unname(bl$labels[bl$vars]),
         level_id = 1L
       )
-
+      
       if (isTRUE(show_any)) {
         base_name <- sub("___.*$", "", bl$vars[1])
         any_var   <- paste0(base_name, "___any_selected")
-
+        
         out[[length(out) + 1]] <- tibble::tibble(
           var = any_var,
           level = "Any selected",
@@ -518,7 +568,7 @@ make_level_map_no_strata <- function(data, vars, cb_blocks = list(), show_any = 
       }
     }
   }
-
+  
   dplyr::bind_rows(out)
 }
 
@@ -526,6 +576,8 @@ make_level_map_no_strata <- function(data, vars, cb_blocks = list(), show_any = 
 #' @param res_stats tibble from the no-strata engine
 #' @param vars      original vars vector the user passed (or NULL)
 #' @return          res_stats re-ordered
+#' @param level_map Optional data frame giving the full intended level order
+#'   for each variable. Must contain columns `var`, `level`, and `level_id`.
 # order_within_vars_no_strata <- function(res_stats, vars) {
 #   stopifnot(is.character(vars), length(vars) > 0)
 # 
@@ -582,29 +634,156 @@ make_level_map_no_strata <- function(data, vars, cb_blocks = list(), show_any = 
 #   res_stats
 # }
 
+# order_within_vars_no_strata <- function(res_stats, vars, level_map = NULL) {
+#   stopifnot(is.character(vars), length(vars) > 0)
+# 
+#   res_stats <- res_stats |>
+#     dplyr::mutate(
+#       var = factor(as.character(var), levels = vars),
+#       level_chr = as.character(level)
+#     )
+# 
+#   if (!is.null(level_map)) {
+#     level_map <- level_map |>
+#       dplyr::mutate(
+#         var = as.character(var),
+#         level = as.character(level)
+#       )
+# 
+#     res_stats <- res_stats |>
+#       dplyr::left_join(
+#         level_map,
+#         by = c("var" = "var", "level_chr" = "level")
+#       )
+#   }
+# 
+#   res_stats <- res_stats |>
+#     dplyr::group_by(var) |>
+#     dplyr::mutate(
+#       .row_in_var = dplyr::row_number(),
+#       .is_any     = !is.na(class) & class == "checkbox" &
+#         !is.na(level_chr) & level_chr == "Any selected",
+#       .is_missing = is.na(level_chr),
+#       .level_id   = dplyr::coalesce(level_id, .row_in_var)
+#     ) |>
+#     dplyr::arrange(var, .is_any, .is_missing, .level_id, .row_in_var, .by_group = TRUE) |>
+#     dplyr::ungroup()
+# 
+#   if (!is.null(level_map)) {
+#     global_level_order <- level_map |>
+#       dplyr::mutate(var = factor(as.character(var), levels = vars)) |>
+#       dplyr::arrange(var, level_id) |>
+#       dplyr::pull(level)
+# 
+#     res_stats <- res_stats |>
+#       dplyr::mutate(
+#         level = factor(level_chr, levels = unique(global_level_order))
+#       )
+#   } else {
+#     res_stats <- res_stats |>
+#       dplyr::mutate(
+#         level = factor(level_chr, levels = unique(level_chr))
+#       )
+#   }
+# 
+#   res_stats |>
+#     dplyr::select(-level_chr, -level_id, -.row_in_var, -.is_any, -.is_missing, -.level_id)
+# }
+
+# order_within_vars_no_strata <- function(res_stats, vars, level_map = NULL) {
+#   stopifnot(is.character(vars), length(vars) > 0)
+# 
+#   res_stats <- res_stats |>
+#     dplyr::mutate(
+#       var = as.character(var),
+#       var_order = match(var, vars),
+#       level_chr = as.character(level)
+#     )
+# 
+#   if (!is.null(level_map)) {
+#     level_map <- level_map |>
+#       dplyr::mutate(
+#         var = as.character(var),
+#         level = as.character(level)
+#       )
+# 
+#     res_stats <- res_stats |>
+#       dplyr::left_join(
+#         level_map,
+#         by = c("var" = "var", "level_chr" = "level")
+#       )
+#   }
+# 
+#   res_stats <- res_stats |>
+#     dplyr::group_by(var) |>
+#     dplyr::mutate(
+#       .row_in_var = dplyr::row_number(),
+#       .is_any     = !is.na(class) & class == "checkbox" &
+#         !is.na(level_chr) & level_chr == "Any selected",
+#       .is_missing = is.na(level_chr),
+#       .level_id   = dplyr::coalesce(level_id, .row_in_var)
+#     ) |>
+#     dplyr::ungroup() |>
+#     dplyr::arrange(var_order, .is_any, .is_missing, .level_id, .row_in_var)
+# 
+#   if (!is.null(level_map)) {
+#     global_level_order <- level_map |>
+#       dplyr::mutate(var_order = match(var, vars)) |>
+#       dplyr::arrange(var_order, level_id) |>
+#       dplyr::pull(level)
+# 
+#     res_stats <- res_stats |>
+#       dplyr::mutate(
+#         level = factor(level_chr, levels = unique(global_level_order))
+#       )
+#   } else {
+#     res_stats <- res_stats |>
+#       dplyr::mutate(
+#         level = factor(level_chr, levels = unique(level_chr))
+#       )
+#   }
+# 
+#   res_stats |>
+#     dplyr::mutate(
+#       var = factor(var, levels = vars)
+#     ) |>
+#     dplyr::select(-var_order, -level_chr, -level_id, -.row_in_var, -.is_any, -.is_missing, -.level_id)
+# }
+
 order_within_vars_no_strata <- function(res_stats, vars, level_map = NULL) {
   stopifnot(is.character(vars), length(vars) > 0)
-
+  
+  has_level_map <- !is.null(level_map) &&
+    is.data.frame(level_map) &&
+    all(c("var", "level", "level_id") %in% names(level_map)) &&
+    nrow(level_map) > 0
+  
   res_stats <- res_stats |>
     dplyr::mutate(
-      var = factor(as.character(var), levels = vars),
+      var = as.character(var),
+      var_order = match(var, vars),
       level_chr = as.character(level)
     )
-
-  if (!is.null(level_map)) {
+  
+  if (has_level_map) {
     level_map <- level_map |>
       dplyr::mutate(
-        var = as.character(var),
-        level = as.character(level)
+        var = as.character(.data$var),
+        level = as.character(.data$level)
       )
-
+    
     res_stats <- res_stats |>
       dplyr::left_join(
         level_map,
         by = c("var" = "var", "level_chr" = "level")
       )
   }
-
+  
+  if (!"level_id" %in% names(res_stats)) {
+    res_stats <- res_stats |>
+      dplyr::mutate(level_id = NA_integer_)
+  }
+  
   res_stats <- res_stats |>
     dplyr::group_by(var) |>
     dplyr::mutate(
@@ -614,15 +793,15 @@ order_within_vars_no_strata <- function(res_stats, vars, level_map = NULL) {
       .is_missing = is.na(level_chr),
       .level_id   = dplyr::coalesce(level_id, .row_in_var)
     ) |>
-    dplyr::arrange(var, .is_any, .is_missing, .level_id, .row_in_var, .by_group = TRUE) |>
-    dplyr::ungroup()
-
-  if (!is.null(level_map)) {
+    dplyr::ungroup() |>
+    dplyr::arrange(var_order, .is_any, .is_missing, .level_id, .row_in_var)
+  
+  if (has_level_map) {
     global_level_order <- level_map |>
-      dplyr::mutate(var = factor(as.character(var), levels = vars)) |>
-      dplyr::arrange(var, level_id) |>
-      dplyr::pull(level)
-
+      dplyr::mutate(var_order = match(.data$var, vars)) |>
+      dplyr::arrange(var_order, .data$level_id) |>
+      dplyr::pull(.data$level)
+    
     res_stats <- res_stats |>
       dplyr::mutate(
         level = factor(level_chr, levels = unique(global_level_order))
@@ -633,9 +812,12 @@ order_within_vars_no_strata <- function(res_stats, vars, level_map = NULL) {
         level = factor(level_chr, levels = unique(level_chr))
       )
   }
-
+  
   res_stats |>
-    dplyr::select(-level_chr, -level_id, -.row_in_var, -.is_any, -.is_missing, -.level_id)
+    dplyr::mutate(
+      var = factor(var, levels = vars)
+    ) |>
+    dplyr::select(-var_order, -level_chr, -level_id, -.row_in_var, -.is_any, -.is_missing, -.level_id)
 }
 
 
@@ -649,22 +831,22 @@ order_within_vars_no_strata <- function(res_stats, vars, level_map = NULL) {
 
 .make_var_levels_with_any <- function(vars, cb_blocks, show_any = TRUE) {
   lvls <- vars
-
+  
   if (!isTRUE(show_any) || length(cb_blocks) == 0) return(lvls)
-
+  
   for (bl in cb_blocks) {
     base_name <- sub("___.*$", "", bl$vars[1])
     any_var   <- paste0(base_name, "___any_selected")
-
+    
     # insert after the last checkbox var *as it appears in vars*
     idx <- match(bl$vars, vars)
     idx <- idx[!is.na(idx)]
     if (length(idx) == 0) next
-
+    
     last_cb <- vars[max(idx)]
     lvls <- .insert_after(lvls, any_var, after = last_cb)
   }
-
+  
   lvls
 }
 
@@ -730,11 +912,11 @@ order_within_vars_no_strata <- function(res_stats, vars, level_map = NULL) {
 get_var_info <- function(data, .vars = NULL) {
   
   if (is.null(.vars)) .vars <- names(data)
-
+  
   out <- lapply(.vars, function(v) {
     x <- data[[v]]
     cls <- class(x)[1]
-
+    
     if (is.factor(x)) {
       tibble::tibble(
         var = v,
@@ -759,7 +941,7 @@ get_var_info <- function(data, .vars = NULL) {
       )
     }
   })
-
+  
   dplyr::bind_rows(out)
 }
 
@@ -800,17 +982,17 @@ get_var_info <- function(data, .vars = NULL) {
 # #' @export
 #' @noRd
 group_similar_vars <- function(
-  x,
-  method = "jw",
-  normalize = TRUE,
-  normalize_numbers = TRUE,
-  min_multisize = 2,
-  h_grid = NULL,
-  block_prefix_len = 3,
-  absorb_singletons_by_stem = TRUE,
-  require_triple_underscores_for_absorb = TRUE,
-  relax_factor = 1.2,
-  abs_thresh = 0.33
+    x,
+    method = "jw",
+    normalize = TRUE,
+    normalize_numbers = TRUE,
+    min_multisize = 2,
+    h_grid = NULL,
+    block_prefix_len = 3,
+    absorb_singletons_by_stem = TRUE,
+    require_triple_underscores_for_absorb = TRUE,
+    relax_factor = 1.2,
+    abs_thresh = 0.33
 ) {
   stopifnot(is.character(x))
   n <- length(x)
@@ -823,7 +1005,7 @@ group_similar_vars <- function(
       group_size = 1L
     ))
   }
-
+  
   # --- helpers ---
   .norm <- function(s) {
     if (!normalize) return(s)
@@ -834,7 +1016,7 @@ group_similar_vars <- function(
     s
   }
   .letters_only <- function(s) gsub("[^a-z]", "", s)
-
+  
   .lcp <- function(ss) {
     if (length(ss) == 1) return(ss)
     split <- strsplit(ss, "", fixed = TRUE)
@@ -853,14 +1035,14 @@ group_similar_vars <- function(
     subD <- as.matrix(D)[idx, idx, drop = FALSE]
     idx[which.min(rowMeans(subD))]
   }
-
+  
   # --- normalize for distance (keep originals for output) ---
   x_norm <- .norm(x)
-
+  
   # --- block by leading letters to avoid cross-talk ---
   block_key <- substr(.letters_only(x_norm), 1, block_prefix_len)
   block_key[block_key == ""] <- substr(x_norm[block_key == ""], 1, block_prefix_len)
-
+  
   # --- cluster within each block with auto-tuned cut ---
   cluster_block <- function(ix) {
     xn <- x_norm[ix]
@@ -869,14 +1051,14 @@ group_similar_vars <- function(
     }
     D <- stats::as.dist(stringdist::stringdistmatrix(xn, xn, method = method))
     hc <- stats::hclust(D, method = "average")
-
+    
     h_grid_loc <- if (is.null(h_grid)) {
       merges <- hc$height
       lo <- max(min(merges, na.rm = TRUE) - 1e-6, 0)
       hi <- min(max(merges, na.rm = TRUE) + 1e-6, 1)
       seq(lo, hi, length.out = 40L)
     } else h_grid
-
+    
     score_cut <- function(h) {
       cl <- cutree(hc, h = h)
       k <- length(unique(cl))
@@ -891,7 +1073,7 @@ group_similar_vars <- function(
       prop_single <- mean(sizes == 1L)
       c(score = s - 0.05 * prop_single, k = k, h = h)
     }
-
+    
     cand <- vapply(h_grid_loc, score_cut, numeric(3L))
     best_idx <- which.max(cand["score", ])
     cl <- if (!is.finite(cand["score", best_idx])) {
@@ -899,13 +1081,13 @@ group_similar_vars <- function(
     } else {
       cutree(hc, h = cand["h", best_idx])
     }
-
+    
     dplyr::tibble(var = x[ix], norm = xn, group_id = as.integer(cl))
   }
-
+  
   pieces <- split(seq_along(x), block_key, drop = TRUE)
   res_list <- lapply(pieces, cluster_block)
-
+  
   # make group ids globally unique
   offset <- 0L
   for (i in seq_along(res_list)) {
@@ -914,73 +1096,73 @@ group_similar_vars <- function(
     offset <- offset + max(g_local)
   }
   df <- dplyr::bind_rows(res_list)
-
+  
   # --- optional: conservative singleton absorb by stem + triple-underscore guard ---
-if (absorb_singletons_by_stem) {
-  Dfull <- stats::as.dist(stringdist::stringdistmatrix(df$norm, df$norm, method = method))
-  Dm <- as.matrix(Dfull)
-
-  df$stem <- sub("_.+$", "", df$norm)
-  df$has_triple <- grepl("___", df$var, fixed = TRUE)
-
-  grp_members <- split(seq_len(nrow(df)), df$group_id)
-  grp_sizes   <- vapply(grp_members, length, integer(1))
-  multi_ids   <- names(grp_members)[grp_sizes >= 2]
-
-  # Cohesion per multi-member group: use a *looser* yardstick (q90 of off-diagonals)
-  grp_intra_q90 <- setNames(rep(Inf, length(grp_members)), names(grp_members))
-  for (g in multi_ids) {
-    idx <- grp_members[[g]]
-    off <- Dm[idx, idx, drop = FALSE]
-    off <- off[off != 0]
-    grp_intra_q90[g] <- if (length(off)) stats::quantile(off, 0.90, names = FALSE) else 0
-  }
-
-  # Majority stem per group + whether group contains any triple-underscore member
-  grp_major_stem <- vapply(grp_members, function(ii) {
-    names(sort(table(df$stem[ii]), decreasing = TRUE))[1]
-  }, character(1))
-  grp_has_triple <- vapply(grp_members, function(ii) any(df$has_triple[ii]), logical(1))
-
-  # Singletons to consider
-  is_singleton_row <- grp_sizes[match(df$group_id, names(grp_sizes))] == 1L
-
-  for (i in which(is_singleton_row)) {
-    # optional gate: only absorb if this singleton has triple underscores
-    if (require_triple_underscores_for_absorb && !df$has_triple[i]) next
-
-    st <- df$stem[i]
-    # candidate groups: multi, same majority stem, and (optionally) have a triple-underscore member
-    cand_groups <- names(grp_members)[grp_sizes >= 2 &
-                                      grp_major_stem == st &
-                                      (!require_triple_underscores_for_absorb | grp_has_triple)]
-    if (length(cand_groups) == 0L) next
-
-    # Evaluate fit to each candidate group
-    cand_df <- do.call(rbind, lapply(cand_groups, function(g) {
+  if (absorb_singletons_by_stem) {
+    Dfull <- stats::as.dist(stringdist::stringdistmatrix(df$norm, df$norm, method = method))
+    Dm <- as.matrix(Dfull)
+    
+    df$stem <- sub("_.+$", "", df$norm)
+    df$has_triple <- grepl("___", df$var, fixed = TRUE)
+    
+    grp_members <- split(seq_len(nrow(df)), df$group_id)
+    grp_sizes   <- vapply(grp_members, length, integer(1))
+    multi_ids   <- names(grp_members)[grp_sizes >= 2]
+    
+    # Cohesion per multi-member group: use a *looser* yardstick (q90 of off-diagonals)
+    grp_intra_q90 <- setNames(rep(Inf, length(grp_members)), names(grp_members))
+    for (g in multi_ids) {
       idx <- grp_members[[g]]
-      data.frame(
-        g           = as.integer(g),
-        mean_to_grp = mean(Dm[i, idx]),
-        intra_q90   = grp_intra_q90[[g]]
-      )
-    }))
-
-    # Best candidate = smallest mean_to_grp
-    cand_df <- cand_df[order(cand_df$mean_to_grp, cand_df$g), , drop = FALSE]
-    best <- cand_df[1, ]
-
-    # Accept if the singleton is not worse than (relax_factor * q90) OR clears abs_thresh
-    # This avoids punishing very tight clusters.
-    if (best$mean_to_grp <= max(relax_factor * best$intra_q90, abs_thresh)) {
-      old_gid <- df$group_id[i]
-      df$group_id[i] <- best$g
-      grp_members[[as.character(best$g)]]  <- c(grp_members[[as.character(best$g)]], i)
-      grp_members[[as.character(old_gid)]] <- setdiff(grp_members[[as.character(old_gid)]], i)
+      off <- Dm[idx, idx, drop = FALSE]
+      off <- off[off != 0]
+      grp_intra_q90[g] <- if (length(off)) stats::quantile(off, 0.90, names = FALSE) else 0
+    }
+    
+    # Majority stem per group + whether group contains any triple-underscore member
+    grp_major_stem <- vapply(grp_members, function(ii) {
+      names(sort(table(df$stem[ii]), decreasing = TRUE))[1]
+    }, character(1))
+    grp_has_triple <- vapply(grp_members, function(ii) any(df$has_triple[ii]), logical(1))
+    
+    # Singletons to consider
+    is_singleton_row <- grp_sizes[match(df$group_id, names(grp_sizes))] == 1L
+    
+    for (i in which(is_singleton_row)) {
+      # optional gate: only absorb if this singleton has triple underscores
+      if (require_triple_underscores_for_absorb && !df$has_triple[i]) next
+      
+      st <- df$stem[i]
+      # candidate groups: multi, same majority stem, and (optionally) have a triple-underscore member
+      cand_groups <- names(grp_members)[grp_sizes >= 2 &
+                                          grp_major_stem == st &
+                                          (!require_triple_underscores_for_absorb | grp_has_triple)]
+      if (length(cand_groups) == 0L) next
+      
+      # Evaluate fit to each candidate group
+      cand_df <- do.call(rbind, lapply(cand_groups, function(g) {
+        idx <- grp_members[[g]]
+        data.frame(
+          g           = as.integer(g),
+          mean_to_grp = mean(Dm[i, idx]),
+          intra_q90   = grp_intra_q90[[g]]
+        )
+      }))
+      
+      # Best candidate = smallest mean_to_grp
+      cand_df <- cand_df[order(cand_df$mean_to_grp, cand_df$g), , drop = FALSE]
+      best <- cand_df[1, ]
+      
+      # Accept if the singleton is not worse than (relax_factor * q90) OR clears abs_thresh
+      # This avoids punishing very tight clusters.
+      if (best$mean_to_grp <= max(relax_factor * best$intra_q90, abs_thresh)) {
+        old_gid <- df$group_id[i]
+        df$group_id[i] <- best$g
+        grp_members[[as.character(best$g)]]  <- c(grp_members[[as.character(best$g)]], i)
+        grp_members[[as.character(old_gid)]] <- setdiff(grp_members[[as.character(old_gid)]], i)
+      }
     }
   }
-}
-
+  
   # --- labels per final group ---
   add_labels <- function(sub) {
     if (nrow(sub) == 1L) {
@@ -1007,7 +1189,7 @@ if (absorb_singletons_by_stem) {
       group_size = nrow(sub)
     )
   }
-
+  
   df |>
     dplyr::group_by(group_id) |>
     dplyr::group_modify(~ add_labels(.x)) |>

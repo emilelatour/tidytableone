@@ -42,8 +42,16 @@ if (getRversion() >= "2.15.1") {
       "var_type",
       "var_level",
       "x",
-      "y"
+      "y", 
+      
+      c(".level_first_row",
+        ".level_id",
+        ".orig_row",
+        "level_chr",
+        "level_id",
+        "strata_order")
     )
   )
 }
+
 

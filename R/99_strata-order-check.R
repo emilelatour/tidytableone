@@ -279,3 +279,121 @@
 # 
 # 
 # 
+
+
+
+# #### A good compact test set would be: --------------------------------
+# 
+# # 	•	no strata, no checkbox, reversed vars
+# 
+# t2_vars_rev <- rev(t2_vars)
+# t2_vars_rev
+# 
+# df %>%
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>%
+#   create_tidytableone(strata = NULL,
+#                       vars = t2_vars_rev) %>%
+#   dplyr::select(strata:level)
+# # Good
+# 
+# 
+# # 	•	no strata, checkbox, reversed vars
+# df %>%
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>%
+# create_tidytableone(strata = NULL,
+#                                   vars = t2_vars_rev,
+#                                   checkbox = t2_cb_vars,
+#                                   checkbox_opts = list(show_any = FALSE)
+# ) %>%
+#   dplyr::select(strata:level)
+# # Good
+# 
+# # 	•	strata, no checkbox, reversed vars
+# df %>%
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>%
+#   create_tidytableone(strata = "biological_sex",
+#                       vars = t2_vars_rev) %>%
+#   dplyr::select(strata:level)
+# # Good
+# 
+# # 	•	strata, checkbox, reversed vars
+# df %>%
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>%
+# create_tidytableone(strata = "biological_sex",
+#                                   vars = t2_vars_rev,
+#                                   checkbox = t2_cb_vars,
+#                                   checkbox_opts = list(show_any = FALSE)
+# ) %>%
+#   dplyr::select(strata:level)
+# # Good
+# 
+# # 	•	a factor with an unused level still present in levels()
+# 
+# df %>%
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>%
+#   dplyr::filter(d_initiation_reason != "Recalcitrant disease") %>%
+# create_tidytableone(strata = "biological_sex",
+#                                   vars = t2_vars_rev,
+#                                   checkbox = t2_cb_vars,
+#                                   checkbox_opts = list(show_any = FALSE)
+# )
+# # Good
+# 
+# 
+# #### Adorn --------------------------------
+# 
+# # 	•	no strata, no checkbox, reversed vars
+# 
+# t2_vars_rev <- rev(t2_vars)
+# t2_vars_rev
+# 
+# df %>%
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>%
+#   create_tidytableone(strata = NULL,
+#                       vars = t2_vars_rev) %>%
+#   adorn_tidytableone()
+# # Good
+# 
+# 
+# # 	•	no strata, checkbox, reversed vars
+# df %>%
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>%
+# create_tidytableone(strata = NULL,
+#                                   vars = t2_vars_rev,
+#                                   checkbox = t2_cb_vars,
+#                                   checkbox_opts = list(show_any = FALSE)
+# ) %>%
+#   adorn_tidytableone()
+# # Good
+# 
+# # 	•	strata, no checkbox, reversed vars
+# df %>%
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>%
+#   create_tidytableone(strata = "biological_sex",
+#                       vars = t2_vars_rev) %>%
+#   adorn_tidytableone()
+# # Good
+# 
+# # 	•	strata, checkbox, reversed vars
+# df %>%
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>%
+# create_tidytableone(strata = "biological_sex",
+#                                   vars = t2_vars_rev,
+#                                   checkbox = t2_cb_vars,
+#                                   checkbox_opts = list(show_any = FALSE)
+# ) %>%
+#   adorn_tidytableone()
+# # Good
+# 
+# # 	•	a factor with an unused level still present in levels()
+# 
+# df %>%
+#   dplyr::filter(redcap_event_name == "Baseline Information") %>%
+#   dplyr::filter(d_initiation_reason != "Recalcitrant disease") %>%
+# create_tidytableone(strata = "biological_sex",
+#                                   vars = t2_vars_rev,
+#                                   checkbox = t2_cb_vars,
+#                                   checkbox_opts = list(show_any = FALSE)
+# )  %>%
+#   adorn_tidytableone()
+# # Good

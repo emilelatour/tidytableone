@@ -4,12 +4,15 @@
 \alias{order_within_vars_no_strata}
 \title{Order within-vars for no-strata output (no relabeling of NA)}
 \usage{
-order_within_vars_no_strata(res_stats, vars)
+order_within_vars_no_strata(res_stats, vars, level_map = NULL)
 }
 \arguments{
 \item{res_stats}{tibble from the no-strata engine}
 
 \item{vars}{original vars vector the user passed (or NULL)}
+
+\item{level_map}{Optional data frame giving the full intended level order
+for each variable. Must contain columns \code{var}, \code{level}, and \code{level_id}.}
 }
 \value{
 \if{html}{\out{<div class="sourceCode">}}\preformatted{     res_stats re-ordered
