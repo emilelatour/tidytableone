@@ -15,14 +15,13 @@
 #'   variable, if any exist.
 #' @param b_replicates an integer specifying the number of replicates used in
 #'   the Monte Carlo test for Fisher's Exact test and Chi-square test.
-#' @param ... Additional arguments. Not used.
 #' @param checkbox A tibble/data.frame specifying checkbox blocks:
 #'   columns `var` (the checkbox column name), `overall_lbl` (group label to show),
 #'   `checkbox_lbl` (label for each option), and `checkbox_txt` (the selected text to match, e.g., "Checked").
 #' @param checkbox_opts A list of options for checkbox processing. Recognized fields:
-#'   `denom` = c("group","nonmissing","responders"), `pvals` (ignored for no-strata),
-#'   `test` (ignored for no-strata), `p_adjust` (method passed to stats::p.adjust),
-#'   `show_any` (logical; add “Any selected” row), `note` (character footnote).
+#'   `pvals` = c("none","per_level") (per-level p-values; ignored for no-strata),
+#'   `p_adjust` (method passed to stats::p.adjust),
+#'   `show_any` (logical; add "Any selected" row), `note` (character footnote).
 #'
 #' @importFrom car leveneTest
 #' @importFrom dplyr bind_rows
@@ -220,14 +219,11 @@
                                       b_replicates = 2000,
                                       checkbox = NULL,
                                       checkbox_opts = list(
-                                        denom = "responders",
                                         pvals = "per_level",
-                                        test  = "auto",
                                         p_adjust = "none",
                                         show_any = TRUE,
                                         note = "Participants could select more than one option; percentages may exceed 100%."
-                                      ),
-                                      ...) {
+                                      )) {
   
   # Silence no visible binding for global variable
   dat <- res <- n_level_valid <- n_strata_valid <- label <- sort1 <- NULL
@@ -445,8 +441,6 @@
           data       = data,
           strata_var = rlang::as_name(strata_sym),
           blocks     = cb_blocks,
-          denom      = checkbox_opts$denom %||% "responders",
-          test       = checkbox_opts$test %||% "auto",
           p_adjust   = checkbox_opts$p_adjust %||% "none",
           B          = 2000
         )
@@ -696,6 +690,8 @@
 #' Create a tidy "Table 1"
 #'
 #' @inheritParams .create_tidytableone_core
+#' @param ... Reserved. Passing any argument here raises an informative error
+#'   (commonly, adorn-side arguments like `exact` get misdirected to create).
 #' @export
 #' @examples
 #' # Basic Table 1 using built-in example data
@@ -767,6 +763,11 @@ create_tidytableone <- function(data,
                                 checkbox_opts = NULL, 
                                 ...) {
   
+  # Validate any extra args; create_tidytableone() does not currently accept
+  # anything beyond its named parameters. A common slip is passing adorn-side
+  # args (exact, nonnormal, monte_carlo_p, ...) here.
+  .check_unknown_args(...)
+  
   checkbox_opts <- normalize_checkbox_opts(checkbox_opts)
   
   checkbox_opts <- validate_checkbox_opts(checkbox_opts)
@@ -777,177 +778,56 @@ create_tidytableone <- function(data,
     vars = vars,
     na_level = na_level,
     b_replicates = b_replicates,
-    checkbox = checkbox,          # <-- pass through
-    checkbox_opts = checkbox_opts,
-    ...
-  )
-}
-
-
-#' Create tidy Table 1 with checkbox variables
-#'
-#' This is a wrapper for [create_tidytableone()] that supports
-#' multi-select (checkbox) variables, such as REDCap checkboxes.
-#'
-#' @inheritParams .create_tidytableone_core
-#' @param checkbox A tibble with columns:
-#'   \itemize{
-#'     \item `var` — checkbox variable name in `data` (e.g., `"race___1"`).
-#'     \item `overall_lbl` — Label for the collapsed group in Table 1
-#'       (e.g., `"Race"`).
-#'     \item `checkbox_lbl` — Label for the individual checkbox level
-#'       (e.g., `"White"`).
-#'     \item `checkbox_txt` — Text used to indicate selection (e.g., `"Checked"`).
-#'   }
-#' @param checkbox_opts A list controlling checkbox processing. Can include:
-#'   \describe{
-#'     \item{denom}{Character: `"group"` or `"overall"` denominator.}
-#'     \item{pvals}{Logical: whether to show p-values.}
-#'     \item{test}{Test type for categorical variables (`"chisq"`, `"fisher"`).}
-#'     \item{p_adjust}{Adjustment method for p-values.}
-#'     \item{show_any}{Logical: whether to add an "Any selected" row.}
-#'     \item{note}{Character: note text to include.}
-#'   }
-#' @param ... Additional arguments passed to [create_tidytableone()].
-#'
-#' @details
-#' This function first calls [create_tidytableone()] to produce the
-#' standard Table 1, then expands and relabels multi-select (checkbox)
-#' variables so each selection appears as a separate row.
-#'
-#' **Example `checkbox` tibble:**
-#' ```r
-#' tibble::tribble(
-#'   ~var, ~overall_lbl, ~checkbox_lbl, ~checkbox_txt,
-#'   "race___1", "Race", "White", "Checked",
-#'   "race___2", "Race", "Black or African-American", "Checked"
-#' )
-#' ```
-#'
-#' @seealso [create_tidytableone()]
-#'
-#' @return A tibble in the same format as [create_tidytableone()].
-#' 
-#' @noRd
-#' 
-# #' @export
-#'
-# #' @examples
-# #' # Minimal smoke test (always runs quickly)
-# #' set.seed(123)
-# #' tiny <- tibble::tibble(
-# #'   group = sample(c("A","B"), 20, TRUE),
-# #'   gender = sample(c("Female","Male"), 20, TRUE),
-# #'   age = sample(18:80, 20, TRUE),
-# #'   race___1 = sample(c("Checked","Unchecked"), 20, TRUE),
-# #'   race___2 = sample(c("Checked","Unchecked"), 20, TRUE)
-# #' )
-# #' 
-# #' create_tidytableone_checkbox(
-# #'   data = tiny,
-# #'   strata = "group",
-# #'   vars = c("gender","age","race___1","race___2"),
-# #'   checkbox = tibble::tribble(
-# #'     ~var,       ~overall_lbl, ~checkbox_lbl, ~checkbox_txt,
-# #'     "race___1", "Race",       "White",       "Checked",
-# #'     "race___2", "Race",       "Black",       "Checked"
-# #'   )
-# #' )
-# #' 
-# #' @examplesIf interactive()
-# #' # Larger, fully worked example (runs only in interactive sessions)
-# #' 
-# #' library(dplyr)
-# #' library(sjlabelled)
-# #' library(tibble)
-# #' library(tidyr)
-# #' 
-# #' set.seed(42)
-# #' df2 <- tibble(
-# #'   record_id = 1:100,
-# #'   gender = sample(c("Female", "Male"), 100, TRUE),
-# #'   age = sample(18:85, 100, TRUE),
-# #'   education = sample(c("High-school", "College", "Graduate school"), 100, TRUE),
-# #'   ethnicity = sample(c("Hispanic", "Non-hispanic"), 100, TRUE),
-# #'   income = sample(20000:120000, 100, TRUE),
-# #'   marital_status = sample(c("Married", "Single"), 100, TRUE),
-# #'   group = sample(c("Treatment", "Control"), 100, TRUE),
-# #'   key = sample(paste0("race___", c(1:6, 98)), 100, TRUE),
-# #'   value = "Checked"
-# #' ) %>%
-# #'   mutate(key = factor(key, levels = paste0("race___", c(1:6, 98)))) %>%
-# #'   spread(key, value) %>%
-# #'   mutate(across(starts_with("race___"), ~ replace_na(., "Unchecked")))
-# #' 
-# #' # Checkbox mapping
-# #' cb_map <- tribble(
-# #'   ~var,        ~overall_lbl, ~checkbox_lbl,                              ~checkbox_txt,
-# #'   "race___1",  "Race",       "White",                                    "Checked",
-# #'   "race___2",  "Race",       "Black or African-American",                "Checked",
-# #'   "race___3",  "Race",       "American Indian or Alaska Native",         "Checked",
-# #'   "race___4",  "Race",       "Asian",                                    "Checked",
-# #'   "race___5",  "Race",       "Native Hawaiian or Pacific Islander",      "Checked",
-# #'   "race___6",  "Race",       "Other",                                    "Checked",
-# #'   "race___98", "Race",       "Prefer not to answer",                     "Checked"
-# #' )
-# #' 
-# #' # Basic table with checkboxes
-# #' create_tidytableone_checkbox(
-# #'   data = df2,
-# #'   strata = "group",
-# #'   vars = c("gender", "age", "education", "ethnicity", "income", "marital_status",
-# #'            paste0("race___", c(1:6, 98))),
-# #'   checkbox = cb_map
-# #' )
-# #' 
-# #' # With variable labels
-# #' df2_labelled <- sjlabelled::var_labels(
-# #'   df2,
-# #'   gender = "Gender", age = "Age (years)", education = "Education",
-# #'   ethnicity = "Ethnicity", income = "Income", marital_status = "Marital status",
-# #'   race___1 = "Race (White)", race___2 = "Race (Black)", race___3 = "Race (American Indian)",
-# #'   race___4 = "Race (Asian)", race___5 = "Race (Native Hawaiian)", race___6 = "Race (Other)",
-# #'   race___98 = "Race (Prefer not to answer)"
-# #' )
-# #' 
-# #' create_tidytableone_checkbox(
-# #'   data = df2_labelled,
-# #'   strata = "group",
-# #'   vars = c("gender", "age", "education", "ethnicity", "income", "marital_status",
-# #'            paste0("race___", c(1:6, 98))),
-# #'   checkbox = cb_map
-# #' )
-# #' 
-
-create_tidytableone_checkbox <- function(data,
-                                         strata = NULL,
-                                         vars,
-                                         na_level = "(Missing)",
-                                         b_replicates = 2000,
-                                         checkbox = NULL,
-                                         checkbox_opts = list(
-                                           denom   = "responders",
-                                           pvals   = "per_level",
-                                           test    = "auto",
-                                           p_adjust = "none",
-                                           show_any = TRUE,
-                                           note     = "Participants could select more than one option; percentages may exceed 100%."
-                                         ),
-                                         ...) {
-  .create_tidytableone_core(
-    data = data,
-    strata = strata,
-    vars = vars,
-    na_level = na_level,
-    b_replicates = b_replicates,
     checkbox = checkbox,
-    checkbox_opts = checkbox_opts,
-    ...
+    checkbox_opts = checkbox_opts
   )
 }
 
 
-
-
+# Stop with a useful message when create_tidytableone() is given an
+# unrecognized argument. The most common case is passing an argument that
+# really belongs on adorn_tidytableone() (e.g., exact, nonnormal,
+# monte_carlo_p, equal_variance). Suggest the right destination when we
+# can; otherwise list the unknown names plainly.
+.check_unknown_args <- function(...) {
+  extras <- list(...)
+  if (length(extras) == 0L) return(invisible(NULL))
+  
+  bad <- names(extras)
+  if (is.null(bad) || any(bad == "")) {
+    stop("create_tidytableone() got unnamed extra arguments. Remove them or name them.",
+         call. = FALSE)
+  }
+  
+  adorn_args <- c(
+    "exact", "nonnormal", "equal_variance", "no_cont_correction",
+    "monte_carlo_p", "show_test", "show_smd", "use_labels",
+    "combine_level_col", "missing", "missing_text",
+    "default_continuous", "default_categorical", "fmt_vars",
+    "con_accuracy", "cat_accuracy", "p_accuracy"
+  )
+  misplaced <- intersect(bad, adorn_args)
+  other     <- setdiff(bad, adorn_args)
+  
+  msg <- "Unknown argument(s) passed to create_tidytableone(): "
+  msg <- paste0(msg, paste(sprintf("`%s`", bad), collapse = ", "), ".")
+  
+  if (length(misplaced) > 0) {
+    msg <- paste0(
+      msg,
+      "\n  These belong on adorn_tidytableone(), not create_tidytableone(): ",
+      paste(sprintf("`%s`", misplaced), collapse = ", "), "."
+    )
+  }
+  if (length(other) > 0) {
+    msg <- paste0(
+      msg,
+      "\n  Unrecognized: ",
+      paste(sprintf("`%s`", other), collapse = ", "), "."
+    )
+  }
+  
+  stop(msg, call. = FALSE)
+}
 
 

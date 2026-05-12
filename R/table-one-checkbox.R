@@ -49,9 +49,6 @@ process_checkbox_blocks_strata <- function(data, blocks, opts, strata_var, strat
   opts <- normalize_checkbox_opts(opts)
   opts <- validate_checkbox_opts(opts)
   
-  denom <- match.arg(tolower(opts$denom %||% "responders"),
-                     c("group","nonmissing","responders"))
-  
   # Include an Overall stratum first, keep order stable
   strata_levels_all <- unique(c("Overall", strata_levels))
   
@@ -67,29 +64,10 @@ process_checkbox_blocks_strata <- function(data, blocks, opts, strata_var, strat
       
       # Per-level counts (selected)
       n_level <- colSums(sel_mat, na.rm = TRUE)
-      # Basic denominators
-      group_N <- nrow(d_g)
       
-      # Non-missing per checkbox column
-      nonmiss_per_level <- colSums(!is.na(raw_mat), na.rm = TRUE)
-      
-      # Valid denominators (vector) according to denom
-      any_selected <- rowSums(sel_mat, na.rm = TRUE) > 0L
-      n_resp <- as.integer(sum(any_selected, na.rm = TRUE))
-      
-      n_strata_valid_vec <- switch(
-        denom,
-        nonmissing = as.integer(nonmiss_per_level[bl$vars]),
-        responders = rep(n_resp, length(bl$vars)), 
-        group      = rep(as.integer(group_N), length(bl$vars))
-      )
-      
-      # Display denominators (overall column denominators)
-      n_strata_vec <- rep(as.integer(switch(denom,
-                                            group = group_N,
-                                            nonmissing = group_N,
-                                            responders = n_resp
-      )), length(bl$vars))
+      # Group-based denominator: stratum N for every checkbox column
+      group_N      <- as.integer(nrow(d_g))
+      n_strata_vec <- rep(group_N, length(bl$vars))
       
       # Sanity: names must align so we can index by bl$vars
       stopifnot(identical(names(n_level), bl$vars))
@@ -105,8 +83,8 @@ process_checkbox_blocks_strata <- function(data, blocks, opts, strata_var, strat
         pct            = ifelse(n_strata_vec > 0L, n_level[bl$vars] / n_strata_vec, NA_real_),
         
         n_level_valid  = as.integer(n_level[bl$vars]),
-        n_strata_valid = as.integer(n_strata_valid_vec),
-        pct_valid      = ifelse(n_strata_valid_vec > 0L, n_level[bl$vars] / n_strata_valid_vec, NA_real_),
+        n_strata_valid = as.integer(n_strata_vec),
+        pct_valid      = ifelse(n_strata_vec > 0L, n_level[bl$vars] / n_strata_vec, NA_real_),
         
         # tags & label
         var_type       = "categorical",
@@ -114,20 +92,9 @@ process_checkbox_blocks_strata <- function(data, blocks, opts, strata_var, strat
         label          = bl$overall_lbl                  # << display label for the whole block
       )
       
-      # Optional “Any selected” row (synthetic binary) 
+      # Optional "Any selected" row (synthetic binary) 
       if (isTRUE(opts$show_any)) {
-        any_count        <- n_resp
-        any_nonmissing   <- sum(rowSums(!is.na(raw_mat)) > 0L, na.rm = TRUE)
-        
-        any_display_denom <- switch(denom,
-                                    group      = group_N,
-                                    responders = n_resp,
-                                    nonmissing = group_N)
-        
-        any_valid_denom <- switch(denom,
-                                  group      = any_display_denom,
-                                  responders = n_resp,
-                                  nonmissing = any_nonmissing)
+        any_count <- as.integer(sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE))
         
         # derive lowercase stem from the FIRST var in this block
         stem_l <- tolower(sub("___.*$", "", bl$vars[1]))
@@ -139,13 +106,13 @@ process_checkbox_blocks_strata <- function(data, blocks, opts, strata_var, strat
             var            = paste0(stem_l, "___any_selected"),  # << lower-case synthetic id
             level_var      = NA_character_,                      # << exclude from per-level p-values
             level          = "Any selected",
-            n_level        = as.integer(any_count),
-            n_strata       = as.integer(any_display_denom),
-            pct            = ifelse(any_display_denom > 0, any_count / any_display_denom, NA_real_),
+            n_level        = any_count,
+            n_strata       = group_N,
+            pct            = ifelse(group_N > 0L, any_count / group_N, NA_real_),
             
-            n_level_valid  = as.integer(any_count),
-            n_strata_valid = as.integer(any_valid_denom),
-            pct_valid      = ifelse(any_valid_denom > 0, any_count / any_valid_denom, NA_real_),
+            n_level_valid  = any_count,
+            n_strata_valid = group_N,
+            pct_valid      = ifelse(group_N > 0L, any_count / group_N, NA_real_),
             
             var_type       = "categorical",
             class          = "checkbox",
@@ -170,21 +137,21 @@ process_checkbox_blocks_strata <- function(data, blocks, opts, strata_var, strat
 # data:       original data
 # strata_var: name of strata column in `data` (string)
 # blocks:     list from prepare_checkbox_blocks()
-# test:       "auto" | "chisq" | "fisher" (kept for API compatibility; we compute all)
 # p_adjust:   multiple-testing adjustment method (e.g. "none","BH","holm",...)
+#
+# Tests are computed group-based: every individual in the stratum is
+# tabulated as Selected or Not selected. All four test variants (chisq,
+# chisq no-correction, chisq simulated, fisher, fisher simulated) are
+# computed; adorn_tidytableone() picks one via `exact` / `monte_carlo_p`.
 add_pvalues_checkbox <- function(tab,
                                  data,
                                  strata_var,
                                  blocks,
-                                 denom    = "group",
-                                 test     = "auto",
                                  p_adjust = "none",
                                  B        = 2000) {
   
   if (!("class" %in% names(tab))) return(tab)
   if (!any(tab$class == "checkbox")) return(tab)
-  
-  denom <- match.arg(denom, c("group","nonmissing","responders"))
   
   per_var <- list()
   
@@ -192,13 +159,6 @@ add_pvalues_checkbox <- function(tab,
   grp_all <- factor(data[[strata_var]])
   
   for (bl in blocks) {
-    
-    # block responder indicator: any selection in any checkbox var in the block
-    sel_mat <- as.data.frame(lapply(bl$vars, function(v)
-      as.integer(data[[v]] == bl$select_txt[[v]])))
-    names(sel_mat) <- bl$vars
-    
-    is_resp <- rowSums(sel_mat, na.rm = TRUE) > 0L   # responders = any selected
     
     # per checkbox variable (per-level) 
     for (v in bl$vars) {
@@ -210,14 +170,7 @@ add_pvalues_checkbox <- function(tab,
                                 "Selected", "Not selected")
       sel <- factor(sel_chr, levels = c("Not selected","Selected"))
       
-      idx <- switch(
-        denom,
-        group      = rep(TRUE, length(is_resp)),
-        responders = is_resp,
-        nonmissing = not_na
-      )
-      
-      tbl <- table(grp_all[idx], sel[idx], useNA = "no")
+      tbl <- table(grp_all, sel, useNA = "no")
       
       per_var[[length(per_var) + 1]] <- tibble::tibble(
         var                         = v,
@@ -244,16 +197,7 @@ add_pvalues_checkbox <- function(tab,
       levels = c("Not selected","Selected")
     )
     
-    # For "responders": only those who responded to the block
-    # For "nonmissing": use responders as the natural nonmissing for the block
-    idx_any <- switch(
-      denom,
-      group      = rep(TRUE, length(is_resp)),
-      responders = is_resp,
-      nonmissing = is_resp
-    )
-    
-    tbl_any <- table(grp_all[idx_any], sel_any[idx_any], useNA = "no")
+    tbl_any <- table(grp_all, sel_any, useNA = "no")
     
     per_var[[length(per_var) + 1]] <- tibble::tibble(
       var                         = var_any,
@@ -290,9 +234,7 @@ add_pvalues_checkbox <- function(tab,
 
 .default_checkbox_opts <- function() {
   list(
-    denom    = "group",
     pvals    = "per_level",
-    test     = "auto",
     p_adjust = "none",
     show_any = TRUE,
     note     = "Participants could select more than one option; percentages may exceed 100%."
@@ -301,9 +243,7 @@ add_pvalues_checkbox <- function(tab,
 
 normalize_checkbox_opts <- function(x) {
   defaults <- list(
-    denom    = "group",
     pvals    = "per_level",  # used only when strata is present
-    test     = "auto",
     p_adjust = "none",
     show_any = TRUE,
     note     = "Participants could select more than one option; percentages may exceed 100%."
@@ -314,6 +254,20 @@ normalize_checkbox_opts <- function(x) {
   
   if (!is.list(x)) {
     stop("`checkbox_opts` must be a list or NULL.", call. = FALSE)
+  }
+  
+  # Error on options we no longer support, with a redirect to the new design
+  removed <- c("denom", "test")
+  bad <- intersect(removed, names(x))
+  if (length(bad) > 0) {
+    stop(
+      "`checkbox_opts` no longer accepts: ",
+      paste(sprintf("`%s`", bad), collapse = ", "), ". ",
+      "Checkbox percentages are always group-based (denominator = stratum N). ",
+      "Test selection is controlled at adorn time via `exact` / `monte_carlo_p`. ",
+      "See NEWS.md.",
+      call. = FALSE
+    )
   }
   
   utils::modifyList(defaults, x)
@@ -327,9 +281,7 @@ validate_checkbox_opts <- function(opts) {
     opts <- normalize_checkbox_opts(NULL)
   }
   
-  opts$denom    <- match.arg(opts$denom,    c("group","nonmissing","responders"))
   opts$pvals    <- match.arg(opts$pvals,    c("none","per_level"))
-  opts$test     <- match.arg(opts$test,     c("auto","chisq","fisher"))
   opts$p_adjust <- match.arg(opts$p_adjust, stats::p.adjust.methods)
   
   opts$show_any <- isTRUE(opts$show_any)
@@ -344,7 +296,6 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
   
   opts  <- normalize_checkbox_opts(opts)
   opts  <- validate_checkbox_opts(opts)
-  denom <- match.arg(opts$denom, c("group","nonmissing","responders"))
   
   out <- lapply(blocks, function(bl) {
     # raw cols & 0/1 selection matrix for this block
@@ -356,31 +307,11 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
     # Numerators per level (by original column)
     n_level <- colSums(sel_mat, na.rm = TRUE)
     
-    # Display denominator for pct
-    # responders_N <- sum(rowSums(!is.na(raw_mat)) > 0L)
-    any_selected <- rowSums(sel_mat, na.rm = TRUE) > 0L
-    responders_N <- as.integer(sum(any_selected, na.rm = TRUE))
-    
-    display_N <- switch(
-      denom,
-      group      = nrow(data),
-      responders = responders_N,
-      nonmissing = nrow(data)  # display denom; "valid" handled per-level below
-    )
-    
-    # Valid % pieces
-    n_level_valid     <- n_level
-    nonmiss_per_level <- colSums(!is.na(raw_mat), na.rm = TRUE)
-    valid_denom <- switch(
-      denom,
-      group      = rep(display_N, length(n_level)),
-      responders = rep(responders_N, length(n_level)),
-      nonmissing = as.integer(nonmiss_per_level)
-    )
+    # Group-based denominator: total nrow(data) for every level
+    display_N <- as.integer(nrow(data))
     
     # Base name for synthetic "Any selected" var (e.g., "race")
     base_name <- sub("___.*$", "", bl$vars[1])
-    # var_any   <- paste0(tolower(base_name), "___any_selected")
     var_any   <- paste0(base_name, "___any_selected")
     
     df <- tibble::tibble(
@@ -388,11 +319,11 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
       var      = names(n_level),                                    # <- original checkbox columns
       level    = unname(bl$labels[names(n_level)]),                 # printed row label (e.g., "White")
       n_level  = as.integer(n_level),
-      n_strata = as.integer(display_N),
+      n_strata = display_N,
       pct      = dplyr::if_else(n_strata > 0L, n_level / n_strata, NA_real_),
       
-      n_level_valid  = as.integer(n_level_valid),
-      n_strata_valid = as.integer(valid_denom),
+      n_level_valid  = as.integer(n_level),
+      n_strata_valid = display_N,
       pct_valid      = dplyr::if_else(n_strata_valid > 0L, n_level_valid / n_strata_valid, NA_real_),
       
       label    = bl$overall_lbl,                                    # <- block heading in label
@@ -400,25 +331,8 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
     )
     
     # Optional "Any selected"
-    # any_count <- sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE)
-    any_count <- responders_N
-    
     if (isTRUE(opts$show_any)) {
-      any_nonmissing <- sum(rowSums(!is.na(raw_mat)) > 0L)
-      
-      any_display_denom <- switch(
-        denom,
-        group      = nrow(data),
-        responders = responders_N,
-        nonmissing = nrow(data)
-      )
-      
-      any_valid_denom <- switch(
-        denom,
-        group      = any_display_denom,
-        responders = responders_N,
-        nonmissing = any_nonmissing
-      )
+      any_count <- as.integer(sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE))
       
       df <- dplyr::bind_rows(
         df,
@@ -426,13 +340,13 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
           strata   = "Overall",
           var      = var_any, 
           level    = "Any selected",
-          n_level  = as.integer(any_count),
-          n_strata = as.integer(any_display_denom),
-          pct      = ifelse(any_display_denom > 0, any_count / any_display_denom, NA_real_),
+          n_level  = any_count,
+          n_strata = display_N,
+          pct      = ifelse(display_N > 0L, any_count / display_N, NA_real_),
           
-          n_level_valid  = as.integer(any_count),
-          n_strata_valid = as.integer(any_valid_denom),
-          pct_valid      = ifelse(any_valid_denom > 0, any_count / any_valid_denom, NA_real_),
+          n_level_valid  = any_count,
+          n_strata_valid = display_N,
+          pct_valid      = ifelse(display_N > 0L, any_count / display_N, NA_real_),
           
           label    = bl$overall_lbl,
           level_var = NA_character_

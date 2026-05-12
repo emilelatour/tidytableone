@@ -34,11 +34,12 @@ columns \code{var} (the checkbox column name), \code{overall_lbl} (group label t
 \code{checkbox_lbl} (label for each option), and \code{checkbox_txt} (the selected text to match, e.g., "Checked").}
 
 \item{checkbox_opts}{A list of options for checkbox processing. Recognized fields:
-\code{denom} = c("group","nonmissing","responders"), \code{pvals} (ignored for no-strata),
-\code{test} (ignored for no-strata), \code{p_adjust} (method passed to stats::p.adjust),
-\code{show_any} (logical; add “Any selected” row), \code{note} (character footnote).}
+\code{pvals} = c("none","per_level") (per-level p-values; ignored for no-strata),
+\code{p_adjust} (method passed to stats::p.adjust),
+\code{show_any} (logical; add "Any selected" row), \code{note} (character footnote).}
 
-\item{...}{Additional arguments. Not used.}
+\item{...}{Reserved. Passing any argument here raises an informative error
+(commonly, adorn-side arguments like \code{exact} get misdirected to create).}
 }
 \description{
 Create a tidy "Table 1"

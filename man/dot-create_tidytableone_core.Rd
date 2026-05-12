@@ -11,10 +11,8 @@
   na_level = "(Missing)",
   b_replicates = 2000,
   checkbox = NULL,
-  checkbox_opts = list(denom = "responders", pvals = "per_level", test = "auto", p_adjust
-    = "none", show_any = TRUE, note =
-    "Participants could select more than one option; percentages may exceed 100\%."),
-  ...
+  checkbox_opts = list(pvals = "per_level", p_adjust = "none", show_any = TRUE, note =
+    "Participants could select more than one option; percentages may exceed 100\%.")
 )
 }
 \arguments{
@@ -36,11 +34,9 @@ columns \code{var} (the checkbox column name), \code{overall_lbl} (group label t
 \code{checkbox_lbl} (label for each option), and \code{checkbox_txt} (the selected text to match, e.g., "Checked").}
 
 \item{checkbox_opts}{A list of options for checkbox processing. Recognized fields:
-\code{denom} = c("group","nonmissing","responders"), \code{pvals} (ignored for no-strata),
-\code{test} (ignored for no-strata), \code{p_adjust} (method passed to stats::p.adjust),
-\code{show_any} (logical; add “Any selected” row), \code{note} (character footnote).}
-
-\item{...}{Additional arguments. Not used.}
+\code{pvals} = c("none","per_level") (per-level p-values; ignored for no-strata),
+\code{p_adjust} (method passed to stats::p.adjust),
+\code{show_any} (logical; add "Any selected" row), \code{note} (character footnote).}
 }
 \value{
 A tibble with the following results
