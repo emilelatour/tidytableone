@@ -232,31 +232,13 @@
   # Silence no visible binding for global variable
   dat <- res <- n_level_valid <- n_strata_valid <- label <- sort1 <- NULL
   
+  has_strata <- !is.null(strata)
   
-  # Handle no strata case by calling the no strata version of the function
-  # inside .create_tidytableone_core(), replace the current no‑strata block:
-  if (is.null(strata)) {
-    if (is.null(checkbox)) {
-      res_stats <- create_tidytableone_no_strata(
-        data = data,
-        vars = vars,
-        na_level = na_level,
-        b_replicates = b_replicates,
-        ...
-      )
-    } else {
-      res_stats <- create_tidytableone_no_strata_checkbox(
-        data = data,
-        vars = vars,
-        na_level = na_level,
-        b_replicates = b_replicates,
-        checkbox = checkbox,
-        checkbox_opts = checkbox_opts,
-        ...
-      )
-    }
-    return(res_stats)
-  }
+  # Use all variables if vars is not provided
+  if (missing(vars)) vars <- names(data)
+  
+  
+  #### Preprocess data --------------------------------
   
   # Convert ordered factors to regular factors
   data <- data %>%
@@ -264,23 +246,18 @@
                      .predicate = ~ ("ordered" %in% class(.)),
                      .funs = ~ factor(., ordered = FALSE))
   
-  
-  # Convert the 'strata' argument to a symbol for use in tidy evaluation
-  strata_sym <- rlang::ensym(strata)
-  
   # Coerce strata to factor once up front to avoid warnings later
-  if (!rlang::quo_is_null(rlang::enquo(strata))) {
+  if (has_strata) {
+    strata_sym <- rlang::ensym(strata)
     data[[rlang::as_name(strata_sym)]] <- as.factor(data[[rlang::as_name(strata_sym)]])
   }
   
-  
-  # Extract variable labels for later use BEFORE any coercion that could drop them
+  # Extract variable labels BEFORE any coercion that could drop them
   var_lbls <- tibble::tibble(var = names(data)) |>
     mutate(label = purrr::map_chr(.x = data[, var],
                                   .f = ~ get_var_labels(x = .x)))
   
-  
-  # normalize variable types (preserve intended levels) ----
+  # Normalize variable types (preserve intended levels)
   # Characters -> factor with levels in order of appearance (stable)
   # Logicals   -> factor with levels FALSE, TRUE
   # Ordered    -> already converted above to plain factor (keeps existing level order)
@@ -289,14 +266,11 @@
     lbl <- attr(x, "label", exact = TRUE)
     
     y <- if (is.character(x)) {
-      # For plain characters, convert to factor using levels in the *original* data
-      # not the subset.
       lv <- sort(unique(data[[v]][!is.na(data[[v]])]))
       factor(x, levels = lv)
     } else if (is.logical(x)) {
       factor(x, levels = c(FALSE, TRUE))
     } else if (is.factor(x)) {
-      # Preserve ALL original factor levels unchanged
       factor(x, levels = levels(x))
     } else {
       x
@@ -306,36 +280,26 @@
     y
   })
   
-  
   # Handle missing values in the strata
-  
-  if (any(is.na(purrr::pluck(data, strata)))) {
-    
-    df_omit_na_strata <- data %>%
-      dplyr::filter(!is.na(!! strata_sym))
-    
-    data <- data %>%
-      mutate(!! strata_sym := forcats::fct_na_value_to_level(!! strata_sym,
-                                                             level = na_level))
-  } else {
-    
-    df_omit_na_strata <- data
-    
-  }
-  
-  # Use all variables if vars is not provided
-  if (missing(vars)) {
-    vars <- names(data)
+  if (has_strata) {
+    if (any(is.na(purrr::pluck(data, strata)))) {
+      df_omit_na_strata <- data %>%
+        dplyr::filter(!is.na(!! strata_sym))
+      data <- data %>%
+        mutate(!! strata_sym := forcats::fct_na_value_to_level(!! strata_sym,
+                                                               level = na_level))
+    } else {
+      df_omit_na_strata <- data
+    }
   }
   
   
   #### Get variable info --------------------------------
   
-  # Get variable types and other meta-information
-  var_info <- get_var_info(data = data,
-                           .vars = vars)
+  var_info <- get_var_info(data = data, .vars = vars)
   
-  # Create sorting variables to maintain order in the output
+  # sort1/sort2 are used by arrange_results on the strata path; cheap to always
+  # compute and keeps var_info schema consistent across paths.
   var_info <- var_info |>
     mutate(sort1 = cumsum(var != dplyr::lag(var, default = dplyr::first(var))),
            sort1 = sort1 + 1) |>
@@ -344,186 +308,199 @@
     ungroup()
   
   
-  # Identify Checkbox (multi-response) spec
+  #### Checkbox setup --------------------------------
   # Normalize and validate the checkbox spec (tibble with columns:
   # var, overall_lbl, checkbox_lbl, checkbox_txt)
-  cb_spec <- NULL
+  cb_spec   <- NULL
+  cb_blocks <- list()
+  cb_vars   <- character(0)
   
   if (!is.null(checkbox)) {
     cb_spec <- validate_checkbox_spec(
       checkbox,
       data = data,
-      vars  = vars
+      vars = vars
     )
     
     # Build a list of blocks: one element per overall_lbl
     cb_blocks <- prepare_checkbox_blocks(cb_spec)
     
-    # Remove checkbox vars from the standard categorical path
+    # Original checkbox columns (so we can exclude them from the standard cat path)
     cb_vars <- unique(cb_spec$var)
-  } else {
-    cb_blocks <- list()
-    cb_vars <- character(0)
+    
+    # On the strata path arrange_results needs block-level rows in var_info.
+    # On the no-strata path .assemble_no_strata uses .make_var_levels_with_any
+    # to position synthetic ___any_selected variables directly.
+    if (has_strata) {
+      cb_vi <- tibble::tibble(
+        var = names(cb_blocks),
+        level = NA_character_,
+        var_type = "categorical",
+        class = "checkbox",
+        sort1 = match(var, vars),  # order by first mention in `vars`
+        sort2 = 0L
+      )
+      var_info <- dplyr::bind_rows(var_info, cb_vi)
+    }
   }
   
-  if (!is.null(checkbox)) {
-    cb_vi <- tibble::tibble(
-      var = names(cb_blocks),
-      level = NA_character_,
-      var_type = "categorical",
-      class = "checkbox",
-      sort1 = match(var, vars),  # order by first mention in `vars`
-      sort2 = 0L
-    )
-    
-    var_info <- dplyr::bind_rows(var_info, cb_vi)
-    
-  }
+  # Identify categorical and continuous variables (excluding strata + checkbox cols)
+  strata_to_exclude <- if (has_strata) strata else character(0)
   
-  # Identify categorical and continuous variables
   cat_vars <- var_info |>
     dplyr::filter(var_type == "categorical",
                   is.na(class) | class != "checkbox") |>
     dplyr::pull(var) |>
     unique() |>
-    setdiff(strata) |>
-    setdiff(cb_vars)   # still exclude the individual checkbox columns
+    setdiff(strata_to_exclude) |>
+    setdiff(cb_vars)
   
   con_vars <- var_info |>
     dplyr::filter(var_type == "continuous") |>
     dplyr::pull(var) |>
     unique() |>
-    setdiff(strata)
+    setdiff(strata_to_exclude)
   
   
-  #### Get Categorical and Continuous Stats --------------------------------
+  #### Categorical and continuous stats --------------------------------
   
   res_stats <- list()
   
   if (length(con_vars) > 0) {
-    
-    con_stats <- process_continuous(data,
-                                    strata_sym,
-                                    con_vars)
-    
-    res_stats <- dplyr::bind_rows(res_stats,
-                                  con_stats)
-    
+    con_stats <- process_continuous(
+      data       = data,
+      strata_sym = if (has_strata) strata_sym else NULL,
+      con_vars   = con_vars
+    )
+    if (!has_strata) con_stats <- con_stats |> dplyr::mutate(strata = "Overall")
+    res_stats <- dplyr::bind_rows(res_stats, con_stats)
   }
   
   if (length(cat_vars) > 0) {
-    
-    cat_stats <- process_categorical(data,
-                                     strata_sym,
-                                     cat_vars)
-    
-    res_stats <- dplyr::bind_rows(res_stats,
-                                  cat_stats)
-    
-    
+    cat_stats <- process_categorical(
+      data       = data,
+      strata_sym = if (has_strata) strata_sym else NULL,
+      cat_vars   = cat_vars
+    )
+    if (!has_strata) cat_stats <- cat_stats |> dplyr::mutate(strata = "Overall")
+    res_stats <- dplyr::bind_rows(res_stats, cat_stats)
   }
   
   
-  #### Calc SMD --------------------------------
+  #### SMD + hypothesis tests (strata only) --------------------------------
   
-  smd_res <- get_smd(data = df_omit_na_strata,
-                     strata = strata,
-                     vars = vars)
-  
-  # 10: In StdDiff(variable = var, group = strataVar) :
-  # Variable has only NA's in at least one stratum. na.rm turned off.
-  
-  
-  #### Hypothesis tests --------------------------------
-  
-  htest_res <- tibble::tibble()
-  
-  
-  if (length(cat_vars) > 0) {
+  if (has_strata) {
+    smd_res <- get_smd(data = df_omit_na_strata,
+                       strata = strata,
+                       vars = vars)
     
-    cat_stats <- calc_cat_htest(data = df_omit_na_strata,
-                                strata = strata,
-                                vars = cat_vars,
-                                b_replicates = b_replicates)
+    htest_res <- tibble::tibble()
     
-    htest_res <- dplyr::bind_rows(htest_res,
-                                  cat_stats)
-  }
-  
-  if (length(con_vars) > 0) {
-    
-    con_stats <- calc_con_htest(data = df_omit_na_strata,
-                                strata = strata,
-                                vars = con_vars)
-    
-    htest_res <- dplyr::bind_rows(htest_res,
-                                  con_stats)
-    
-  }
-  
-  
-  
-  #### Checkbox blocks (multi-response) --------------------------------
-  res_checkbox <- NULL
-  
-  if (length(cb_blocks) > 0) {
-    res_checkbox <- process_checkbox_blocks_strata(
-      data          = data,
-      blocks        = cb_blocks,
-      opts          = checkbox_opts,
-      strata_var    = rlang::as_name(strata_sym),
-      strata_levels = levels(data[[rlang::as_name(strata_sym)]]) %||%
-        unique(as.character(data[[rlang::as_name(strata_sym)]]))
-    ) %>%
-      dplyr::rename(!! rlang::as_name(strata_sym) := strata)
-    
-    # Always provide the column so downstream code/tests can rely on it
-    if (!"p_value_level" %in% names(res_checkbox)) {
-      res_checkbox <- dplyr::mutate(res_checkbox, p_value_level = NA_real_)
-    }
-    
-    # If per-level p-values were requested, fill them in once
-    if (!is.null(strata) && isTRUE(checkbox_opts$pvals %in% c("per_level"))) {
-      res_checkbox <- add_pvalues_checkbox(
-        tab        = res_checkbox,
-        data       = data,
-        strata_var = rlang::as_name(strata_sym),
-        blocks     = cb_blocks,
-        denom      = checkbox_opts$denom %||% "responders",
-        test       = checkbox_opts$test %||% "auto",
-        p_adjust   = checkbox_opts$p_adjust %||% "none",
-        B          = 2000
+    if (length(cat_vars) > 0) {
+      htest_res <- dplyr::bind_rows(
+        htest_res,
+        calc_cat_htest(data = df_omit_na_strata,
+                       strata = strata,
+                       vars = cat_vars,
+                       b_replicates = b_replicates)
       )
     }
     
-    # Get the SMD
-    smd_cb <- get_smd_checkbox(
-      data   = data,
-      strata = strata,   # e.g., "group"
-      blocks = cb_blocks
-    )
-    
-    res_checkbox <- res_checkbox %>%
-      dplyr::left_join(smd_cb, by = "var")
-    
+    if (length(con_vars) > 0) {
+      htest_res <- dplyr::bind_rows(
+        htest_res,
+        calc_con_htest(data = df_omit_na_strata,
+                       strata = strata,
+                       vars = con_vars)
+      )
+    }
+  }
+  
+  
+  #### Checkbox blocks (multi-response) --------------------------------
+  
+  res_checkbox <- NULL
+  
+  if (length(cb_blocks) > 0) {
+    if (has_strata) {
+      res_checkbox <- process_checkbox_blocks_strata(
+        data          = data,
+        blocks        = cb_blocks,
+        opts          = checkbox_opts,
+        strata_var    = rlang::as_name(strata_sym),
+        strata_levels = levels(data[[rlang::as_name(strata_sym)]]) %||%
+          unique(as.character(data[[rlang::as_name(strata_sym)]]))
+      ) %>%
+        dplyr::rename(!! rlang::as_name(strata_sym) := strata)
+      
+      # Always provide the column so downstream code/tests can rely on it
+      if (!"p_value_level" %in% names(res_checkbox)) {
+        res_checkbox <- dplyr::mutate(res_checkbox, p_value_level = NA_real_)
+      }
+      
+      # If per-level p-values were requested, fill them in once
+      if (isTRUE(checkbox_opts$pvals %in% c("per_level"))) {
+        res_checkbox <- add_pvalues_checkbox(
+          tab        = res_checkbox,
+          data       = data,
+          strata_var = rlang::as_name(strata_sym),
+          blocks     = cb_blocks,
+          denom      = checkbox_opts$denom %||% "responders",
+          test       = checkbox_opts$test %||% "auto",
+          p_adjust   = checkbox_opts$p_adjust %||% "none",
+          B          = 2000
+        )
+      }
+      
+      # SMD for checkbox blocks
+      smd_cb <- get_smd_checkbox(
+        data   = data,
+        strata = strata,
+        blocks = cb_blocks
+      )
+      
+      res_checkbox <- res_checkbox %>%
+        dplyr::left_join(smd_cb, by = "var")
+      
+    } else {
+      # No-strata: produces strata = "Overall", class = "checkbox" rows
+      res_checkbox <- process_checkbox_blocks_overall(
+        data   = data,
+        blocks = cb_blocks,
+        opts   = checkbox_opts
+      )
+    }
     
     # Tag as categorical for downstream p-value formatting (keeps compat)
     res_checkbox <- res_checkbox %>%
       dplyr::mutate(var_type = "categorical", class = "checkbox")
-  }
-  
-  # Bind checkbox rows with the rest (if present)
-  if (!is.null(res_checkbox)) {
+    
     res_stats <- dplyr::bind_rows(res_stats, res_checkbox)
-  }
-  
-  # Attach footnote & map so adorn_* can indent, print note, etc.
-  if (length(cb_blocks) > 0) {
+    
+    # Attach footnote attrs so adorn_* can indent, print note, etc.
     attr(res_stats, "checkbox_blocks") <- cb_blocks
     attr(res_stats, "checkbox_opts")   <- checkbox_opts
   }
   
-  #### Ensure zero-count rows exist for unobserved categorical levels --------------------------------
+  
+  #### Final assembly --------------------------------
+  
+  if (!has_strata) {
+    return(
+      .assemble_no_strata(
+        res_stats     = res_stats,
+        data          = data,
+        vars          = vars,
+        var_info      = var_info,
+        var_lbls      = var_lbls,
+        cb_blocks     = cb_blocks,
+        checkbox_opts = checkbox_opts
+      )
+    )
+  }
+  
+  
+  #### Strata path: scaffold zero-count rows for unobserved categorical levels ----
   
   if (length(cat_vars) > 0) {
     
@@ -555,14 +532,14 @@
     # Categorical piece to scaffold
     res_cat <- if (n_rs > 0) res_stats[is_plain_cat, , drop = FALSE] else res_stats
     
-    # ---- Ensure columns needed post-join exist on res_cat (types matter) ----
+    # Ensure columns needed post-join exist on res_cat (types matter)
     if (!"var_type"        %in% names(res_cat)) res_cat$var_type        <- NA_character_
     if (!"n_level"         %in% names(res_cat)) res_cat$n_level         <- NA_integer_
     if (!"n_level_valid"   %in% names(res_cat)) res_cat$n_level_valid   <- NA_integer_
     if (!"pct"             %in% names(res_cat)) res_cat$pct             <- NA_real_
     if (!"n_strata"        %in% names(res_cat)) res_cat$n_strata        <- NA_integer_
     if (!"n_strata_valid"  %in% names(res_cat)) res_cat$n_strata_valid  <- NA_integer_
-    if (!"label"          %in% names(res_cat)) res_cat$label          <- NA_character_  
+    if (!"label"           %in% names(res_cat)) res_cat$label           <- NA_character_  
     
     # Full grid (var x level x strata) using actual strata column
     scaffold <- lvl_tbl_cat %>%
@@ -573,7 +550,6 @@
     
     res_cat_completed <- scaffold %>%
       dplyr::left_join(res_cat, by = join_keys) %>%
-      # bring in data-defined labels and fill if missing
       dplyr::left_join(var_lbls, by = "var", suffix = c("", ".from_data")) %>%
       dplyr::mutate(
         label          = dplyr::coalesce(label, label.from_data),
@@ -581,7 +557,6 @@
         n_level        = dplyr::coalesce(n_level, 0L),
         n_level_valid  = dplyr::coalesce(n_level_valid, 0L),
         pct            = dplyr::coalesce(pct, 0)
-        # keep n_strata / n_strata_valid as-is (may remain NA here)
       ) %>%
       dplyr::select(-dplyr::any_of("label.from_data")) %>%
       dplyr::arrange(factor(var, levels = vars), level, !!rlang::sym(strata_col))
@@ -589,16 +564,14 @@
     # Everything else (continuous + checkbox) unchanged
     res_other <- if (n_rs > 0) res_stats[!is_plain_cat, , drop = FALSE] else res_stats
     
-    # Recombine
     res_stats <- dplyr::bind_rows(res_other, res_cat_completed)
     
     # Drop any ghost rows with missing var name
     res_stats <- res_stats |> dplyr::filter(!is.na(var) & var != "")
-    
   }
   
   
-  #### Arrange, combine, and clean up results --------------------------------
+  #### Strata path: arrange & combine --------------------------------
   
   res_stats <- arrange_results(res_stats,
                                htest_res,
@@ -613,7 +586,7 @@
                                strata_sym)
   
   
-  #### Return warnings (if any) --------------------------------
+  #### Strata path: chi-squared assumption warning --------------------------------
   
   if (isTRUE(getOption("tidytableone.warn_chisq", TRUE))) {
     if ("check_categorical_test" %in% names(res_stats)) {
@@ -648,8 +621,7 @@
   }
   
   
-  #### One last tidying -------------------------------- 
-  
+  #### Strata path: final tidying --------------------------------
   
   res_stats <- res_stats |> 
     dplyr::select(-level_var)
@@ -662,7 +634,8 @@
       dplyr::select(-dplyr::any_of(c("smd.y", "smd.x")))
   }
   
-  #### Final ordering: respect user-supplied `vars` -------------------------------- 
+  
+  #### Strata path: final ordering --------------------------------
   
   # strata ordering (Overall first, then preserve original factor level order)
   if ("strata" %in% names(res_stats)) {
@@ -708,12 +681,14 @@
     dplyr::select(-var_order, -.orig_row, -.level_first_row, -strata_order, -dplyr::any_of("level_order2"))
   
   
-  
   #### Return results --------------------------------
   
   return(res_stats)
   
 }
+
+
+
 
 
 

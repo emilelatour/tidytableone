@@ -335,3 +335,118 @@ validate_checkbox_opts <- function(opts) {
   opts$show_any <- isTRUE(opts$show_any)
   opts
 }
+
+
+# Compute overall (no-strata) checkbox block rows. Schema-compatible with
+# process_checkbox_blocks_strata: strata column set to "Overall", same set of
+# count/percent columns, plus class = "checkbox" and var_type = "categorical".
+process_checkbox_blocks_overall <- function(data, blocks, opts) {
+  
+  opts  <- normalize_checkbox_opts(opts)
+  opts  <- validate_checkbox_opts(opts)
+  denom <- match.arg(opts$denom, c("group","nonmissing","responders"))
+  
+  out <- lapply(blocks, function(bl) {
+    # raw cols & 0/1 selection matrix for this block
+    raw_mat <- as.data.frame(data[bl$vars], stringsAsFactors = FALSE)
+    sel_mat <- as.data.frame(lapply(bl$vars, function(v)
+      as.integer(data[[v]] == bl$select_txt[[v]])))
+    names(sel_mat) <- bl$vars
+    
+    # Numerators per level (by original column)
+    n_level <- colSums(sel_mat, na.rm = TRUE)
+    
+    # Display denominator for pct
+    # responders_N <- sum(rowSums(!is.na(raw_mat)) > 0L)
+    any_selected <- rowSums(sel_mat, na.rm = TRUE) > 0L
+    responders_N <- as.integer(sum(any_selected, na.rm = TRUE))
+    
+    display_N <- switch(
+      denom,
+      group      = nrow(data),
+      responders = responders_N,
+      nonmissing = nrow(data)  # display denom; "valid" handled per-level below
+    )
+    
+    # Valid % pieces
+    n_level_valid     <- n_level
+    nonmiss_per_level <- colSums(!is.na(raw_mat), na.rm = TRUE)
+    valid_denom <- switch(
+      denom,
+      group      = rep(display_N, length(n_level)),
+      responders = rep(responders_N, length(n_level)),
+      nonmissing = as.integer(nonmiss_per_level)
+    )
+    
+    # Base name for synthetic "Any selected" var (e.g., "race")
+    base_name <- sub("___.*$", "", bl$vars[1])
+    # var_any   <- paste0(tolower(base_name), "___any_selected")
+    var_any   <- paste0(base_name, "___any_selected")
+    
+    df <- tibble::tibble(
+      strata   = "Overall",
+      var      = names(n_level),                                    # <- original checkbox columns
+      level    = unname(bl$labels[names(n_level)]),                 # printed row label (e.g., "White")
+      n_level  = as.integer(n_level),
+      n_strata = as.integer(display_N),
+      pct      = dplyr::if_else(n_strata > 0L, n_level / n_strata, NA_real_),
+      
+      n_level_valid  = as.integer(n_level_valid),
+      n_strata_valid = as.integer(valid_denom),
+      pct_valid      = dplyr::if_else(n_strata_valid > 0L, n_level_valid / n_strata_valid, NA_real_),
+      
+      label    = bl$overall_lbl,                                    # <- block heading in label
+      level_var = names(n_level)                                     # <- keep the original var for helpers
+    )
+    
+    # Optional "Any selected"
+    # any_count <- sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE)
+    any_count <- responders_N
+    
+    if (isTRUE(opts$show_any)) {
+      any_nonmissing <- sum(rowSums(!is.na(raw_mat)) > 0L)
+      
+      any_display_denom <- switch(
+        denom,
+        group      = nrow(data),
+        responders = responders_N,
+        nonmissing = nrow(data)
+      )
+      
+      any_valid_denom <- switch(
+        denom,
+        group      = any_display_denom,
+        responders = responders_N,
+        nonmissing = any_nonmissing
+      )
+      
+      df <- dplyr::bind_rows(
+        df,
+        tibble::tibble(
+          strata   = "Overall",
+          var      = var_any, 
+          level    = "Any selected",
+          n_level  = as.integer(any_count),
+          n_strata = as.integer(any_display_denom),
+          pct      = ifelse(any_display_denom > 0, any_count / any_display_denom, NA_real_),
+          
+          n_level_valid  = as.integer(any_count),
+          n_strata_valid = as.integer(any_valid_denom),
+          pct_valid      = ifelse(any_valid_denom > 0, any_count / any_valid_denom, NA_real_),
+          
+          label    = bl$overall_lbl,
+          level_var = NA_character_
+        )
+      )
+    }
+    
+    df
+  })
+  
+  dplyr::bind_rows(out) %>%
+    dplyr::mutate(
+      var_type = "categorical",
+      class    = "checkbox"
+    )
+}
+

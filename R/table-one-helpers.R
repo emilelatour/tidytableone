@@ -726,3 +726,140 @@ get_var_info <- function(data, .vars = NULL) {
   
   dplyr::bind_rows(out)
 }
+
+
+# Final assembly for the no-strata code path. Takes the raw stats (continuous +
+# categorical + optional checkbox rows), adds the NA test columns for schema
+# compatibility, joins class/type/label, ensures all expected columns exist,
+# orders rows by `vars` (or var_levels when checkbox blocks are present), and
+# relocates columns to canonical order.
+.assemble_no_strata <- function(res_stats,
+                                data,
+                                vars,
+                                var_info,
+                                var_lbls,
+                                cb_blocks,
+                                checkbox_opts) {
+  
+  has_checkbox <- length(cb_blocks) > 0
+  
+  res_stats <- tibble::as_tibble(res_stats)
+  
+  # Test columns are NA (no between-group tests when no strata)
+  res_stats <- res_stats |>
+    dplyr::mutate(
+      chisq_test               = NA_real_,
+      chisq_test_no_correction = NA_real_,
+      chisq_test_simulated     = NA_real_,
+      fisher_test              = NA_real_,
+      fisher_test_simulated    = NA_real_,
+      check_categorical_test   = NA_character_,
+      oneway_test_unequal_var  = NA_real_,
+      oneway_test_equal_var    = NA_real_,
+      kruskal_test             = NA_real_,
+      bartlett_test            = NA_real_,
+      levene_test              = NA_real_,
+      smd                      = NA_real_
+    )
+  
+  # Join class/type and labels. When checkbox rows are present they already
+  # carry class/var_type/label, so coalesce after the join.
+  class_and_type <- var_info |>
+    dplyr::select(dplyr::any_of(c("var", "class", "var_type"))) |>
+    dplyr::distinct()
+  
+  res_stats <- res_stats |>
+    dplyr::left_join(class_and_type, by = "var") |>
+    dplyr::left_join(var_lbls,       by = "var")
+  
+  if (has_checkbox) {
+    res_stats <- res_stats |>
+      safe_merge_cols("label",    c("label.x",    "label.y",    "label")) |>
+      safe_merge_cols("var_type", c("var_type.x", "var_type.y", "var_type")) |>
+      safe_merge_cols("class",    c("class.x",    "class.y",    "class"))
+    
+    # Guarantee metadata cols exist for relocate()
+    res_stats <- .ensure_cols(
+      res_stats,
+      cols_types = list(
+        class    = NA_character_,
+        var_type = NA_character_,
+        label    = NA_character_
+      )
+    )
+  }
+  
+  if (!"level" %in% names(res_stats)) res_stats$level <- NA_character_
+  
+  # Guarantee the full canonical column schema with sensible NA-typed defaults
+  res_stats <- .ensure_cols(
+    res_stats,
+    cols_types = list(
+      strata      = "Overall",
+      strata_var  = NA_character_,
+      level       = NA_character_,
+      # wide stats (continuous)
+      n = NA_integer_, n_distinct = NA_integer_, complete = NA_integer_, missing = NA_integer_,
+      mean = NA_real_, sd = NA_real_, p0 = NA_real_, p25 = NA_real_, p50 = NA_real_,
+      p75 = NA_real_, p100 = NA_real_, cv = NA_real_,
+      # categorical tall stats
+      n_level = NA_integer_, n_strata = NA_integer_, n_level_valid = NA_integer_, n_strata_valid = NA_integer_,
+      pct = NA_real_, pct_valid = NA_real_,
+      # tests (kept for schema symmetry)
+      chisq_test = NA_real_, chisq_test_no_correction = NA_real_, chisq_test_simulated = NA_real_,
+      fisher_test = NA_real_, fisher_test_simulated = NA_real_, check_categorical_test = NA_character_,
+      oneway_test_unequal_var = NA_real_, oneway_test_equal_var = NA_real_,
+      kruskal_test = NA_real_, bartlett_test = NA_real_, levene_test = NA_real_,
+      smd = NA_real_,
+      # meta
+      class = NA_character_, var_type = NA_character_, label = NA_character_
+    )
+  )
+  
+  # Build var ordering. With checkbox blocks present, insert each block's
+  # synthetic ___any_selected variable at the right spot.
+  var_levels <- if (has_checkbox) {
+    .make_var_levels_with_any(
+      vars      = vars,
+      cb_blocks = cb_blocks,
+      show_any  = checkbox_opts$show_any %||% TRUE
+    )
+  } else {
+    vars
+  }
+  
+  level_map <- make_level_map_no_strata(
+    data      = data,
+    vars      = var_levels,
+    cb_blocks = cb_blocks,
+    show_any  = has_checkbox && (checkbox_opts$show_any %||% TRUE)
+  )
+  
+  res_stats <- res_stats |>
+    dplyr::mutate(var = factor(var, levels = var_levels)) |>
+    dplyr::arrange(var)
+  
+  res_stats <- order_within_vars_no_strata(
+    res_stats = res_stats,
+    vars      = var_levels,
+    level_map = level_map
+  )
+  
+  # Final column order
+  res_stats |>
+    dplyr::mutate(strata     = factor("Overall", levels = "Overall"),
+                  strata_var = NA_character_) |>
+    dplyr::relocate(
+      strata_var, strata, var, level,
+      n, n_distinct, complete, missing,
+      n_level, n_strata, n_level_valid, n_strata_valid,
+      mean, sd, p0, p25, p50, p75, p100, cv,
+      pct, pct_valid,
+      chisq_test, chisq_test_no_correction, chisq_test_simulated,
+      fisher_test, fisher_test_simulated, check_categorical_test,
+      oneway_test_unequal_var, oneway_test_equal_var,
+      kruskal_test, bartlett_test, levene_test, smd,
+      .before = dplyr::everything()
+    ) |>
+    dplyr::relocate(class, var_type, label, .after = dplyr::last_col())
+}
