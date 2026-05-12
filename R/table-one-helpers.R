@@ -191,6 +191,72 @@ safe_merge_cols <- function(df, target, candidates) {
 
 # Arrange results
 # helper: make sure columns exist with the right types before relocate()
+# Canonical column defaults for a tidytableone result. Maps each canonical
+# column to its default value (NA of the correct type). Used as the single
+# source of truth for both .ensure_cols() schema enforcement and the final
+# canonical column order returned by .t1_canonical_order().
+#
+# Columns are ordered: identification (strata_var, strata, var, level), then
+# continuous wide stats (n, n_distinct, complete, missing), then categorical
+# tall stats (n_level, n_strata, n_level_valid, n_strata_valid), continuous
+# numeric stats (mean..cv), category percent stats (pct, pct_valid), all the
+# test columns (chisq*, fisher*, oneway*, kruskal, bartlett, levene, smd),
+# and finally the metadata columns (class, var_type, label).
+.t1_schema_defaults <- function() {
+  list(
+    # identification
+    strata_var               = NA_character_,
+    strata                   = NA_character_,
+    var                      = NA_character_,
+    level                    = NA_character_,
+    # continuous wide stats
+    n                        = NA_integer_,
+    n_distinct               = NA_integer_,
+    complete                 = NA_integer_,
+    missing                  = NA_integer_,
+    # categorical tall stats
+    n_level                  = NA_integer_,
+    n_strata                 = NA_integer_,
+    n_level_valid            = NA_integer_,
+    n_strata_valid           = NA_integer_,
+    # continuous numeric summaries
+    mean                     = NA_real_,
+    sd                       = NA_real_,
+    p0                       = NA_real_,
+    p25                      = NA_real_,
+    p50                      = NA_real_,
+    p75                      = NA_real_,
+    p100                     = NA_real_,
+    cv                       = NA_real_,
+    # category percentages
+    pct                      = NA_real_,
+    pct_valid                = NA_real_,
+    # tests
+    chisq_test               = NA_real_,
+    chisq_test_no_correction = NA_real_,
+    chisq_test_simulated     = NA_real_,
+    fisher_test              = NA_real_,
+    fisher_test_simulated    = NA_real_,
+    check_categorical_test   = NA_character_,
+    oneway_test_unequal_var  = NA_real_,
+    oneway_test_equal_var    = NA_real_,
+    kruskal_test             = NA_real_,
+    bartlett_test            = NA_real_,
+    levene_test              = NA_real_,
+    smd                      = NA_real_,
+    # metadata (intentionally last so the canonical column order ends here)
+    class                    = NA_character_,
+    var_type                 = NA_character_,
+    label                    = NA_character_
+  )
+}
+
+# Canonical column order for tidytableone results. Derived from
+# .t1_schema_defaults() so the two stay in sync.
+.t1_canonical_order <- function() {
+  names(.t1_schema_defaults())
+}
+
 .ensure_cols <- function(df, cols_types) {
   for (nm in names(cols_types)) {
     if (!nm %in% names(df)) {
@@ -368,21 +434,14 @@ arrange_results <- function(res_stats,
     )
   )
   
-  # ---- Final column order
+  # ---- Final column order (canonical: primary cols at start, meta at end;
+  # any extras like level_var stay in between, to be dropped by the caller)
+  meta_cols    <- c("class", "var_type", "label")
+  primary_cols <- setdiff(.t1_canonical_order(), meta_cols)
+  
   res_stats <- res_stats %>%
-    dplyr::relocate(
-      strata_var, strata, var, level,
-      n, n_distinct, complete, missing,
-      n_level, n_strata, n_level_valid, n_strata_valid,
-      mean, sd, p0, p25, p50, p75, p100, cv,
-      pct, pct_valid,
-      chisq_test, chisq_test_no_correction, chisq_test_simulated,
-      fisher_test, fisher_test_simulated, check_categorical_test,
-      oneway_test_unequal_var, oneway_test_equal_var,
-      kruskal_test, bartlett_test, levene_test, smd,
-      .before = dplyr::everything()
-    ) %>%
-    dplyr::relocate(class, var_type, label, .after = dplyr::last_col())
+    dplyr::relocate(dplyr::all_of(primary_cols), .before = dplyr::everything()) %>%
+    dplyr::relocate(dplyr::all_of(meta_cols),    .after  = dplyr::last_col())
   
   # Fill strata var name
   res_stats %>%
@@ -745,23 +804,6 @@ get_var_info <- function(data, .vars = NULL) {
   
   res_stats <- tibble::as_tibble(res_stats)
   
-  # Test columns are NA (no between-group tests when no strata)
-  res_stats <- res_stats |>
-    dplyr::mutate(
-      chisq_test               = NA_real_,
-      chisq_test_no_correction = NA_real_,
-      chisq_test_simulated     = NA_real_,
-      fisher_test              = NA_real_,
-      fisher_test_simulated    = NA_real_,
-      check_categorical_test   = NA_character_,
-      oneway_test_unequal_var  = NA_real_,
-      oneway_test_equal_var    = NA_real_,
-      kruskal_test             = NA_real_,
-      bartlett_test            = NA_real_,
-      levene_test              = NA_real_,
-      smd                      = NA_real_
-    )
-  
   # Join class/type and labels. When checkbox rows are present they already
   # carry class/var_type/label, so coalesce after the join.
   class_and_type <- var_info |>
@@ -777,44 +819,14 @@ get_var_info <- function(data, .vars = NULL) {
       safe_merge_cols("label",    c("label.x",    "label.y",    "label")) |>
       safe_merge_cols("var_type", c("var_type.x", "var_type.y", "var_type")) |>
       safe_merge_cols("class",    c("class.x",    "class.y",    "class"))
-    
-    # Guarantee metadata cols exist for relocate()
-    res_stats <- .ensure_cols(
-      res_stats,
-      cols_types = list(
-        class    = NA_character_,
-        var_type = NA_character_,
-        label    = NA_character_
-      )
-    )
   }
   
   if (!"level" %in% names(res_stats)) res_stats$level <- NA_character_
   
-  # Guarantee the full canonical column schema with sensible NA-typed defaults
-  res_stats <- .ensure_cols(
-    res_stats,
-    cols_types = list(
-      strata      = "Overall",
-      strata_var  = NA_character_,
-      level       = NA_character_,
-      # wide stats (continuous)
-      n = NA_integer_, n_distinct = NA_integer_, complete = NA_integer_, missing = NA_integer_,
-      mean = NA_real_, sd = NA_real_, p0 = NA_real_, p25 = NA_real_, p50 = NA_real_,
-      p75 = NA_real_, p100 = NA_real_, cv = NA_real_,
-      # categorical tall stats
-      n_level = NA_integer_, n_strata = NA_integer_, n_level_valid = NA_integer_, n_strata_valid = NA_integer_,
-      pct = NA_real_, pct_valid = NA_real_,
-      # tests (kept for schema symmetry)
-      chisq_test = NA_real_, chisq_test_no_correction = NA_real_, chisq_test_simulated = NA_real_,
-      fisher_test = NA_real_, fisher_test_simulated = NA_real_, check_categorical_test = NA_character_,
-      oneway_test_unequal_var = NA_real_, oneway_test_equal_var = NA_real_,
-      kruskal_test = NA_real_, bartlett_test = NA_real_, levene_test = NA_real_,
-      smd = NA_real_,
-      # meta
-      class = NA_character_, var_type = NA_character_, label = NA_character_
-    )
-  )
+  # Guarantee the full canonical column schema with NA-typed defaults.
+  # Test columns (chisq_test, etc.) get NA_real_ here since the no-strata path
+  # doesn't compute between-group tests.
+  res_stats <- .ensure_cols(res_stats, cols_types = .t1_schema_defaults())
   
   # Build var ordering. With checkbox blocks present, insert each block's
   # synthetic ___any_selected variable at the right spot.
@@ -845,21 +857,15 @@ get_var_info <- function(data, .vars = NULL) {
     level_map = level_map
   )
   
-  # Final column order
+  # Final column order: canonical columns first (primary block at start, meta
+  # block at end); any extra columns (e.g. level_var from checkbox processing)
+  # stay in between.
+  meta_cols    <- c("class", "var_type", "label")
+  primary_cols <- setdiff(.t1_canonical_order(), meta_cols)
+  
   res_stats |>
     dplyr::mutate(strata     = factor("Overall", levels = "Overall"),
                   strata_var = NA_character_) |>
-    dplyr::relocate(
-      strata_var, strata, var, level,
-      n, n_distinct, complete, missing,
-      n_level, n_strata, n_level_valid, n_strata_valid,
-      mean, sd, p0, p25, p50, p75, p100, cv,
-      pct, pct_valid,
-      chisq_test, chisq_test_no_correction, chisq_test_simulated,
-      fisher_test, fisher_test_simulated, check_categorical_test,
-      oneway_test_unequal_var, oneway_test_equal_var,
-      kruskal_test, bartlett_test, levene_test, smd,
-      .before = dplyr::everything()
-    ) |>
-    dplyr::relocate(class, var_type, label, .after = dplyr::last_col())
+    dplyr::relocate(dplyr::all_of(primary_cols), .before = dplyr::everything()) |>
+    dplyr::relocate(dplyr::all_of(meta_cols),    .after  = dplyr::last_col())
 }
