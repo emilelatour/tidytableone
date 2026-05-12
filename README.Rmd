@@ -6,9 +6,9 @@ output: github_document
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  fig.path = "man/figures/README-",
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.path  = "man/figures/README-",
   out.width = "100%"
 )
 ```
@@ -18,115 +18,119 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of `tidytableone` is to enable a tidy approach to creating the "Table 1" of study characteristics common in biomedical research.
+> Tidy construction of "Table 1" study-characteristic summaries for biomedical research.
+
+`tidytableone` produces the descriptive "Table 1" that opens nearly every clinical paper: a stratified summary of study characteristics with appropriate continuous and categorical summaries, statistical tests, and missing-data handling. The output comes in two forms — a long tidy tibble for programmatic use, or a polished publication-style table for direct inclusion in reports.
 
 ## Installation
 
-You can install the released version of tidytableone from [CRAN](https://CRAN.R-project.org) with:
-
-``` r
-# install.packages("devtools")
-devtools::install_github("emilelatour/tidytableone)
+```r
+# install.packages("pak")
+pak::pak("emilelatour/tidytableone")
 ```
 
-## Example
+## Usage
 
-Load the packages for the example
-```{r example}
+The two-function workflow is `create_tidytableone()` → `adorn_tidytableone()`:
+
+- `create_tidytableone()` — computes summaries, tests, and standardized mean differences; returns a long tidy tibble of results.
+- `adorn_tidytableone()` — turns that tidy tibble into a publication-ready wide table with formatted cells, indented level rows, and a single p-value column.
+
+```{r usage-basic, message = FALSE}
 library(tidytableone)
-library(tidyverse)
-library(knitr)
 
+tidy_t1 <- create_tidytableone(
+  data   = pbc_mayo,
+  strata = "trt",
+  vars   = c("age", "sex", "ascites", "hepato", "spiders", "edema",
+             "bili", "albumin", "stage")
+)
+
+adorn_tidytableone(tidy_t1)
 ```
 
-Take a glimpse at the data that comes in the `tidytableone` package:
+For an unstratified table, omit `strata`:
 
-```{r}
-dplyr::glimpse(pbc_mayo)
+```{r usage-no-strata}
+create_tidytableone(
+  data = pbc_mayo,
+  vars = c("age", "sex", "bili")
+) |>
+  adorn_tidytableone()
 ```
 
-Use the main function of this package to make a tidy table one
+## Checkbox-style multi-response variables
 
-```{r}
-tab1 <- tidytableone::create_tidy_table_one(data = pbc_mayo, 
-                                            strata = "trt", 
-                                            .vars = c("time", "status", "trt", "age", "sex", "ascites", "hepato",
-                                                      "spiders", "edema", "bili", "chol", "albumin", "copper", "alk_phos",
-                                                      "ast", "trig", "platelet", "protime", "stage"))
+REDCap-style "check all that apply" fields are common in clinical data and awkward to summarize with most table-one packages. `tidytableone` handles them as first-class citizens. A small synthetic example:
 
+```{r checkbox-data, message = FALSE}
+library(tibble)
+library(dplyr)
 
+set.seed(42)
+n <- 200
+
+cb_data <- tibble(
+  treatment = sample(c("Drug", "Placebo"), n, replace = TRUE),
+  age       = round(rnorm(n, 55, 12)),
+  race___1  = sample(c("Checked", "Unchecked"), n, replace = TRUE, prob = c(0.55, 0.45)),
+  race___2  = sample(c("Checked", "Unchecked"), n, replace = TRUE, prob = c(0.20, 0.80)),
+  race___3  = sample(c("Checked", "Unchecked"), n, replace = TRUE, prob = c(0.10, 0.90)),
+  race___98 = sample(c("Checked", "Unchecked"), n, replace = TRUE, prob = c(0.05, 0.95))
+)
+
+checkbox_spec <- tribble(
+  ~var,        ~overall_lbl, ~checkbox_lbl,
+  "race___1",  "Race",       "White",
+  "race___2",  "Race",       "Black or African-American",
+  "race___3",  "Race",       "American Indian or Alaska Native",
+  "race___98", "Race",       "Prefer not to answer"
+)
+
+create_tidytableone(
+  data     = cb_data,
+  strata   = "treatment",
+  vars     = c("age", "race___1", "race___2", "race___3", "race___98"),
+  checkbox = checkbox_spec
+) |>
+  adorn_tidytableone()
 ```
 
-Use the `dplyr::glimpse` command to see the tidy table one
+The block renders with a single labeled header ("Race, More than one response allowed") followed by indented per-option rows, with group-based percentages (denominator = stratum N) and per-level p-values. Multiple blocks per table are supported, including blocks whose member variables don't share a common stem.
 
-```{r}
-dplyr::glimpse(tab1)
-```
+## Statistical tests
 
-Some information is only available for categorical variables and some information for continuous variables.
+`create_tidytableone()` computes every candidate p-value; `adorn_tidytableone()` picks one per variable for display:
 
-```{r}
+| Variable type | Default test | Override options |
+|---|---|---|
+| Continuous, 2 groups | Welch's t-test | `equal_variance = TRUE` → Student's t; `nonnormal` → Wilcoxon rank-sum |
+| Continuous, 3+ groups | Welch's ANOVA | `equal_variance = TRUE` → one-way ANOVA; `nonnormal` → Kruskal-Wallis |
+| Categorical | Chi-squared | `exact` → Fisher's exact; `monte_carlo_p` → simulated p-values |
 
-tab1 %>% 
-  dplyr::filter(var_type == "categorical") %>% 
-  dplyr::select(strata, var, level:check_categorical_test, smd:var_type)
+The tidy tibble contains every test variant (Welch's, Student's, Kruskal, Bartlett, Levene, chi-squared with and without continuity correction, Fisher's, and simulated versions), so you can switch displays without recomputing.
 
-```
+## Output
 
-```{r}
+`create_tidytableone()` returns a long tibble with one row per (stratum × variable × level) combination. Key columns:
 
-tab1 %>% 
-  dplyr::filter(var_type == "continuous") %>% 
-  dplyr::select(strata, var, n:shapiro_test, oneway_test:bartlett_test, smd:var_type)
+| Column | What it is |
+|---|---|
+| `strata_var`, `strata` | Stratification variable name and level (`"Overall"` row included) |
+| `var`, `level`, `label` | Variable name, factor level (for categorical), display label |
+| `var_type`, `class` | `"continuous"` / `"categorical"`; `"checkbox"` flag for multi-response |
+| `n`, `complete`, `missing` | Counts |
+| `mean`, `sd`, `p0`–`p100`, `cv` | Continuous summaries |
+| `n_level`, `n_strata`, `pct` | Categorical counts and percentages |
+| `chisq_test`, `fisher_test`, `oneway_test_*`, `kruskal_test`, … | Test p-values |
+| `smd` | Standardized mean difference |
 
-```
+`adorn_tidytableone()` returns a wide tibble suitable for direct printing or piping into `gt`, `flextable`, `kableExtra`, etc.
 
-Then with some simple data manipulation we can reshape to make a table one...
+## What this isn't
 
-```{r}
-tab1 %>% 
-  mutate(strata = forcats::fct_inorder(strata), 
-         n_pct = scales::percent(n_level / n_strata), 
-         mean = scales::number(mean, accuracy = 0.1), 
-         value = dplyr::if_else(mean == "NA", n_pct, mean), 
-         p_value = dplyr::coalesce(oneway_test, chisq_test), 
-         p_value = scales::pvalue(p_value)) %>% 
-  dplyr::distinct(strata, 
-                  var, 
-                  level, 
-                  value, 
-                  p_value) %>% 
-  tidyr::spread(., 
-                key = strata, 
-                value = value) %>% 
-  dplyr::select(-p_value, dplyr::everything(), p_value) %>% 
-  knitr::kable()
+`tidytableone` is one of several R packages for descriptive tables; alternatives include [`tableone`](https://CRAN.R-project.org/package=tableone), [`gtsummary`](https://www.danieldsjoberg.com/gtsummary/), and [`compareGroups`](https://CRAN.R-project.org/package=compareGroups), each with different design priorities. Pick what fits your workflow.
 
-```
+## License
 
-This is rough, but you get the idea. The plan is to next create a function to make the table based on specifications.
-
-Or possibly with some nesting...
-
-```{r}
-tab1 %>% 
-  tidyr::nest(con_res = c(n:shapiro_test, oneway_test:bartlett_test)) %>% 
-  tidyr::nest(cat_res = c(n_level:check_categorical_test)) %>% 
-  mutate(mean_sd = purrr::map_chr(.x = con_res, 
-                                  .f = ~ paste0(round(.x$mean, 1), 
-                                                " (", 
-                                                round(.x$sd, 1), 
-                                                ")"))) %>% 
-  mutate(n_pct = purrr::map_chr(.x = cat_res, 
-                                .f = ~ tryCatch(suppressWarnings(paste0(.x$n_level, 
-                                                       " (", 
-                                                       scales::percent(.x$n_level / .x$n_strata), 
-                                                       ")")), 
-                                                error = function(err) NA))) %>% 
-  mutate(value = dplyr::if_else(var_type == "continuous", mean_sd, n_pct)) %>% 
-  dplyr::select(-mean_sd, -n_pct, -class)
-
-
-
-```
-
+MIT
