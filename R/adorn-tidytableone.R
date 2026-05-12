@@ -179,7 +179,7 @@ adorn_tidytableone <- function(tidy_t1,
   
   # Silence no visible binding for global variable
   p_value <- test <- smd <- label <- glue_formula <- glue_formula2 <- NULL
-  strata <- num_not_miss <- Overall <- NULL
+  strata <- num_not_miss <- Overall <- is_cb <- NULL
   
   checkbox_p <- match.arg(checkbox_p)
   checkbox_block_p <- match.arg(checkbox_block_p)
@@ -189,15 +189,45 @@ adorn_tidytableone <- function(tidy_t1,
   
   has_strata <- !.is_no_strata(tidy_t1)
   
+  # Note for checkbox block headers (e.g., "More than one response allowed").
+  # Read once from the attribute attached by .create_tidytableone_core; falls
+  # back to "" if no checkbox blocks were in the tidy_t1 (no attribute) or if
+  # the user explicitly suppressed via checkbox_opts = list(note = "").
+  cb_opts <- attr(tidy_t1, "checkbox_opts")
+  cb_note <- if (is.null(cb_opts$note)) "" else as.character(cb_opts$note)
+  cb_note <- if (length(cb_note) == 0 || is.na(cb_note)) "" else cb_note
+  
+  # Helper to append the note to a label, idempotently. Safe to call when the
+  # label already ends with the note (no-ops in that case). Empty/NA labels
+  # and empty notes are passed through unchanged.
+  .append_cb_note <- function(label, note) {
+    if (identical(note, "") || is.na(note)) return(label)
+    already <- !is.na(label) & nzchar(label) &
+      endsWith(label, paste0(", ", note))
+    dplyr::if_else(
+      is.na(label) | !nzchar(label) | already,
+      label,
+      paste0(label, ", ", note)
+    )
+  }
+  
   
   #### Variable labels --------------------------------
   
   if (has_strata) {
     
     var_lbls <- tidy_t1 |>
-      dplyr::select(var, var_type, label) |>
+      dplyr::select(var, var_type, label, class) |>
       dplyr::distinct() |>
-      mutate(label = dplyr::if_else(is.na(label) | label == "", var, label))
+      mutate(label = dplyr::if_else(is.na(label) | label == "", var, label)) |>
+      mutate(
+        label = dplyr::if_else(
+          !is.na(class) & class == "checkbox",
+          .append_cb_note(label, cb_note),
+          label
+        )
+      ) |>
+      dplyr::select(-class)
     
     # keep class per var (for checkbox de-dup)
     var_class <- tidy_t1 |>
@@ -213,19 +243,26 @@ adorn_tidytableone <- function(tidy_t1,
       dplyr::transmute(
         var      = as.character(label),
         var_type = "categorical",
-        label    = as.character(label)
+        label    = as.character(label),
+        is_cb    = TRUE
       )
     
     var_lbls <- tidy_t1 |>
-      dplyr::select(var, var_type, label) |>
+      dplyr::select(var, var_type, label, class) |>
       dplyr::distinct() |>
       dplyr::mutate(
         var      = as.character(var),
         var_type = as.character(var_type),
-        label    = dplyr::if_else(is.na(label), as.character(var), label)
+        label    = dplyr::if_else(is.na(label), as.character(var), label),
+        is_cb    = !is.na(class) & class == "checkbox"
       ) |>
+      dplyr::select(-class) |>
       dplyr::bind_rows(var_lbls_cb) |>
-      dplyr::distinct(var, .keep_all = TRUE)
+      dplyr::distinct(var, .keep_all = TRUE) |>
+      dplyr::mutate(
+        label = dplyr::if_else(is_cb, .append_cb_note(label, cb_note), label)
+      ) |>
+      dplyr::select(-is_cb)
   }
   
   
