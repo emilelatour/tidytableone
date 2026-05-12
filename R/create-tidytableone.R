@@ -1031,35 +1031,3 @@ create_tidytableone_checkbox <- function(data,
   )
 }
 
-
-#' @rdname tidytableone-deprecated
-create_tidy_table_one <- function(...) {
-  # .Deprecated("create_tidytableone")
-  .Defunct("create_tidytableone")
-  dots <- list(...)
-  if (!is.null(dots$.vars)) {
-    dots$vars <- dots$.vars
-    dots$.vars <- NULL
-  }
-  do.call(create_tidytableone, dots)
-}
-
-#' @rdname tidytableone-deprecated
-create_tidy_table_one_checkbox <- function(...) {
-  # .Deprecated("create_tidytableone_checkbox")
-  .Defunct("create_tidytableone_checkbox")
-  dots <- list(...)
-  if (!is.null(dots$.vars)) {
-    dots$vars <- dots$.vars
-    dots$.vars <- NULL
-  }
-  do.call(create_tidytableone_checkbox, dots)
-}
-
-
-
-
-
-
-
-

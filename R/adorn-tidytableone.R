@@ -700,52 +700,6 @@ adorn_tidytableone <- function(tidy_t1,
 
 #### Build tab1 --------------------------------
 
-build_tab1 <- function(tab_var,
-                       cb_vars,
-                       tab_pvals,
-                       tab_stats,
-                       tab_miss,
-                       missing = "no",
-                       show_test = FALSE,
-                       show_smd = FALSE,
-                       tab_smd) {
-  
-  if (tab_var %in% cb_vars) {
-    
-    res <- build_tab1_cb(tab_var = tab_var,
-                         cb_vars = cb_vars,
-                         tab_pvals = tab_pvals,
-                         tab_stats = tab_stats,
-                         tab_miss = tab_miss,
-                         missing = missing,
-                         show_test = show_test,
-                         show_smd = show_smd,
-                         tab_smd = tab_smd)
-    
-  } else {
-    
-    res <- build_tab1_noncb(tab_var = tab_var,
-                            tab_pvals = tab_pvals,
-                            tab_stats = tab_stats,
-                            tab_miss = tab_miss,
-                            missing = missing,
-                            show_test = show_test,
-                            show_smd = show_smd,
-                            tab_smd = tab_smd)
-    
-    
-  }
-  
-  
-  
-  return(res)
-  
-}
-
-
-
-
-
 # For non-checkboxes
 build_tab1_noncb <- function(tab_var,
                              tab_pvals,
@@ -1416,29 +1370,6 @@ get_miss <- function(t1,
 
 
 #### Order groups like vars -------------------------------- 
-
-.order_groups_like_vars <- function(tidy_t1, group_similar_vars) {
-  ord <- tidy_t1 |>
-    dplyr::distinct(var) |>
-    dplyr::pull(var) |>
-    as.character()
-  
-  grouped <- group_similar_vars(ord) |>
-    dplyr::filter(var %in% ord) |>
-    dplyr::mutate(var_pos = match(var, ord))
-  
-  group_order <- grouped |>
-    dplyr::group_by(group_label_first) |>
-    dplyr::summarise(first_pos = min(var_pos), .groups = "drop") |>
-    dplyr::arrange(first_pos) |>
-    dplyr::pull(group_label_first)
-  
-  grouped <- grouped |>
-    dplyr::mutate(group_label_first = factor(group_label_first, levels = group_order))
-  
-  groups <- split(grouped$var, grouped$group_label_first)
-  lapply(groups, function(v) v[order(match(v, ord))])
-}
 
 
 

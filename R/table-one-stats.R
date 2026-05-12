@@ -117,8 +117,6 @@ calc_oneway_test_unequal <- function(data, form, var.equal = FALSE) {
              purrr::pluck(., "p.value"),
            error = function(err) NA)
   
-  
-  
 }
 
 
@@ -130,8 +128,6 @@ calc_oneway_test_equal <- function(data, form, var.equal = TRUE) {
                        var.equal = var.equal) %>%
              purrr::pluck(., "p.value"),
            error = function(err) NA)
-  
-  
   
 }
 
@@ -166,13 +162,6 @@ calc_levene_test <- function(data, form) {
 }
 
 
-# cat_check
-# cat_check <- function(tab) {
-#   
-#   dplyr::if_else(testit::has_warning(chisq.test(tab)),
-#                  "warning",
-#                  "ok")
-# }
 # Flag cases where chi-square approximation may be shaky
 # (any expected < 1) OR (>20% of expected < 5)
 cat_check <- function(tab) {
@@ -266,41 +255,6 @@ chisq_expected_flag <- function(tab) {
 
 
 # calc_cat_htest
-# calc_cat_htest <- function(data, strata, vars, b_replicates) {
-#   
-#   tibble::tibble(strata = strata,
-#                  var = vars) %>%
-#     mutate(x = purrr::map(.x = strata,
-#                           .f = ~ purrr::pluck(data, .x)),
-#            y = purrr::map(.x = var,
-#                           .f = ~ purrr::pluck(data, .x))) %>%
-#     dplyr::filter(strata != var) %>%
-#     mutate(tab = purrr::map2(.x = x,
-#                              .y = y,
-#                              .f = ~ table(.x, .y)),
-#            chisq_test = purrr::map_dbl(.x = tab,
-#                                        .f = ~ calc_chisq_test(.x)),
-#            chisq_test_no_correction = purrr::map_dbl(.x = tab,
-#                                                      .f = ~ calc_chisq_test_no_correct(.x)),
-#            chisq_test_simulated = purrr::map_dbl(.x = tab,
-#                                                  .f = ~ calc_chisq_test_sim_p(.x,
-#                                                                               B = b_replicates)),
-#            
-#            fisher_test = purrr::map_dbl(.x = tab,
-#                                         .f = ~ calc_fisher_test(.x)),
-#            fisher_test_simulated = purrr::map_dbl(.x = tab,
-#                                                   .f = ~ calc_fisher_test_sim_p(.x,
-#                                                                                 B = b_replicates)),
-#            check_categorical_test = purrr::map_chr(.x = tab,
-#                                                    .f = ~ cat_check(.x))) %>%
-#     dplyr::select(var,
-#                   chisq_test,
-#                   chisq_test_no_correction,
-#                   chisq_test_simulated,
-#                   fisher_test,
-#                   fisher_test_simulated,
-#                   check_categorical_test)
-# }
 calc_cat_htest <- function(data, strata, vars, b_replicates) {
   
   tibble::tibble(strata = strata,
@@ -416,58 +370,13 @@ custom_max <- function(x, na.rm = TRUE) {
 
 #### Safe versions -------------------------------- 
 
-# Quietly return chisq p-value (or NA) with optional Yates correction / simulation
-# safe_chisq <- function(tab, correct = TRUE, simulate.p.value = FALSE, B = 2000) {
-#   res <- tryCatch(
-#     suppressWarnings(stats::chisq.test(tab, correct = correct,
-#                                        simulate.p.value = simulate.p.value, B = B)),
-#     error = function(e) NULL
-#   )
-#   if (is.null(res)) NA_real_ else as.numeric(res$p.value)
-# }
-
-# safe_chisq <- function(tab, correct = TRUE, simulate.p.value = FALSE, B = 2000) {
-#   
-#   if (is.null(tab) && !is.null(tbl)) tab <- tbl
-#   
-#   withCallingHandlers(
-#     {
-#       res <- try(
-#         stats::chisq.test(tab,
-#                           correct = correct,
-#                           simulate.p.value = simulate.p.value,
-#                           B = B),
-#         silent = TRUE
-#       )
-#       if (inherits(res, "try-error")) return(NA_real_)
-#       as.numeric(res$p.value)
-#     },
-#     warning = function(w) {
-#       msg <- conditionMessage(w)
-#       if (grepl("Chi-squared approximation may be incorrect", msg, fixed = TRUE)) {
-#         invokeRestart("muffleWarning")
-#       }
-#       # otherwise let unrelated warnings bubble up
-#     }
-#   )
-# }
-# 
-# safe_fisher <- function(tbl, simulate.p.value = FALSE, B = 2000) {
-#   out <- try(stats::fisher.test(tbl, simulate.p.value = simulate.p.value, B = B),
-#              silent = TRUE)
-#   if (inherits(out, "try-error")) return(NA_real_)
-#   as.numeric(out$p.value)
-# }
-# 
-
-
 # Silently compute chi-squared p-value; never emit base warnings.
 safe_chisq <- function(tbl, correct = TRUE, simulate.p.value = FALSE, B = 2000) {
   # normalize & structural guards
   if (length(dim(tbl)) != 2L) return(NA_real_)
   if (anyNA(tbl)) tbl[is.na(tbl)] <- 0
   if (sum(tbl) == 0L) return(NA_real_)
-  if (any(rowSums(tbl) == 0L) || any(colSums(tbl) == 0L)) return(NA_real_)  # <- key line
+  if (any(rowSums(tbl) == 0L) || any(colSums(tbl) == 0L)) return(NA_real_)
 
   out <- try(
     suppressWarnings(
@@ -479,7 +388,7 @@ safe_chisq <- function(tbl, correct = TRUE, simulate.p.value = FALSE, B = 2000) 
   out$p.value
 }
 
-# Silently compute Fisher’s p-value; never emit base warnings.
+# Silently compute Fisher's p-value; never emit base warnings.
 safe_fisher <- function(tbl, simulate.p.value = FALSE, B = 2000) {
   if (length(dim(tbl)) != 2L) return(NA_real_)
   if (anyNA(tbl)) tbl[is.na(tbl)] <- 0

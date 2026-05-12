@@ -43,103 +43,6 @@ prepare_checkbox_blocks <- function(spec) {
 }
 
 # Compute counts and percents per level; optional "Any selected" row
-# process_checkbox_blocks_strata <- function(data, blocks, opts, strata_var, strata_levels) {
-#   denom <- match.arg(opts$denom, c("group","nonmissing","responders"))
-# 
-#   # Include an Overall stratum first, keep order stable
-#   strata_levels_all <- unique(c("Overall", strata_levels))
-# 
-#   out <- lapply(blocks, function(bl) {
-#     dplyr::bind_rows(lapply(strata_levels_all, function(g) {
-#       # Slice data for this stratum (or all for Overall)
-#       d_g <- if (identical(g, "Overall")) data else data[data[[strata_var]] %in% g, , drop = FALSE]
-# 
-#       # Raw values and selected flags
-#       raw_mat <- as.data.frame(d_g[bl$vars], stringsAsFactors = FALSE)
-#       sel_mat <- as.data.frame(lapply(bl$vars, function(v) as.integer(d_g[[v]] == bl$select_txt[[v]])))
-#       names(sel_mat) <- bl$vars
-# 
-#       # Per-level counts (selected)
-#       n_level <- colSums(sel_mat, na.rm = TRUE)
-#       # Basic denominators
-#       group_N <- nrow(d_g)
-# 
-#       # Non-missing per checkbox column
-#       nonmiss_per_level <- colSums(!is.na(raw_mat), na.rm = TRUE)
-# 
-#       # Valid denominators (vector) according to denom
-#       n_strata_valid_vec <- switch(
-#         denom,
-#         nonmissing = as.integer(nonmiss_per_level[bl$vars]),
-#         responders = rep(sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE), length(bl$vars)),
-#         group      = rep(group_N, length(bl$vars))
-#       )
-# 
-#       # Display denominators (overall column denominators)
-#       n_strata_vec <- rep(group_N, length(bl$vars))
-# 
-#       # Sanity: names must align so we can index by bl$vars
-#       stopifnot(identical(names(n_level), bl$vars))
-# 
-#       # Main rows (one per checkbox level)
-#       df <- tibble::tibble(
-#         strata         = factor(g, levels = strata_levels_all),
-#         var            = bl$overall_lbl,
-#         level_var      = bl$vars,                          # keep original checkbox col for per-level p
-#         level          = unname(bl$labels[bl$vars]),
-#         n_level        = as.integer(n_level[bl$vars]),
-#         n_strata       = as.integer(n_strata_vec),
-#         pct            = ifelse(n_strata_vec > 0L, n_level[bl$vars] / n_strata_vec, NA_real_),
-# 
-#         n_level_valid  = as.integer(n_level[bl$vars]),
-#         n_strata_valid = as.integer(n_strata_valid_vec),
-#         pct_valid      = ifelse(n_strata_valid_vec > 0L, n_level[bl$vars] / n_strata_valid_vec, NA_real_)
-#       )
-# 
-#       # Optional “Any selected”
-#       if (isTRUE(opts$show_any)) {
-#         any_count        <- sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE)
-#         any_nonmissing   <- sum(rowSums(!is.na(raw_mat)) > 0L, na.rm = TRUE)
-# 
-#         any_display_denom <- switch(denom,
-#                                     group      = group_N,
-#                                     responders = any_count,
-#                                     nonmissing = group_N)
-#         any_valid_denom   <- switch(denom,
-#                                     group      = any_display_denom,
-#                                     responders = any_count,
-#                                     nonmissing = any_nonmissing)
-# 
-#         df <- dplyr::bind_rows(
-#           df,
-#           tibble::tibble(
-#             strata         = factor(g, levels = strata_levels_all),
-#             var            = bl$overall_lbl,
-#             level_var      = NA_character_,                 # NA => exclude from per-level p-vals
-#             level          = "Any selected",
-#             n_level        = as.integer(any_count),
-#             n_strata       = as.integer(any_display_denom),
-#             pct            = ifelse(any_display_denom > 0, any_count / any_display_denom, NA_real_),
-# 
-#             n_level_valid  = as.integer(any_count),
-#             n_strata_valid = as.integer(any_valid_denom),
-#             pct_valid      = ifelse(any_valid_denom > 0, any_count / any_valid_denom, NA_real_)
-#           )
-#         )
-#       }
-# 
-#       df
-#     }))
-#   })
-# 
-#   dplyr::bind_rows(out) |>
-#     dplyr::mutate(
-#       var_type = "categorical",
-#       class    = "checkbox"
-#     )
-# }
-
-# Compute counts and percents per level; optional "Any selected" row
 process_checkbox_blocks_strata <- function(data, blocks, opts, strata_var, strata_levels) {
   
   # Always normalize/validate opts right here (defensive)
@@ -213,7 +116,6 @@ process_checkbox_blocks_strata <- function(data, blocks, opts, strata_var, strat
       
       # Optional “Any selected” row (synthetic binary) 
       if (isTRUE(opts$show_any)) {
-        # any_count        <- sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE)
         any_count        <- n_resp
         any_nonmissing   <- sum(rowSums(!is.na(raw_mat)) > 0L, na.rm = TRUE)
         
@@ -262,14 +164,14 @@ process_checkbox_blocks_strata <- function(data, blocks, opts, strata_var, strat
 
 # Compute p-values for each checkbox level (and "Any selected") per block,
 # writing results directly into the checkbox rows in `tab`.
-
-# Checkbox p-values computed once per checkbox variable 
-# tab: output from process_checkbox_blocks_strata() (has class == "checkbox")
-# data: original data
+#
+# Checkbox p-values computed once per checkbox variable.
+# tab:        output from process_checkbox_blocks_strata() (has class == "checkbox")
+# data:       original data
 # strata_var: name of strata column in `data` (string)
-# blocks: list from prepare_checkbox_blocks()
-# test: "auto" | "chisq" | "fisher" (kept for API compatibility; we compute all)
-# p_adjust: multiple-testing adjustment method (e.g. "none","BH","holm",...)
+# blocks:     list from prepare_checkbox_blocks()
+# test:       "auto" | "chisq" | "fisher" (kept for API compatibility; we compute all)
+# p_adjust:   multiple-testing adjustment method (e.g. "none","BH","holm",...)
 add_pvalues_checkbox <- function(tab,
                                  data,
                                  strata_var,
@@ -291,9 +193,7 @@ add_pvalues_checkbox <- function(tab,
   
   for (bl in blocks) {
     
-    # block responder indicator: any non-missing in ANY checkbox var in the block
-    # raw_mat <- as.data.frame(data[bl$vars], stringsAsFactors = FALSE)
-    # is_resp <- rowSums(!is.na(raw_mat)) > 0L
+    # block responder indicator: any selection in any checkbox var in the block
     sel_mat <- as.data.frame(lapply(bl$vars, function(v)
       as.integer(data[[v]] == bl$select_txt[[v]])))
     names(sel_mat) <- bl$vars
@@ -330,7 +230,7 @@ add_pvalues_checkbox <- function(tab,
       )
     }
     
-    # -synthetic "Any selected" variable 
+    # synthetic "Any selected" variable 
     stem    <- sub("___.*$", "", bl$vars[[1]])
     var_any <- paste0(tolower(stem), "___any_selected")
     
@@ -386,8 +286,6 @@ add_pvalues_checkbox <- function(tab,
   tab %>%
     dplyr::left_join(tests, by = "var")
 }
-
-
 
 
 .default_checkbox_opts <- function() {

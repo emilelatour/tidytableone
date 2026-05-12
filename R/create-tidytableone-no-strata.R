@@ -591,70 +591,6 @@ process_categorical_nostrata <- function(data, cat_vars) {
   dplyr::bind_rows(out)
 }
 
-# overall‑only checkbox rows
-process_checkbox_blocks_nostrata <- function(data, blocks, opts) {
-  denom <- match.arg(opts$denom, c("group","nonmissing","responders"))
-  
-  out <- lapply(blocks, function(bl) {
-    sel <- stats::setNames(
-      lapply(bl$vars, function(v) as.integer(data[[v]] == bl$select_txt[[v]])),
-      bl$vars
-    )
-    sel <- tibble::as_tibble(sel)
-    
-    any_selected <- as.integer(rowSums(sel, na.rm = TRUE) > 0L)
-    
-    overall_denom <- switch(
-      denom,
-      group = nrow(data),
-      nonmissing = nrow(data),         # adjust if you implement true NA exclusion
-      responders = sum(any_selected, na.rm = TRUE)
-    )
-    
-    # counts per level overall
-    long <- sel |>
-      tidyr::pivot_longer(dplyr::everything(),
-                          names_to = "level_var",
-                          values_to = "selected") |>
-      dplyr::group_by(level_var) |>
-      dplyr::summarise(n_level = sum(selected, na.rm = TRUE), .groups = "drop") |>
-      dplyr::mutate(
-        group_n = overall_denom,
-        pct     = ifelse(group_n > 0, n_level / group_n, NA_real_),
-        var     = bl$overall_lbl,
-        level   = bl$labels[level_var]
-      )
-    
-    # Optional "Any selected"
-    any_row <- NULL
-    if (isTRUE(opts$show_any)) {
-      any_row <- tibble::tibble(
-        n_level = sum(any_selected, na.rm = TRUE),
-        group_n = overall_denom,
-        pct     = ifelse(group_n > 0, n_level / group_n, NA_real_),
-        var     = bl$overall_lbl,
-        level   = "Any selected",
-        level_var = NA_character_
-      )
-    }
-    
-    dplyr::bind_rows(long, any_row)
-  })
-  
-  out <- dplyr::bind_rows(out)
-  
-  # conform to standard columns
-  out |>
-    dplyr::transmute(
-      var, level,
-      n_strata = n_level,
-      n_level = NA_integer_,
-      n_level_valid = NA_integer_,
-      n_strata_valid = NA_integer_,
-      pct, pct_valid = pct,
-      label = var
-    )
-}
 
 process_checkbox_blocks_overall <- function(data, blocks, opts) {
   
@@ -766,14 +702,3 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
     )
 }
 
-#' @rdname tidytableone-deprecated
-create_tidy_table_one_no_strata <- function(...) {
-  .Deprecated("create_tidytableone_no_strata")
-  create_tidytableone_no_strata(...)
-}
-
-#' @rdname tidytableone-deprecated
-create_tidy_table_one_no_strata_checkbox <- function(...) {
-  .Deprecated("create_tidytableone_no_strata_checkbox")
-  create_tidytableone_no_strata_checkbox(...)
-}

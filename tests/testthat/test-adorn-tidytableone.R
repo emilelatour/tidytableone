@@ -1,16 +1,7 @@
-# Stable snapshot tests for create_tidytableone() covering the 2x2 grid:
+# Stable snapshot tests for adorn_tidytableone() covering the same 2x2 grid
+# as the create tests, plus a few of the key knob combinations.
 #
-#   strata   in {present, NULL}
-#   checkbox in {NULL, present}
-#
-# These exist primarily as a refactor safety net: if a later cleanup
-# silently changes output, the snapshot diff will catch it. They are NOT
-# meant to be a complete behavioural spec — they're a regression tripwire.
-#
-# If a snapshot changes intentionally, review the diff with
-#   testthat::snapshot_review()
-# and accept with
-#   testthat::snapshot_accept().
+# Same intent as the create-tidytableone tests: a regression tripwire.
 
 # ---------------------------------------------------------------------------
 # Test fixtures (inlined; no reliance on helper-*.R files)
@@ -76,35 +67,31 @@ mixed_checkbox_spec <- function() {
 }
 
 # ---------------------------------------------------------------------------
-# Strata present, no checkbox
+# Default settings across the 2x2 grid
 # ---------------------------------------------------------------------------
-test_that("create_tidytableone is stable with strata (pbc_mayo)", {
+test_that("adorn_tidytableone is stable with strata (pbc_mayo, defaults)", {
   set.seed(20251101)
   tab <- create_tidytableone(
     data   = pbc_mayo,
     strata = "trt",
     vars   = pbc_mayo_test_vars
   )
-  expect_snapshot(print(tab, n = Inf, width = 200))
+  adorned <- adorn_tidytableone(tab)
+  expect_snapshot(print(adorned, n = Inf, width = 200))
 })
 
-# ---------------------------------------------------------------------------
-# No strata, no checkbox
-# ---------------------------------------------------------------------------
-test_that("create_tidytableone is stable without strata (pbc_mayo)", {
+test_that("adorn_tidytableone is stable without strata (pbc_mayo, defaults)", {
   set.seed(20251101)
   tab <- create_tidytableone(
     data   = pbc_mayo,
     strata = NULL,
     vars   = pbc_mayo_test_vars
   )
-  expect_snapshot(print(tab, n = Inf, width = 200))
+  adorned <- adorn_tidytableone(tab)
+  expect_snapshot(print(adorned, n = Inf, width = 200))
 })
 
-# ---------------------------------------------------------------------------
-# Strata present, checkbox present (REDCap-style)
-# ---------------------------------------------------------------------------
-test_that("create_tidytableone is stable with checkbox + strata", {
+test_that("adorn_tidytableone is stable with checkbox + strata", {
   set.seed(20251101)
   dat  <- make_checkbox_example()
   spec <- checkbox_example_spec()
@@ -115,13 +102,11 @@ test_that("create_tidytableone is stable with checkbox + strata", {
                  "race___1", "race___2", "race___3", "race___98"),
     checkbox = spec
   )
-  expect_snapshot(print(tab, n = Inf, width = 200))
+  adorned <- adorn_tidytableone(tab)
+  expect_snapshot(print(adorned, n = Inf, width = 200))
 })
 
-# ---------------------------------------------------------------------------
-# No strata, checkbox present (REDCap-style)
-# ---------------------------------------------------------------------------
-test_that("create_tidytableone is stable with checkbox, no strata", {
+test_that("adorn_tidytableone is stable with checkbox, no strata", {
   set.seed(20251101)
   dat  <- make_checkbox_example()
   spec <- checkbox_example_spec()
@@ -132,13 +117,11 @@ test_that("create_tidytableone is stable with checkbox, no strata", {
                  "race___1", "race___2", "race___3", "race___98"),
     checkbox = spec
   )
-  expect_snapshot(print(tab, n = Inf, width = 200))
+  adorned <- adorn_tidytableone(tab)
+  expect_snapshot(print(adorned, n = Inf, width = 200))
 })
 
-# ---------------------------------------------------------------------------
-# Mixed (non-REDCap) checkbox names, multiple blocks, with strata
-# ---------------------------------------------------------------------------
-test_that("create_tidytableone is stable with multi-block mixed-name checkboxes", {
+test_that("adorn_tidytableone is stable with multi-block mixed-name checkboxes", {
   set.seed(20251102)
   dat  <- make_mixed_checkbox_example()
   spec <- mixed_checkbox_spec()
@@ -149,39 +132,68 @@ test_that("create_tidytableone is stable with multi-block mixed-name checkboxes"
                  "ckd", "chf"),
     checkbox = spec
   )
-  expect_snapshot(print(tab, n = Inf, width = 200))
+  adorned <- adorn_tidytableone(tab)
+  expect_snapshot(print(adorned, n = Inf, width = 200))
 })
 
 # ---------------------------------------------------------------------------
-# Schema sanity checks: column names + types, separate from value content.
-# These are extra-sensitive to structural drift.
+# Key option combinations
 # ---------------------------------------------------------------------------
-test_that("create_tidytableone schema is stable (strata)", {
+test_that("adorn_tidytableone respects show_test and show_smd", {
+  set.seed(20251101)
   tab <- create_tidytableone(
     data   = pbc_mayo,
     strata = "trt",
     vars   = pbc_mayo_test_vars
   )
-  expect_snapshot({
-    cat("Columns:\n")
-    print(names(tab))
-    cat("\nTypes:\n")
-    print(vapply(tab, function(x) paste(class(x), collapse = "/"),
-                 character(1)))
-  })
+  adorned <- adorn_tidytableone(tab, show_test = TRUE, show_smd = TRUE)
+  expect_snapshot(print(adorned, n = Inf, width = 200))
 })
 
-test_that("create_tidytableone schema is stable (no strata)", {
+test_that("adorn_tidytableone respects missing = 'ifany'", {
+  set.seed(20251101)
   tab <- create_tidytableone(
     data   = pbc_mayo,
-    strata = NULL,
+    strata = "trt",
     vars   = pbc_mayo_test_vars
   )
-  expect_snapshot({
-    cat("Columns:\n")
-    print(names(tab))
-    cat("\nTypes:\n")
-    print(vapply(tab, function(x) paste(class(x), collapse = "/"),
-                 character(1)))
-  })
+  adorned <- adorn_tidytableone(tab, missing = "ifany")
+  expect_snapshot(print(adorned, n = Inf, width = 200))
+})
+
+test_that("adorn_tidytableone respects missing = 'always'", {
+  set.seed(20251101)
+  tab <- create_tidytableone(
+    data   = pbc_mayo,
+    strata = "trt",
+    vars   = pbc_mayo_test_vars
+  )
+  adorned <- adorn_tidytableone(tab, missing = "always")
+  expect_snapshot(print(adorned, n = Inf, width = 200))
+})
+
+test_that("adorn_tidytableone respects exact / nonnormal hints", {
+  set.seed(20251101)
+  tab <- create_tidytableone(
+    data   = pbc_mayo,
+    strata = "trt",
+    vars   = pbc_mayo_test_vars
+  )
+  adorned <- adorn_tidytableone(
+    tab,
+    exact     = c("status", "ascites"),
+    nonnormal = c("bili", "chol")
+  )
+  expect_snapshot(print(adorned, n = Inf, width = 200))
+})
+
+test_that("adorn_tidytableone respects combine_level_col = FALSE", {
+  set.seed(20251101)
+  tab <- create_tidytableone(
+    data   = pbc_mayo,
+    strata = "trt",
+    vars   = pbc_mayo_test_vars
+  )
+  adorned <- adorn_tidytableone(tab, combine_level_col = FALSE)
+  expect_snapshot(print(adorned, n = Inf, width = 200))
 })
