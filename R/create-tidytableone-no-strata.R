@@ -150,23 +150,6 @@ create_tidytableone_no_strata <- function(data,
   # Ensure columns for downstream uniformity
   if (!"level" %in% names(res_stats)) res_stats$level <- NA_character_
   
-  # # ordering
-  # if ("level" %in% names(var_info)) {
-  #   sort_vars <- var_info |>
-  #     dplyr::select(var, level, sort1, sort2)
-  #   res_stats <- res_stats |>
-  #     dplyr::left_join(sort_vars, by = c("var","level")) |>
-  #     dplyr::arrange(sort1, sort2) |>
-  #     dplyr::select(-sort1, -sort2)
-  # } else {
-  #   sort_vars <- var_info |>
-  #     dplyr::select(var, sort1, sort2)
-  #   res_stats <- res_stats |>
-  #     dplyr::left_join(sort_vars, by = "var") |>
-  #     dplyr::arrange(sort1, sort2) |>
-  #     dplyr::select(-sort1, -sort2)
-  # }
-  
   res_stats <- .ensure_cols(
     res_stats,
     cols_types = list(
@@ -205,7 +188,6 @@ create_tidytableone_no_strata <- function(data,
     dplyr::mutate(var = factor(var, levels = vars)) |>
     dplyr::arrange(var)
   
-  # res_stats <- order_rows_no_strata(res_stats, vars = vars)
   res_stats <- order_within_vars_no_strata(
     res_stats = res_stats,
     vars = vars,
@@ -472,12 +454,6 @@ create_tidytableone_no_strata_checkbox <- function(data,
     )
   )
   
-  # # For the no-strata + checkbox variant, keep the row order produced by
-  # # the processing helpers, and just ensure `level` is a factor.
-  # if ("level" %in% names(res_stats) && !is.factor(res_stats$level)) {
-  #   res_stats$level <- factor(res_stats$level)
-  # }
-  
   # Force var ordering to match input vars, with ___any_selected inside its block
   var_levels <- .make_var_levels_with_any(
     vars      = vars,
@@ -497,7 +473,6 @@ create_tidytableone_no_strata_checkbox <- function(data,
     dplyr::arrange(var)
   
   # Pass var_levels, not vars
-  # res_stats <- order_within_vars_no_strata(res_stats, vars = var_levels)
   res_stats <- order_within_vars_no_strata(
     res_stats = res_stats,
     vars = var_levels,
@@ -590,7 +565,6 @@ process_categorical_nostrata <- function(data, cat_vars) {
   
   dplyr::bind_rows(out)
 }
-
 
 process_checkbox_blocks_overall <- function(data, blocks, opts) {
   

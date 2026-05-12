@@ -420,13 +420,7 @@ adorn_tidytableone <- function(tidy_t1,
   
   ## Lock in the variable order ---------------- 
   
-  # # Group variables by their “base” label for display (e.g., race___1..98 → one group)
-  # grouped_tidy_t1_vars <- group_similar_vars(tidy_t1_vars)
-  # 
-  # # Build a list: names = group label; values = member vars in that group
-  # groups <- split(grouped_tidy_t1_vars$var, grouped_tidy_t1_vars$group_label_first)
-  
-  # --- NEW: build display groups that collapse checkbox blocks by their label ---
+  # build display groups that collapse checkbox blocks by their label
   
   ord <- tidy_t1 |>
     dplyr::distinct(var) |>
@@ -1367,10 +1361,6 @@ get_miss <- function(t1,
   
   
 }
-
-
-#### Order groups like vars -------------------------------- 
-
 
 
 # helper (optional; you can inline the logic if you prefer)

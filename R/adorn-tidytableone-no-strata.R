@@ -243,44 +243,6 @@ adorn_tidytableone_no_strata <- function(tidy_t1,
     dplyr::distinct(var, label) |>
     dplyr::mutate(label = dplyr::if_else(is.na(label), var, label))
   
-  # cb_labels <- cb_groups |>
-  #   dplyr::distinct(label) |>
-  #   dplyr::pull(label) |>
-  #   as.character()
-  # 
-  # non_cb_vars <- tidy_t1 |>
-  #   dplyr::distinct(var, class) |>
-  #   dplyr::filter(class != "checkbox") |>
-  #   dplyr::pull(var) |>
-  #   as.character()
-  # 
-  # # Render non-checkbox vars as usual
-  # out_non_cb <- purrr::map_df(
-  #   .x = non_cb_vars,
-  #   .f = ~ build_tab1_no_strata(
-  #     tab_var = .x,
-  #     tab_stats = tab_stats,
-  #     tab_miss  = tab_miss,
-  #     missing   = missing
-  #   )
-  # )
-  # 
-  # # Render checkbox blocks: one block per checkbox label
-  # out_cb <- purrr::map_df(
-  #   .x = cb_labels,
-  #   .f = ~ build_tab1_checkbox_no_strata(
-  #     cb_label = .x,
-  #     cb_groups = cb_groups,
-  #     tab_stats = tab_stats,
-  #     tab_miss  = tab_miss,
-  #     missing   = missing
-  #   )
-  # )
-  # 
-  # adorned_tidy_t1 <- dplyr::bind_rows(out_non_cb, out_cb) |>
-  #   dplyr::mutate(dplyr::across(.cols = dplyr::everything(),
-  #                               .fns = ~ dplyr::if_else(is.na(.), "", .)))
-  
   # Desired order comes from tidy_t1$var levels (if factor), else first appearance
   var_levels <- if (is.factor(tidy_t1$var)) levels(tidy_t1$var) else unique(as.character(tidy_t1$var))
   var_levels <- as.character(var_levels)

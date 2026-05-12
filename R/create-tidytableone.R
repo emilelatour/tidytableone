@@ -461,21 +461,6 @@
     
   }
   
-  # # Emit a friendly warning once per call if chi-squared looks shaky
-  # if (isTRUE(getOption("tidytableone.warn_chisq", TRUE))) {
-  #   if (nrow(htest_res) > 0 && "check_categorical_test" %in% names(htest_res)) {
-  #     bad <- unique(htest_res$var[htest_res$check_categorical_test == "warning"])
-  #     if (length(bad) > 0) {
-  #       warning(
-  #         glue::glue(
-  #           "Chi-squared assumptions may be violated for: {paste(bad, collapse = ', ')}. ",
-  #           "Consider Fisher's exact test (returned in `fisher_test`)."
-  #         ),
-  #         call. = FALSE
-  #       )
-  #     }
-  #   }
-  # }
   
   
   #### Checkbox blocks (multi-response) --------------------------------
@@ -517,11 +502,6 @@
       strata = strata,   # e.g., "group"
       blocks = cb_blocks
     )
-    
-    # res_checkbox <- res_checkbox %>%
-    #   dplyr::left_join(smd_cb, by = "var", suffix = c("", ".cb")) %>%
-    #   dplyr::mutate(smd = dplyr::coalesce(smd, smd.cb)) %>%
-    #   dplyr::select(-dplyr::any_of("smd.cb"))
     
     res_checkbox <- res_checkbox %>%
       dplyr::left_join(smd_cb, by = "var")
@@ -674,19 +654,6 @@
   res_stats <- res_stats |> 
     dplyr::select(-level_var)
   
-  # fix_smd_cols <- function(df) {
-  #   # coalesce any of these, in this order, into `smd`, then drop the extras
-  #   candidates <- c("smd", "smd.cb", "smd.y", "smd.x")
-  #   have <- intersect(candidates, names(df))
-  #   if (length(have) == 0) return(df)
-  #   df %>%
-  #     dplyr::mutate(smd = dplyr::coalesce(!!!rlang::syms(have))) %>%
-  #     dplyr::select(-dplyr::any_of(setdiff(have, "smd")))
-  # }
-  # 
-  # # use it:
-  # res_stats <- fix_smd_cols(res_stats)
-  
   if ("smd.x" %in% names(res_stats) || "smd.y" %in% names(res_stats)) {
     res_stats <- res_stats %>%
       dplyr::mutate(
@@ -719,21 +686,6 @@
       var_order = match(var, vars),
       var_order = dplyr::if_else(is.na(var_order), 1e9, var_order)
     )
-  
-  # # within-var ordering: if level_order exists, use it; otherwise preserve current row order
-  # has_level_order <- "level_order" %in% names(res_stats)
-  # 
-  # res_stats <- res_stats |>
-  #   dplyr::group_by(var) |>
-  #   dplyr::mutate(
-  #     .row_in_var = dplyr::row_number(),
-  #     level_order2 = if (has_level_order) dplyr::coalesce(level_order, .row_in_var) else .row_in_var
-  #   ) |>
-  #   dplyr::ungroup()
-  # 
-  # res_stats <- res_stats |>
-  #   dplyr::arrange(var_order, level_order2, strata) |>
-  #   dplyr::select(-var_order, -.row_in_var, -dplyr::any_of("level_order2"))
   
   # within-var ordering: use level_order when available; otherwise preserve
   # the current order of unique levels, not individual rows
@@ -839,18 +791,6 @@ create_tidytableone <- function(data,
                                 checkbox = NULL,
                                 checkbox_opts = NULL, 
                                 ...) {
-  
-  # # ensure defaults if user didn't supply checkbox_opts
-  # if (is.null(checkbox_opts)) {
-  #   checkbox_opts <- list(
-  #     denom    = "group",
-  #     pvals    = "per_level",
-  #     test     = "auto",
-  #     p_adjust = "none",
-  #     show_any = TRUE,
-  #     note     = "Participants could select more than one option; percentages may exceed 100%."
-  #   )
-  # }
   
   checkbox_opts <- normalize_checkbox_opts(checkbox_opts)
   
@@ -1030,4 +970,9 @@ create_tidytableone_checkbox <- function(data,
     ...
   )
 }
+
+
+
+
+
 
