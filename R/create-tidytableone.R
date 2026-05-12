@@ -772,10 +772,21 @@ create_tidytableone <- function(data,
                                 default_checkbox_txt = "Checked",
                                 ...) {
   
-  # Validate any extra args; create_tidytableone() does not currently accept
-  # anything beyond its named parameters. A common slip is passing adorn-side
-  # args (exact, nonnormal, monte_carlo_p, ...) here.
-  .check_unknown_args(...)
+  # Validate any extra args; create_tidytableone() does not accept anything
+  # beyond its named parameters. A common slip is passing adorn-side args
+  # (exact, nonnormal, monte_carlo_p, ...) here.
+  .check_unknown_args(
+    caller        = "create_tidytableone",
+    redirect_to   = "adorn_tidytableone",
+    redirect_args = c(
+      "exact", "nonnormal", "equal_variance", "no_cont_correction",
+      "monte_carlo_p", "show_test", "show_smd", "use_labels",
+      "combine_level_col", "missing", "missing_text",
+      "default_continuous", "default_categorical", "fmt_vars",
+      "con_accuracy", "cat_accuracy", "p_accuracy"
+    ),
+    ...
+  )
   
   checkbox_opts <- normalize_checkbox_opts(checkbox_opts)
   
@@ -794,38 +805,34 @@ create_tidytableone <- function(data,
 }
 
 
-# Stop with a useful message when create_tidytableone() is given an
-# unrecognized argument. The most common case is passing an argument that
-# really belongs on adorn_tidytableone() (e.g., exact, nonnormal,
-# monte_carlo_p, equal_variance). Suggest the right destination when we
-# can; otherwise list the unknown names plainly.
-.check_unknown_args <- function(...) {
+# Stop with a useful message when a function gets an unrecognized argument
+# through `...`. The most common case is passing an argument that really
+# belongs on the *other* top-level function (create vs adorn). When
+# `redirect_args` is supplied, calls out the misplaced ones explicitly and
+# names the right destination.
+.check_unknown_args <- function(caller,
+                                redirect_to = NULL,
+                                redirect_args = character(0),
+                                ...) {
   extras <- list(...)
   if (length(extras) == 0L) return(invisible(NULL))
   
   bad <- names(extras)
   if (is.null(bad) || any(bad == "")) {
-    stop("create_tidytableone() got unnamed extra arguments. Remove them or name them.",
+    stop(sprintf("%s() got unnamed extra arguments. Remove them or name them.", caller),
          call. = FALSE)
   }
   
-  adorn_args <- c(
-    "exact", "nonnormal", "equal_variance", "no_cont_correction",
-    "monte_carlo_p", "show_test", "show_smd", "use_labels",
-    "combine_level_col", "missing", "missing_text",
-    "default_continuous", "default_categorical", "fmt_vars",
-    "con_accuracy", "cat_accuracy", "p_accuracy"
-  )
-  misplaced <- intersect(bad, adorn_args)
-  other     <- setdiff(bad, adorn_args)
+  misplaced <- intersect(bad, redirect_args)
+  other     <- setdiff(bad, redirect_args)
   
-  msg <- "Unknown argument(s) passed to create_tidytableone(): "
+  msg <- sprintf("Unknown argument(s) passed to %s(): ", caller)
   msg <- paste0(msg, paste(sprintf("`%s`", bad), collapse = ", "), ".")
   
-  if (length(misplaced) > 0) {
+  if (length(misplaced) > 0 && !is.null(redirect_to)) {
     msg <- paste0(
       msg,
-      "\n  These belong on adorn_tidytableone(), not create_tidytableone(): ",
+      sprintf("\n  These belong on %s(), not %s(): ", redirect_to, caller),
       paste(sprintf("`%s`", misplaced), collapse = ", "), "."
     )
   }

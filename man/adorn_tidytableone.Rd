@@ -132,7 +132,8 @@ The value is inserted literally into the formatted output, so setting
 \code{range_sep = "\\\\u2013"} yields \code{"41.0\\\\u20134556.0"}, while \code{range_sep = " \\\\u2013 "}
 yields \code{"41.0 \\\\u2013 4556.0"}.}
 
-\item{...}{Additional arguments. Not used.}
+\item{...}{Reserved. Passing any argument here raises an informative error
+(commonly, create-side arguments like \code{checkbox} get misdirected to adorn).}
 }
 \value{
 A tibble

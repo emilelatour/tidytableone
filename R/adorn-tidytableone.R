@@ -63,7 +63,8 @@
 #'   The value is inserted literally into the formatted output, so setting
 #'   `range_sep = "\\u2013"` yields `"41.0\\u20134556.0"`, while `range_sep = " \\u2013 "`
 #'   yields `"41.0 \\u2013 4556.0"`.
-#' @param ... Additional arguments. Not used.
+#' @param ... Reserved. Passing any argument here raises an informative error
+#'   (commonly, create-side arguments like `checkbox` get misdirected to adorn).
 #'
 #' @importFrom dplyr across
 #' @importFrom dplyr add_row
@@ -180,6 +181,20 @@ adorn_tidytableone <- function(tidy_t1,
   # Silence no visible binding for global variable
   p_value <- test <- smd <- label <- glue_formula <- glue_formula2 <- NULL
   strata <- num_not_miss <- Overall <- is_cb <- NULL
+  
+  # Validate any extra args; adorn_tidytableone() does not accept anything
+  # beyond its named parameters. A common slip is misspelling a real arg
+  # (e.g., `nonnnormal`) or passing a create-side arg (e.g., `checkbox`)
+  # here instead of on create_tidytableone().
+  .check_unknown_args(
+    caller        = "adorn_tidytableone",
+    redirect_to   = "create_tidytableone",
+    redirect_args = c(
+      "data", "strata", "vars", "na_level", "b_replicates",
+      "checkbox", "checkbox_opts", "default_checkbox_txt"
+    ),
+    ...
+  )
   
   checkbox_p <- match.arg(checkbox_p)
   checkbox_block_p <- match.arg(checkbox_block_p)
