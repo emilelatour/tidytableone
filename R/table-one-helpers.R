@@ -2,15 +2,25 @@
 #### Helper functions --------------------------------
 
 
-# Process categorical variables
+# Process categorical variables.
+# If `strata_sym` is NULL, returns a tall tibble (one row per var x level) with
+# counts and percents based on the whole `data`. If `strata_sym` is supplied,
+# returns the same shape but with an additional column (named after
+# `strata_sym`) that takes the value of each stratum AND an explicit "Overall"
+# aggregation.
 process_categorical <- function(data,
-                                strata_sym,
+                                strata_sym = NULL,
                                 cat_vars) {
+  
+  # No-strata path: direct per-var level tabulation.
+  if (is.null(strata_sym)) {
+    return(dplyr::bind_rows(
+      lapply(cat_vars, function(v) .categorical_summary_overall(data, v))
+    ))
+  }
   
   # Silence no visible binding for global variable
   dat <- res <- n_level_valid <- n_strata_valid <- NULL
-  
-  
   
   suppressWarnings(
     cat_strata <- tibble::tibble(var = cat_vars) |>
@@ -46,68 +56,111 @@ process_categorical <- function(data,
   
 }
 
-# Process continuous variables
+# No-strata categorical summary for a single variable. NAs are excluded from
+# the level set (i.e. no separate "Missing" row); the count of non-missing
+# rows is exposed via `n_strata_valid`.
+.categorical_summary_overall <- function(data, v) {
+  x <- data[[v]]
+  
+  # Respect existing factor levels if present; otherwise build
+  # levels from the observed values (sorted).
+  if (is.factor(x)) {
+    f   <- x
+    lvl <- levels(f)
+  } else {
+    lvl <- sort(unique(x))
+    f   <- factor(x, levels = lvl)
+  }
+  
+  # Tabulate over the full level set
+  n_level        <- as.integer(tabulate(as.integer(f), nbins = length(lvl)))
+  n_strata       <- length(f)
+  n_level_valid  <- n_level   # we do not include a separate "Missing" row
+  n_strata_valid <- sum(!is.na(f))
+  
+  tibble::tibble(
+    var            = v,
+    # Keep level as a factor with the original ordering
+    level          = factor(lvl, levels = lvl),
+    n_level        = n_level,
+    n_strata       = n_strata,
+    n_level_valid  = n_level_valid,
+    n_strata_valid = n_strata_valid,
+    pct            = n_level / n_strata,
+    pct_valid      = n_level_valid / n_strata_valid
+  )
+}
+
+# Process continuous variables.
+# If `strata_sym` is NULL, returns one row per var with summary stats over the
+# whole `data`. If `strata_sym` is supplied, returns rows for every stratum
+# plus an explicit "Overall" aggregation, in a single column named after
+# `strata_sym`.
 process_continuous <- function(data,
-                               strata_sym,
+                               strata_sym = NULL,
                                con_vars) {
   
-  con_strata <- data %>%
-    dplyr::select(!! strata_sym,
-                  dplyr::all_of(con_vars)) %>%
-    tidyr::pivot_longer(data = .,
-                        cols = - !! strata_sym,
-                        names_to = "var",
-                        values_to = "value") %>%
-    group_by(!! strata_sym, var) %>%
-    summarise(n = dplyr::n(),
-              n_distinct = dplyr::n_distinct(value),
-              complete = sum(!is.na(value)),
-              missing = sum(is.na(value)),
-              mean = mean(value, na.rm = TRUE),
-              sd = sd(value, na.rm = TRUE),
-              p0 = custom_min(value, na.rm = TRUE),
-              p25 = quantile(value, probs = 0.25, na.rm = TRUE),
-              p50 = quantile(value, probs = 0.50, na.rm = TRUE),
-              p75 = quantile(value, probs = 0.75, na.rm = TRUE),
-              p100 = custom_max(value, na.rm = TRUE),
-              cv = sd / mean,
-              shapiro_test = calc_shapiro_test(var = value),
-              ks_test = calc_ks_test(var = value),
-              ad_test = calc_ad_test(var = value),
-              .groups = "drop") %>%
-    ungroup() %>%
-    mutate(!! strata_sym := as.character(!! strata_sym))
+  has_strata <- !is.null(strata_sym)
   
-  con_overall <- data %>%
-    dplyr::select(!! strata_sym, dplyr::all_of(con_vars)) %>%
-    tidyr::pivot_longer(data = .,
-                        cols = - !! strata_sym,
-                        names_to = "var",
-                        values_to = "value") %>%
-    group_by(var) %>%
-    summarise(n = dplyr::n(),
-              n_distinct = dplyr::n_distinct(value),
-              complete = sum(!is.na(value)),
-              missing = sum(is.na(value)),
-              mean = mean(value, na.rm = TRUE),
-              sd = sd(value, na.rm = TRUE),
-              p0 = custom_min(value, na.rm = TRUE),
-              p25 = quantile(value, probs = 0.25, na.rm = TRUE),
-              p50 = quantile(value, probs = 0.50, na.rm = TRUE),
-              p75 = quantile(value, probs = 0.75, na.rm = TRUE),
-              p100 = custom_max(value, na.rm = TRUE),
-              cv = sd / mean,
-              shapiro_test = calc_shapiro_test(var = value),
-              ks_test = calc_ks_test(var = value),
-              ad_test = calc_ad_test(var = value),
-              .groups = "drop") %>%
-    ungroup() %>%
-    mutate(!! strata_sym := "Overall") %>%
+  # Pivot to long form (with or without a strata column)
+  long <- if (has_strata) {
+    data %>%
+      dplyr::select(!! strata_sym, dplyr::all_of(con_vars)) %>%
+      tidyr::pivot_longer(cols = - !! strata_sym,
+                          names_to = "var",
+                          values_to = "value")
+  } else {
+    data %>%
+      dplyr::select(dplyr::all_of(con_vars)) %>%
+      tidyr::pivot_longer(dplyr::everything(),
+                          names_to = "var",
+                          values_to = "value")
+  }
+  
+  # No-strata: one row per var, no Overall vs strata distinction
+  if (!has_strata) {
+    return(.continuous_summary(dplyr::group_by(long, var)))
+  }
+  
+  # Per-stratum rows
+  con_strata <- long |>
+    dplyr::group_by(!! strata_sym, var) |>
+    .continuous_summary() |>
+    dplyr::mutate(!! strata_sym := as.character(!! strata_sym))
+  
+  # Overall rows (ignore strata; label as "Overall")
+  con_overall <- long |>
+    dplyr::group_by(var) |>
+    .continuous_summary() |>
+    dplyr::mutate(!! strata_sym := "Overall") |>
     dplyr::select(!! strata_sym, dplyr::everything())
   
-  dplyr::bind_rows(con_overall,
-                   con_strata)
-  
+  dplyr::bind_rows(con_overall, con_strata)
+}
+
+# Summarise continuous data within whatever groups are currently set on .data.
+# Pulled out so process_continuous can use the same summarise block for both
+# the per-stratum and overall passes.
+.continuous_summary <- function(.data) {
+  .data |>
+    dplyr::summarise(
+      n            = dplyr::n(),
+      n_distinct   = dplyr::n_distinct(value),
+      complete     = sum(!is.na(value)),
+      missing      = sum(is.na(value)),
+      mean         = mean(value, na.rm = TRUE),
+      sd           = sd(value, na.rm = TRUE),
+      p0           = custom_min(value, na.rm = TRUE),
+      p25          = quantile(value, probs = 0.25, na.rm = TRUE),
+      p50          = quantile(value, probs = 0.50, na.rm = TRUE),
+      p75          = quantile(value, probs = 0.75, na.rm = TRUE),
+      p100         = custom_max(value, na.rm = TRUE),
+      cv           = sd / mean,
+      shapiro_test = calc_shapiro_test(var = value),
+      ks_test      = calc_ks_test(var = value),
+      ad_test      = calc_ad_test(var = value),
+      .groups      = "drop"
+    )
 }
 
 # Safely coalesce a set of candidate columns into `target` (only if present),

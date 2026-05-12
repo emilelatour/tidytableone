@@ -109,14 +109,14 @@ create_tidytableone_no_strata <- function(data,
   
   # continuous overall
   if (length(con_vars) > 0) {
-    con_overall <- process_continuous_nostrata(data, con_vars) |>
+    con_overall <- process_continuous(data, strata_sym = NULL, con_vars) |>
       dplyr::mutate(strata = "Overall")
     res_stats <- dplyr::bind_rows(res_stats, con_overall)
   }
   
   # categorical overall
   if (length(cat_vars) > 0) {
-    cat_overall <- process_categorical_nostrata(data, cat_vars) |>
+    cat_overall <- process_categorical(data, strata_sym = NULL, cat_vars) |>
       dplyr::mutate(strata = "Overall")
     res_stats <- dplyr::bind_rows(res_stats, cat_overall)
   }
@@ -359,7 +359,7 @@ create_tidytableone_no_strata_checkbox <- function(data,
   if (length(con_vars) > 0) {
     res_stats <- dplyr::bind_rows(
       res_stats,
-      process_continuous_nostrata(data, con_vars) |>
+      process_continuous(data, strata_sym = NULL, con_vars) |>
         dplyr::mutate(strata = "Overall")
     )
   }
@@ -367,7 +367,7 @@ create_tidytableone_no_strata_checkbox <- function(data,
   if (length(cat_vars) > 0) {
     res_stats <- dplyr::bind_rows(
       res_stats,
-      process_categorical_nostrata(data, cat_vars) |>
+      process_categorical(data, strata_sym = NULL, cat_vars) |>
         dplyr::mutate(strata = "Overall")
     )
   }
@@ -501,70 +501,6 @@ create_tidytableone_no_strata_checkbox <- function(data,
 }
 
 # ---- no‑strata helpers ------------------------------------------------
-
-process_continuous_nostrata <- function(data, con_vars) {
-  data |>
-    dplyr::select(dplyr::all_of(con_vars)) |>
-    tidyr::pivot_longer(dplyr::everything(),
-                        names_to = "var", values_to = "value") |>
-    dplyr::group_by(var) |>
-    dplyr::summarise(
-      n = dplyr::n(),
-      n_distinct = dplyr::n_distinct(value),
-      complete = sum(!is.na(value)),
-      missing = sum(is.na(value)),
-      mean = mean(value, na.rm = TRUE),
-      sd = stats::sd(value, na.rm = TRUE),
-      p0 = custom_min(value, na.rm = TRUE),
-      p25 = stats::quantile(value, 0.25, na.rm = TRUE),
-      p50 = stats::quantile(value, 0.50, na.rm = TRUE),
-      p75 = stats::quantile(value, 0.75, na.rm = TRUE),
-      p100 = custom_max(value, na.rm = TRUE),
-      cv = sd / mean,
-      shapiro_test = calc_shapiro_test(value),
-      ks_test = calc_ks_test(value),
-      ad_test = calc_ad_test(value),
-      .groups = "drop"
-    )
-}
-
-
-process_categorical_nostrata <- function(data, cat_vars) {
-  
-  out <- lapply(cat_vars, function(v) {
-    x <- data[[v]]
-    
-    # Respect existing factor levels if present; otherwise build
-    # levels from the observed values (sorted).
-    if (is.factor(x)) {
-      f   <- x
-      lvl <- levels(f)
-    } else {
-      lvl <- sort(unique(x))
-      f   <- factor(x, levels = lvl)
-    }
-    
-    # Tabulate over the full level set
-    n_level        <- as.integer(tabulate(as.integer(f), nbins = length(lvl)))
-    n_strata       <- length(f)
-    n_level_valid  <- n_level   # we do not include a separate "Missing" row
-    n_strata_valid <- sum(!is.na(f))
-    
-    tibble::tibble(
-      var            = v,
-      # Keep level as a factor with the original ordering
-      level          = factor(lvl, levels = lvl),
-      n_level        = n_level,
-      n_strata       = n_strata,
-      n_level_valid  = n_level_valid,
-      n_strata_valid = n_strata_valid,
-      pct            = n_level / n_strata,
-      pct_valid      = n_level_valid / n_strata_valid
-    )
-  })
-  
-  dplyr::bind_rows(out)
-}
 
 process_checkbox_blocks_overall <- function(data, blocks, opts) {
   
