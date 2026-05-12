@@ -59,9 +59,8 @@ get_smd_checkbox <- function(data, strata, blocks, na_level = "(Missing)") {
       out_vars <- c(out_vars, v)
     }
 
-    # synthetic any_selected for the block (lower-case stem, matches the table rows)
-    stem_l  <- tolower(sub("___.*$", "", bl$vars[[1]]))
-    var_any <- paste0(stem_l, "___any_selected")
+    # synthetic any_selected for the block (slug-derived; matches the table rows)
+    var_any <- bl$any_var
 
     df[[var_any]] <- factor(
       ifelse(

@@ -378,33 +378,30 @@
     Code
       print(tab, n = Inf, width = 200)
     Output
-      # A tibble: 24 x 41
-         strata_var strata  var                 level            n n_distinct complete
-         <chr>      <fct>   <fct>               <fct>        <int>      <int>    <int>
-       1 group      Overall age                 <NA>            60         58       60
-       2 group      A       age                 <NA>            29         28       29
-       3 group      B       age                 <NA>            31         30       31
-       4 group      Overall sex                 Female          NA         NA       NA
-       5 group      A       sex                 Female          NA         NA       NA
-       6 group      B       sex                 Female          NA         NA       NA
-       7 group      Overall sex                 Male            NA         NA       NA
-       8 group      A       sex                 Male            NA         NA       NA
-       9 group      B       sex                 Male            NA         NA       NA
-      10 group      Overall race___1            White           NA         NA       NA
-      11 group      A       race___1            White           NA         NA       NA
-      12 group      B       race___1            White           NA         NA       NA
-      13 group      Overall race___2            Black or Af~    NA         NA       NA
-      14 group      A       race___2            Black or Af~    NA         NA       NA
-      15 group      B       race___2            Black or Af~    NA         NA       NA
-      16 group      Overall race___3            American In~    NA         NA       NA
-      17 group      A       race___3            American In~    NA         NA       NA
-      18 group      B       race___3            American In~    NA         NA       NA
-      19 group      Overall race___98           Prefer not ~    NA         NA       NA
-      20 group      A       race___98           Prefer not ~    NA         NA       NA
-      21 group      B       race___98           Prefer not ~    NA         NA       NA
-      22 group      Overall race___any_selected Any selected    NA         NA       NA
-      23 group      A       race___any_selected Any selected    NA         NA       NA
-      24 group      B       race___any_selected Any selected    NA         NA       NA
+      # A tibble: 21 x 41
+         strata_var strata  var       level                      n n_distinct complete
+         <chr>      <fct>   <fct>     <fct>                  <int>      <int>    <int>
+       1 group      Overall age       <NA>                      60         58       60
+       2 group      A       age       <NA>                      29         28       29
+       3 group      B       age       <NA>                      31         30       31
+       4 group      Overall sex       Female                    NA         NA       NA
+       5 group      A       sex       Female                    NA         NA       NA
+       6 group      B       sex       Female                    NA         NA       NA
+       7 group      Overall sex       Male                      NA         NA       NA
+       8 group      A       sex       Male                      NA         NA       NA
+       9 group      B       sex       Male                      NA         NA       NA
+      10 group      Overall race___1  White                     NA         NA       NA
+      11 group      A       race___1  White                     NA         NA       NA
+      12 group      B       race___1  White                     NA         NA       NA
+      13 group      Overall race___2  Black or African-Amer~    NA         NA       NA
+      14 group      A       race___2  Black or African-Amer~    NA         NA       NA
+      15 group      B       race___2  Black or African-Amer~    NA         NA       NA
+      16 group      Overall race___3  American Indian or Al~    NA         NA       NA
+      17 group      A       race___3  American Indian or Al~    NA         NA       NA
+      18 group      B       race___3  American Indian or Al~    NA         NA       NA
+      19 group      Overall race___98 Prefer not to answer      NA         NA       NA
+      20 group      A       race___98 Prefer not to answer      NA         NA       NA
+      21 group      B       race___98 Prefer not to answer      NA         NA       NA
          missing n_level n_strata n_level_valid n_strata_valid  mean    sd    p0   p25
            <int>   <int>    <int>         <int>          <int> <dbl> <dbl> <dbl> <dbl>
        1       0      NA       NA            NA             NA  48.8  11.6  28    40.0
@@ -428,9 +425,6 @@
       19      NA       3       60             3             60  NA    NA    NA    NA  
       20      NA       2       29             2             29  NA    NA    NA    NA  
       21      NA       1       31             1             31  NA    NA    NA    NA  
-      22      NA      41       60            41             60  NA    NA    NA    NA  
-      23      NA      20       29            20             29  NA    NA    NA    NA  
-      24      NA      21       31            21             31  NA    NA    NA    NA  
            p50   p75  p100     cv     pct pct_valid chisq_test chisq_test_no_correct~1
          <dbl> <dbl> <dbl>  <dbl>   <dbl>     <dbl>      <dbl>                   <dbl>
        1  48.8  56.4  85.5  0.238 NA        NA          NA                      NA    
@@ -454,9 +448,6 @@
       19  NA    NA    NA   NA      0.05      0.05        0.953                   0.514
       20  NA    NA    NA   NA      0.0690    0.0690      0.953                   0.514
       21  NA    NA    NA   NA      0.0323    0.0323      0.953                   0.514
-      22  NA    NA    NA   NA      0.683     0.683       1                       0.919
-      23  NA    NA    NA   NA      0.690     0.690       1                       0.919
-      24  NA    NA    NA   NA      0.677     0.677       1                       0.919
       # i abbreviated name: 1: chisq_test_no_correction
       # i 17 more variables: chisq_test_simulated <dbl>, fisher_test <dbl>, fisher_test_simulated <dbl>, check_categorical_test <chr>, oneway_test_unequal_var <dbl>, oneway_test_equal_var <dbl>,
       #   kruskal_test <dbl>, bartlett_test <dbl>, levene_test <dbl>, smd <dbl>, shapiro_test <dbl>, ks_test <dbl>, ad_test <dbl>, p_value_level <dbl>, class <chr>, var_type <chr>, label <chr>
@@ -466,17 +457,16 @@
     Code
       print(tab, n = Inf, width = 200)
     Output
-      # A tibble: 8 x 41
-        strata_var strata  var                 level             n n_distinct complete
-        <chr>      <fct>   <fct>               <fct>         <int>      <int>    <int>
-      1 <NA>       Overall age                 <NA>             60         58       60
-      2 <NA>       Overall sex                 Female           NA         NA       NA
-      3 <NA>       Overall sex                 Male             NA         NA       NA
-      4 <NA>       Overall race___1            White            NA         NA       NA
-      5 <NA>       Overall race___2            Black or Afr~    NA         NA       NA
-      6 <NA>       Overall race___3            American Ind~    NA         NA       NA
-      7 <NA>       Overall race___98           Prefer not t~    NA         NA       NA
-      8 <NA>       Overall race___any_selected Any selected     NA         NA       NA
+      # A tibble: 7 x 40
+        strata_var strata  var       level                       n n_distinct complete
+        <chr>      <fct>   <fct>     <fct>                   <int>      <int>    <int>
+      1 <NA>       Overall age       <NA>                       60         58       60
+      2 <NA>       Overall sex       Female                     NA         NA       NA
+      3 <NA>       Overall sex       Male                       NA         NA       NA
+      4 <NA>       Overall race___1  White                      NA         NA       NA
+      5 <NA>       Overall race___2  Black or African-Ameri~    NA         NA       NA
+      6 <NA>       Overall race___3  American Indian or Ala~    NA         NA       NA
+      7 <NA>       Overall race___98 Prefer not to answer       NA         NA       NA
         missing n_level n_strata n_level_valid n_strata_valid  mean    sd    p0   p25
           <int>   <int>    <int>         <int>          <int> <dbl> <dbl> <dbl> <dbl>
       1       0      NA       NA            NA             NA  48.8  11.6    28  40.0
@@ -486,7 +476,6 @@
       5      NA      14       60            14             60  NA    NA      NA  NA  
       6      NA       5       60             5             60  NA    NA      NA  NA  
       7      NA       3       60             3             60  NA    NA      NA  NA  
-      8      NA      41       60            41             60  NA    NA      NA  NA  
           p50   p75  p100     cv     pct pct_valid chisq_test chisq_test_no_correction
         <dbl> <dbl> <dbl>  <dbl>   <dbl>     <dbl>      <dbl>                    <dbl>
       1  48.8  56.4  85.5  0.238 NA        NA              NA                       NA
@@ -496,48 +485,41 @@
       5  NA    NA    NA   NA      0.233     0.233          NA                       NA
       6  NA    NA    NA   NA      0.0833    0.0833         NA                       NA
       7  NA    NA    NA   NA      0.05      0.05           NA                       NA
-      8  NA    NA    NA   NA      0.683     0.683          NA                       NA
-      # i 17 more variables: chisq_test_simulated <dbl>, fisher_test <dbl>, fisher_test_simulated <dbl>, check_categorical_test <chr>, oneway_test_unequal_var <dbl>, oneway_test_equal_var <dbl>,
-      #   kruskal_test <dbl>, bartlett_test <dbl>, levene_test <dbl>, smd <dbl>, shapiro_test <dbl>, ks_test <dbl>, ad_test <dbl>, level_var <chr>, class <chr>, var_type <chr>, label <chr>
+      # i 16 more variables: chisq_test_simulated <dbl>, fisher_test <dbl>, fisher_test_simulated <dbl>, check_categorical_test <chr>, oneway_test_unequal_var <dbl>, oneway_test_equal_var <dbl>,
+      #   kruskal_test <dbl>, bartlett_test <dbl>, levene_test <dbl>, smd <dbl>, shapiro_test <dbl>, ks_test <dbl>, ad_test <dbl>, class <chr>, var_type <chr>, label <chr>
 
 # create_tidytableone is stable with multi-block mixed-name checkboxes
 
     Code
       print(tab, n = Inf, width = 200)
     Output
-      # A tibble: 30 x 41
-         strata_var strata   var                     level       n n_distinct complete
-         <chr>      <fct>    <fct>                   <fct>   <int>      <int>    <int>
-       1 group      Overall  age                     <NA>       80         72       80
-       2 group      No recur age                     <NA>       39         37       39
-       3 group      Recur    age                     <NA>       41         38       41
-       4 group      Overall  sex                     Female     NA         NA       NA
-       5 group      No recur sex                     Female     NA         NA       NA
-       6 group      Recur    sex                     Female     NA         NA       NA
-       7 group      Overall  sex                     Male       NA         NA       NA
-       8 group      No recur sex                     Male       NA         NA       NA
-       9 group      Recur    sex                     Male       NA         NA       NA
-      10 group      Overall  rheum_dx                Rheuma~    NA         NA       NA
-      11 group      No recur rheum_dx                Rheuma~    NA         NA       NA
-      12 group      Recur    rheum_dx                Rheuma~    NA         NA       NA
-      13 group      Overall  heme_dx                 Hemato~    NA         NA       NA
-      14 group      No recur heme_dx                 Hemato~    NA         NA       NA
-      15 group      Recur    heme_dx                 Hemato~    NA         NA       NA
-      16 group      Overall  solid_ca                Solid ~    NA         NA       NA
-      17 group      No recur solid_ca                Solid ~    NA         NA       NA
-      18 group      Recur    solid_ca                Solid ~    NA         NA       NA
-      19 group      Overall  ckd                     Chroni~    NA         NA       NA
-      20 group      No recur ckd                     Chroni~    NA         NA       NA
-      21 group      Recur    ckd                     Chroni~    NA         NA       NA
-      22 group      Overall  chf                     Conges~    NA         NA       NA
-      23 group      No recur chf                     Conges~    NA         NA       NA
-      24 group      Recur    chf                     Conges~    NA         NA       NA
-      25 group      Overall  rheum_dx___any_selected Any se~    NA         NA       NA
-      26 group      No recur rheum_dx___any_selected Any se~    NA         NA       NA
-      27 group      Recur    rheum_dx___any_selected Any se~    NA         NA       NA
-      28 group      Overall  ckd___any_selected      Any se~    NA         NA       NA
-      29 group      No recur ckd___any_selected      Any se~    NA         NA       NA
-      30 group      Recur    ckd___any_selected      Any se~    NA         NA       NA
+      # A tibble: 24 x 41
+         strata_var strata   var      level                      n n_distinct complete
+         <chr>      <fct>    <fct>    <fct>                  <int>      <int>    <int>
+       1 group      Overall  age      <NA>                      80         72       80
+       2 group      No recur age      <NA>                      39         37       39
+       3 group      Recur    age      <NA>                      41         38       41
+       4 group      Overall  sex      Female                    NA         NA       NA
+       5 group      No recur sex      Female                    NA         NA       NA
+       6 group      Recur    sex      Female                    NA         NA       NA
+       7 group      Overall  sex      Male                      NA         NA       NA
+       8 group      No recur sex      Male                      NA         NA       NA
+       9 group      Recur    sex      Male                      NA         NA       NA
+      10 group      Overall  rheum_dx Rheumatologic disease     NA         NA       NA
+      11 group      No recur rheum_dx Rheumatologic disease     NA         NA       NA
+      12 group      Recur    rheum_dx Rheumatologic disease     NA         NA       NA
+      13 group      Overall  heme_dx  Hematologic malignancy    NA         NA       NA
+      14 group      No recur heme_dx  Hematologic malignancy    NA         NA       NA
+      15 group      Recur    heme_dx  Hematologic malignancy    NA         NA       NA
+      16 group      Overall  solid_ca Solid cancer              NA         NA       NA
+      17 group      No recur solid_ca Solid cancer              NA         NA       NA
+      18 group      Recur    solid_ca Solid cancer              NA         NA       NA
+      19 group      Overall  ckd      Chronic kidney disease    NA         NA       NA
+      20 group      No recur ckd      Chronic kidney disease    NA         NA       NA
+      21 group      Recur    ckd      Chronic kidney disease    NA         NA       NA
+      22 group      Overall  chf      Congestive heart fail~    NA         NA       NA
+      23 group      No recur chf      Congestive heart fail~    NA         NA       NA
+      24 group      Recur    chf      Congestive heart fail~    NA         NA       NA
          missing n_level n_strata n_level_valid n_strata_valid  mean    sd    p0   p25
            <int>   <int>    <int>         <int>          <int> <dbl> <dbl> <dbl> <dbl>
        1       0      NA       NA            NA             NA  52.9  15.4  15.9  42.7
@@ -564,12 +546,6 @@
       22      NA      11       80            11             80  NA    NA    NA    NA  
       23      NA       4       39             4             39  NA    NA    NA    NA  
       24      NA       7       41             7             41  NA    NA    NA    NA  
-      25      NA      18       80            18             80  NA    NA    NA    NA  
-      26      NA      11       39            11             39  NA    NA    NA    NA  
-      27      NA       7       41             7             41  NA    NA    NA    NA  
-      28      NA      25       80            25             80  NA    NA    NA    NA  
-      29      NA      12       39            12             39  NA    NA    NA    NA  
-      30      NA      13       41            13             41  NA    NA    NA    NA  
            p50   p75  p100     cv     pct pct_valid chisq_test chisq_test_no_correct~1
          <dbl> <dbl> <dbl>  <dbl>   <dbl>     <dbl>      <dbl>                   <dbl>
        1  53.4  62.8  86.5  0.291 NA        NA          NA                     NA     
@@ -596,12 +572,6 @@
       22  NA    NA    NA   NA      0.138     0.138       0.575                  0.376 
       23  NA    NA    NA   NA      0.103     0.103       0.575                  0.376 
       24  NA    NA    NA   NA      0.171     0.171       0.575                  0.376 
-      25  NA    NA    NA   NA      0.225     0.225       0.355                  0.233 
-      26  NA    NA    NA   NA      0.282     0.282       0.355                  0.233 
-      27  NA    NA    NA   NA      0.171     0.171       0.355                  0.233 
-      28  NA    NA    NA   NA      0.312     0.312       1                      0.928 
-      29  NA    NA    NA   NA      0.308     0.308       1                      0.928 
-      30  NA    NA    NA   NA      0.317     0.317       1                      0.928 
       # i abbreviated name: 1: chisq_test_no_correction
       # i 17 more variables: chisq_test_simulated <dbl>, fisher_test <dbl>, fisher_test_simulated <dbl>, check_categorical_test <chr>, oneway_test_unequal_var <dbl>, oneway_test_equal_var <dbl>,
       #   kruskal_test <dbl>, bartlett_test <dbl>, levene_test <dbl>, smd <dbl>, shapiro_test <dbl>, ks_test <dbl>, ad_test <dbl>, p_value_level <dbl>, class <chr>, var_type <chr>, label <chr>

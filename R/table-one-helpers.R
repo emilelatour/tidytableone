@@ -551,8 +551,7 @@ make_level_map_no_strata <- function(data, vars, cb_blocks = list(), show_any = 
       )
       
       if (isTRUE(show_any)) {
-        base_name <- sub("___.*$", "", bl$vars[1])
-        any_var   <- paste0(base_name, "___any_selected")
+        any_var <- bl$any_var
         
         out[[length(out) + 1]] <- tibble::tibble(
           var = any_var,
@@ -660,8 +659,7 @@ order_within_vars_no_strata <- function(res_stats, vars, level_map = NULL) {
   if (!isTRUE(show_any) || length(cb_blocks) == 0) return(lvls)
   
   for (bl in cb_blocks) {
-    base_name <- sub("___.*$", "", bl$vars[1])
-    any_var   <- paste0(base_name, "___any_selected")
+    any_var <- bl$any_var
     
     # insert after the last checkbox var *as it appears in vars*
     idx <- match(bl$vars, vars)
@@ -817,7 +815,7 @@ get_var_info <- function(data, .vars = NULL) {
     .make_var_levels_with_any(
       vars      = vars,
       cb_blocks = cb_blocks,
-      show_any  = checkbox_opts$show_any %||% TRUE
+      show_any  = isTRUE(checkbox_opts$show_any)
     )
   } else {
     vars
@@ -827,7 +825,7 @@ get_var_info <- function(data, .vars = NULL) {
     data      = data,
     vars      = var_levels,
     cb_blocks = cb_blocks,
-    show_any  = has_checkbox && (checkbox_opts$show_any %||% TRUE)
+    show_any  = has_checkbox && isTRUE(checkbox_opts$show_any)
   )
   
   res_stats <- res_stats |>

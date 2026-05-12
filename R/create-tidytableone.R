@@ -19,9 +19,15 @@
 #'   columns `var` (the checkbox column name), `overall_lbl` (group label to show),
 #'   `checkbox_lbl` (label for each option), and `checkbox_txt` (the selected text to match, e.g., "Checked").
 #' @param checkbox_opts A list of options for checkbox processing. Recognized fields:
-#'   `pvals` = c("none","per_level") (per-level p-values; ignored for no-strata),
+#'   `show_pvalues` (logical; per-level p-values when strata is present),
 #'   `p_adjust` (method passed to stats::p.adjust),
-#'   `show_any` (logical; add "Any selected" row), `note` (character footnote).
+#'   `show_any` (logical; add "Any selected" row; default FALSE),
+#'   `note` (character; short footnote suffix appended to the block header label;
+#'    `""` or `NULL` suppresses).
+#' @param default_checkbox_txt Character. The value in `data` that means
+#'   "selected" for a checkbox column. Used as the default for any row in
+#'   `checkbox` whose `checkbox_txt` is missing (or `NA`), and as the column
+#'   default if `checkbox_txt` is absent from the `checkbox` spec entirely.
 #'
 #' @importFrom car leveneTest
 #' @importFrom dplyr bind_rows
@@ -219,11 +225,12 @@
                                       b_replicates = 2000,
                                       checkbox = NULL,
                                       checkbox_opts = list(
-                                        pvals = "per_level",
+                                        show_pvalues = TRUE,
                                         p_adjust = "none",
-                                        show_any = TRUE,
-                                        note = "Participants could select more than one option; percentages may exceed 100%."
-                                      )) {
+                                        show_any = FALSE,
+                                        note = "More than one response allowed"
+                                      ),
+                                      default_checkbox_txt = "Checked") {
   
   # Silence no visible binding for global variable
   dat <- res <- n_level_valid <- n_strata_valid <- label <- sort1 <- NULL
@@ -315,7 +322,8 @@
     cb_spec <- validate_checkbox_spec(
       checkbox,
       data = data,
-      vars = vars
+      vars = vars,
+      default_checkbox_txt = default_checkbox_txt
     )
     
     # Build a list of blocks: one element per overall_lbl
@@ -435,7 +443,7 @@
       }
       
       # If per-level p-values were requested, fill them in once
-      if (isTRUE(checkbox_opts$pvals %in% c("per_level"))) {
+      if (isTRUE(checkbox_opts$show_pvalues)) {
         res_checkbox <- add_pvalues_checkbox(
           tab        = res_checkbox,
           data       = data,
@@ -760,7 +768,8 @@ create_tidytableone <- function(data,
                                 na_level = "(Missing)",
                                 b_replicates = 2000,
                                 checkbox = NULL,
-                                checkbox_opts = NULL, 
+                                checkbox_opts = NULL,
+                                default_checkbox_txt = "Checked",
                                 ...) {
   
   # Validate any extra args; create_tidytableone() does not currently accept
@@ -779,7 +788,8 @@ create_tidytableone <- function(data,
     na_level = na_level,
     b_replicates = b_replicates,
     checkbox = checkbox,
-    checkbox_opts = checkbox_opts
+    checkbox_opts = checkbox_opts,
+    default_checkbox_txt = default_checkbox_txt
   )
 }
 

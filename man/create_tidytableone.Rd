@@ -12,6 +12,7 @@ create_tidytableone(
   b_replicates = 2000,
   checkbox = NULL,
   checkbox_opts = NULL,
+  default_checkbox_txt = "Checked",
   ...
 )
 }
@@ -34,9 +35,16 @@ columns \code{var} (the checkbox column name), \code{overall_lbl} (group label t
 \code{checkbox_lbl} (label for each option), and \code{checkbox_txt} (the selected text to match, e.g., "Checked").}
 
 \item{checkbox_opts}{A list of options for checkbox processing. Recognized fields:
-\code{pvals} = c("none","per_level") (per-level p-values; ignored for no-strata),
+\code{show_pvalues} (logical; per-level p-values when strata is present),
 \code{p_adjust} (method passed to stats::p.adjust),
-\code{show_any} (logical; add "Any selected" row), \code{note} (character footnote).}
+\code{show_any} (logical; add "Any selected" row; default FALSE),
+\code{note} (character; short footnote suffix appended to the block header label;
+\code{""} or \code{NULL} suppresses).}
+
+\item{default_checkbox_txt}{Character. The value in \code{data} that means
+"selected" for a checkbox column. Used as the default for any row in
+\code{checkbox} whose \code{checkbox_txt} is missing (or \code{NA}), and as the column
+default if \code{checkbox_txt} is absent from the \code{checkbox} spec entirely.}
 
 \item{...}{Reserved. Passing any argument here raises an informative error
 (commonly, adorn-side arguments like \code{exact} get misdirected to create).}

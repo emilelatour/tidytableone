@@ -2,12 +2,40 @@
 #### Checkbox helpers -------------------------------- 
 
 
-validate_checkbox_spec <- function(x, data, vars) {
-  req_cols <- c("var","overall_lbl","checkbox_lbl","checkbox_txt")
+# Build a stable identifier for the synthetic "Any selected" row for a
+# checkbox block, derived from `overall_lbl`. Lowercase, non-alphanumeric
+# runs collapse to a single underscore, leading/trailing underscores
+# trimmed. Falls back to "block" if the slugified string would be empty
+# (e.g., a label of "??"). The result is concatenated with the package's
+# `___any_selected` suffix.
+.slugify_label <- function(x) {
+  x <- as.character(x)
+  x <- tolower(x)
+  x <- gsub("[^a-z0-9]+", "_", x)
+  x <- gsub("^_+|_+$", "", x)
+  x[x == ""] <- "block"
+  x
+}
+
+.any_selected_var <- function(overall_lbl) {
+  paste0(.slugify_label(overall_lbl), .tidytableone_any_selected_suffix)
+}
+
+
+validate_checkbox_spec <- function(x, data, vars, default_checkbox_txt = "Checked") {
+  # `checkbox_txt` is optional: if absent entirely, fill with the call-level
+  # default; if present, fill any per-row NAs with the default.
+  req_cols <- c("var","overall_lbl","checkbox_lbl")
   if (!all(req_cols %in% names(x))) {
     stop("`checkbox` must include columns: ", paste(req_cols, collapse = ", "), call. = FALSE)
   }
   x <- tibble::as_tibble(x)
+  
+  if (!"checkbox_txt" %in% names(x)) {
+    x$checkbox_txt <- default_checkbox_txt
+  } else {
+    x$checkbox_txt[is.na(x$checkbox_txt) | x$checkbox_txt == ""] <- default_checkbox_txt
+  }
   
   # All vars must exist in data AND be in the selected vars list
   missing_in_data <- setdiff(unique(x$var), names(data))
@@ -36,7 +64,11 @@ prepare_checkbox_blocks <- function(spec) {
       overall_lbl = nm,
       vars        = df$var,
       labels      = stats::setNames(df$checkbox_lbl, df$var),
-      select_txt  = stats::setNames(df$checkbox_txt, df$var)
+      select_txt  = stats::setNames(df$checkbox_txt, df$var),
+      # Synthetic "Any selected" var name, derived from overall_lbl. Built
+      # once here so every consumer (process, p-values, SMD, ordering, level
+      # map) reads the same string instead of recomputing and risking drift.
+      any_var     = .any_selected_var(nm)
     )
   })
   rlang::set_names(out, names(sp))
@@ -96,14 +128,11 @@ process_checkbox_blocks_strata <- function(data, blocks, opts, strata_var, strat
       if (isTRUE(opts$show_any)) {
         any_count <- as.integer(sum(rowSums(sel_mat, na.rm = TRUE) > 0L, na.rm = TRUE))
         
-        # derive lowercase stem from the FIRST var in this block
-        stem_l <- tolower(sub("___.*$", "", bl$vars[1]))
-        
         df <- dplyr::bind_rows(
           df,
           tibble::tibble(
             strata         = factor(g, levels = strata_levels_all),
-            var            = paste0(stem_l, "___any_selected"),  # << lower-case synthetic id
+            var            = bl$any_var,                         # << slug-derived synthetic id
             level_var      = NA_character_,                      # << exclude from per-level p-values
             level          = "Any selected",
             n_level        = any_count,
@@ -173,6 +202,7 @@ add_pvalues_checkbox <- function(tab,
       tbl <- table(grp_all, sel, useNA = "no")
       
       per_var[[length(per_var) + 1]] <- tibble::tibble(
+        .block                      = bl$overall_lbl,
         var                         = v,
         chisq_test                  = safe_chisq(tbl,  correct = TRUE,  simulate.p.value = FALSE),
         chisq_test_no_correction    = safe_chisq(tbl,  correct = FALSE, simulate.p.value = FALSE),
@@ -184,8 +214,7 @@ add_pvalues_checkbox <- function(tab,
     }
     
     # synthetic "Any selected" variable 
-    stem    <- sub("___.*$", "", bl$vars[[1]])
-    var_any <- paste0(tolower(stem), "___any_selected")
+    var_any <- bl$any_var
     
     # any selected across the block (NA treated as 0 in the rowSums via na.rm=TRUE)
     sel_any <- factor(
@@ -200,6 +229,7 @@ add_pvalues_checkbox <- function(tab,
     tbl_any <- table(grp_all, sel_any, useNA = "no")
     
     per_var[[length(per_var) + 1]] <- tibble::tibble(
+      .block                      = bl$overall_lbl,
       var                         = var_any,
       chisq_test                  = safe_chisq(tbl_any,  correct = TRUE,  simulate.p.value = FALSE),
       chisq_test_no_correction    = safe_chisq(tbl_any,  correct = FALSE, simulate.p.value = FALSE),
@@ -213,9 +243,10 @@ add_pvalues_checkbox <- function(tab,
   tests <- dplyr::bind_rows(per_var)
   
   if (!identical(p_adjust, "none")) {
+    # Adjust within each block (one block = one overall_lbl), so checkbox
+    # blocks with mixed-name member vars are still grouped correctly.
     tests <- tests %>%
-      dplyr::mutate(.stem = sub("___.*$", "", .data$var)) %>%
-      dplyr::group_by(.data$.stem) %>%
+      dplyr::group_by(.data$.block) %>%
       dplyr::mutate(
         chisq_test               = stats::p.adjust(.data$chisq_test,               method = p_adjust),
         chisq_test_no_correction = stats::p.adjust(.data$chisq_test_no_correction, method = p_adjust),
@@ -223,9 +254,10 @@ add_pvalues_checkbox <- function(tab,
         fisher_test              = stats::p.adjust(.data$fisher_test,              method = p_adjust),
         fisher_test_simulated    = stats::p.adjust(.data$fisher_test_simulated,    method = p_adjust)
       ) %>%
-      dplyr::ungroup() %>%
-      dplyr::select(-.data$.stem)
+      dplyr::ungroup()
   }
+  
+  tests <- dplyr::select(tests, -".block")
   
   tab %>%
     dplyr::left_join(tests, by = "var")
@@ -234,19 +266,19 @@ add_pvalues_checkbox <- function(tab,
 
 .default_checkbox_opts <- function() {
   list(
-    pvals    = "per_level",
-    p_adjust = "none",
-    show_any = TRUE,
-    note     = "Participants could select more than one option; percentages may exceed 100%."
+    show_pvalues = TRUE,
+    p_adjust     = "none",
+    show_any     = FALSE,
+    note         = "More than one response allowed"
   )
 }
 
 normalize_checkbox_opts <- function(x) {
   defaults <- list(
-    pvals    = "per_level",  # used only when strata is present
-    p_adjust = "none",
-    show_any = TRUE,
-    note     = "Participants could select more than one option; percentages may exceed 100%."
+    show_pvalues = TRUE,    # boolean; used only when strata is present
+    p_adjust     = "none",
+    show_any     = FALSE,   # default off; opt in for "Any selected" row
+    note         = "More than one response allowed"
   )
   
   # Treat NULL or empty list as "use defaults"
@@ -256,18 +288,20 @@ normalize_checkbox_opts <- function(x) {
     stop("`checkbox_opts` must be a list or NULL.", call. = FALSE)
   }
   
-  # Error on options we no longer support, with a redirect to the new design
-  removed <- c("denom", "test")
-  bad <- intersect(removed, names(x))
+  # Error on options that were renamed/removed in 0.1.0, with migration help.
+  removed_msgs <- c(
+    denom = "Checkbox percentages are always group-based (denominator = stratum N). Drop this field.",
+    test  = "Test selection is controlled at adorn time via `exact` / `monte_carlo_p`. Drop this field.",
+    pvals = "Renamed to `show_pvalues` (logical: TRUE/FALSE). Replace `pvals = \"per_level\"` with `show_pvalues = TRUE` and `pvals = \"none\"` with `show_pvalues = FALSE`."
+  )
+  bad <- intersect(names(removed_msgs), names(x))
   if (length(bad) > 0) {
-    stop(
-      "`checkbox_opts` no longer accepts: ",
-      paste(sprintf("`%s`", bad), collapse = ", "), ". ",
-      "Checkbox percentages are always group-based (denominator = stratum N). ",
-      "Test selection is controlled at adorn time via `exact` / `monte_carlo_p`. ",
-      "See NEWS.md.",
-      call. = FALSE
-    )
+    msg <- "`checkbox_opts` no longer accepts these fields:\n"
+    for (nm in bad) {
+      msg <- paste0(msg, "  * `", nm, "`: ", removed_msgs[[nm]], "\n")
+    }
+    msg <- paste0(msg, "See NEWS.md.")
+    stop(msg, call. = FALSE)
   }
   
   utils::modifyList(defaults, x)
@@ -281,10 +315,16 @@ validate_checkbox_opts <- function(opts) {
     opts <- normalize_checkbox_opts(NULL)
   }
   
-  opts$pvals    <- match.arg(opts$pvals,    c("none","per_level"))
+  if (!is.logical(opts$show_pvalues) || length(opts$show_pvalues) != 1 || is.na(opts$show_pvalues)) {
+    stop("`checkbox_opts$show_pvalues` must be a single logical (TRUE or FALSE).", call. = FALSE)
+  }
   opts$p_adjust <- match.arg(opts$p_adjust, stats::p.adjust.methods)
   
   opts$show_any <- isTRUE(opts$show_any)
+  
+  if (is.null(opts$note)) opts$note <- ""
+  opts$note <- as.character(opts$note)
+  
   opts
 }
 
@@ -310,9 +350,9 @@ process_checkbox_blocks_overall <- function(data, blocks, opts) {
     # Group-based denominator: total nrow(data) for every level
     display_N <- as.integer(nrow(data))
     
-    # Base name for synthetic "Any selected" var (e.g., "race")
-    base_name <- sub("___.*$", "", bl$vars[1])
-    var_any   <- paste0(base_name, "___any_selected")
+    # Synthetic "Any selected" var name (slug-derived; computed once per block
+    # in prepare_checkbox_blocks)
+    var_any   <- bl$any_var
     
     df <- tibble::tibble(
       strata   = "Overall",

@@ -297,7 +297,7 @@
     Code
       print(adorned, n = Inf, width = 200)
     Output
-      # A tibble: 17 x 6
+      # A tibble: 16 x 6
          var                                  num_not_miss Overall             
          <chr>                                <chr>        <chr>               
        1 "n"                                  ""           "60"                
@@ -315,8 +315,7 @@
       13 "  Black or African-American"        ""           "14 (23.3%)"        
       14 "  American Indian or Alaska Native" ""           " 5 ( 8.3%)"        
       15 "  Prefer not to answer"             ""           " 3 ( 5.0%)"        
-      16 "  Any selected"                     ""           "41 (68.3%)"        
-      17 "  "                                 ""           ""                  
+      16 "  "                                 ""           ""                  
          A                    B                    p_value 
          <chr>                <chr>                <chr>   
        1 "29"                 "31"                 ""      
@@ -334,15 +333,14 @@
       13 " 6 (20.7%)"         " 8 (25.8%)"         "0.871" 
       14 " 1 ( 3.4%)"         " 4 (12.9%)"         "0.392" 
       15 " 2 ( 6.9%)"         " 1 ( 3.2%)"         "0.953" 
-      16 "20 (69.0%)"         "21 (67.7%)"         ">0.999"
-      17 ""                   ""                   ""      
+      16 ""                   ""                   ""      
 
 # adorn_tidytableone is stable with checkbox, no strata
 
     Code
       print(adorned, n = Inf, width = 200)
     Output
-      # A tibble: 17 x 3
+      # A tibble: 16 x 3
          var                                  num_not_miss Overall             
          <chr>                                <chr>        <chr>               
        1 "n"                                  ""           "60"                
@@ -360,15 +358,14 @@
       13 "  Black or African-American"        ""           "14 (23.3%)"        
       14 "  American Indian or Alaska Native" ""           " 5 ( 8.3%)"        
       15 "  Prefer not to answer"             ""           " 3 ( 5.0%)"        
-      16 "  Any selected"                     ""           "41 (68.3%)"        
-      17 "  "                                 ""           ""                  
+      16 "  "                                 ""           ""                  
 
 # adorn_tidytableone is stable with multi-block mixed-name checkboxes
 
     Code
       print(adorned, n = Inf, width = 200)
     Output
-      # A tibble: 21 x 6
+      # A tibble: 19 x 6
          var                                           num_not_miss
          <chr>                                         <chr>       
        1 "n"                                           ""          
@@ -385,13 +382,11 @@
       12 "  Rheumatologic disease"                     ""          
       13 "  Hematologic malignancy"                    ""          
       14 "  Solid cancer"                              ""          
-      15 "  Any selected"                              ""          
-      16 "  "                                          ""          
-      17 "Past medical history, n (%)  "               "80"        
-      18 "  Chronic kidney disease"                    ""          
-      19 "  Congestive heart failure"                  ""          
-      20 "  Any selected"                              ""          
-      21 "  "                                          ""          
+      15 "  "                                          ""          
+      16 "Past medical history, n (%)  "               "80"        
+      17 "  Chronic kidney disease"                    ""          
+      18 "  Congestive heart failure"                  ""          
+      19 "  "                                          ""          
          Overall              `No recur`           Recur                p_value 
          <chr>                <chr>                <chr>                <chr>   
        1 "80"                 "39"                 "41"                 ""      
@@ -408,13 +403,11 @@
       12 " 8 (10.0%)"         " 5 (12.8%)"         " 3 ( 7.3%)"         "0.655" 
       13 " 4 ( 5.0%)"         " 3 ( 7.7%)"         " 1 ( 2.4%)"         "0.572" 
       14 " 6 ( 7.5%)"         " 3 ( 7.7%)"         " 3 ( 7.3%)"         ">0.999"
-      15 "18 (22.5%)"         "11 (28.2%)"         " 7 (17.1%)"         "0.355" 
+      15 ""                   ""                   ""                   ""      
       16 ""                   ""                   ""                   ""      
-      17 ""                   ""                   ""                   ""      
-      18 "16 (20.0%)"         " 9 (23.1%)"         " 7 (17.1%)"         "0.695" 
-      19 "11 (13.8%)"         " 4 (10.3%)"         " 7 (17.1%)"         "0.575" 
-      20 "25 (31.2%)"         "12 (30.8%)"         "13 (31.7%)"         ">0.999"
-      21 ""                   ""                   ""                   ""      
+      17 "16 (20.0%)"         " 9 (23.1%)"         " 7 (17.1%)"         "0.695" 
+      18 "11 (13.8%)"         " 4 (10.3%)"         " 7 (17.1%)"         "0.575" 
+      19 ""                   ""                   ""                   ""      
 
 # adorn_tidytableone respects show_test and show_smd
 
