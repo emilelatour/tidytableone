@@ -395,17 +395,13 @@ arrange_results <- function(res_stats,
     safe_merge_cols("class",    c("class.x", "class.y", "class")) %>%
     dplyr::select(-dplyr::any_of(c(".strata", "group_n", "p_value")))
   
-  # ---- Guarantee denom/percent columns BEFORE computing/coercing
+  # ---- Ensure the full canonical column schema plus level_var (used by the
+  # caller's select(-level_var) drop after this function returns). Doing this
+  # once, up front, means the coerce mutate below and the relocate at the end
+  # both find every column they need without further plumbing.
   res_stats <- .ensure_cols(
     res_stats,
-    cols_types = list(
-      n = NA_integer_, n_distinct = NA_integer_, complete = NA_integer_, missing = NA_integer_,
-      n_level = NA_integer_, n_strata = NA_integer_,
-      n_level_valid = NA_integer_, n_strata_valid = NA_integer_,
-      pct = NA_real_, pct_valid = NA_real_,
-      mean = NA_real_, sd = NA_real_, p0 = NA_real_, p25 = NA_real_, p50 = NA_real_,
-      p75 = NA_real_, p100 = NA_real_, cv = NA_real_
-    )
+    cols_types = c(.t1_schema_defaults(), list(level_var = NA_character_))
   )
   
   # ---- Now safe to coerce & compute pct
@@ -420,19 +416,6 @@ arrange_results <- function(res_stats,
       pct_valid      = dplyr::coalesce(pct_valid,
                                        dplyr::if_else(n_strata_valid > 0L, n_level_valid / n_strata_valid, NA_real_))
     )
-  
-  # ---- Ensure ALL columns referenced by relocate() exist
-  res_stats <- .ensure_cols(
-    res_stats,
-    cols_types = list(
-      level = NA_character_, level_var = NA_character_, strata_var = NA_character_,
-      chisq_test = NA_real_, chisq_test_no_correction = NA_real_, chisq_test_simulated = NA_real_,
-      fisher_test = NA_real_, fisher_test_simulated = NA_real_, check_categorical_test = NA_character_,
-      oneway_test_unequal_var = NA_real_, oneway_test_equal_var = NA_real_,
-      kruskal_test = NA_real_, bartlett_test = NA_real_, levene_test = NA_real_,
-      smd = NA_real_
-    )
-  )
   
   # ---- Final column order (canonical: primary cols at start, meta at end;
   # any extras like level_var stay in between, to be dropped by the caller)
