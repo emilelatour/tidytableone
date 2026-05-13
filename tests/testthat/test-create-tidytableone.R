@@ -118,6 +118,40 @@ test_that("create_tidytableone is stable with checkbox + strata", {
   expect_snapshot(print(tab, n = Inf, width = 200))
 })
 
+# Regression test for a bug where, when no plain-categorical variables are
+# present (cat_vars empty) but checkbox blocks are, arrange_results's
+# fallback `else` branch joined sort_vars by="var" only.  var_info has one
+# row per categorical *level*, so a checkbox column like `race___1` (whose
+# raw values are "Checked"/"Unchecked") had two rows in sort_vars, doubling
+# every checkbox row.  The fix deduplicates sort_vars by var in that branch.
+test_that("create_tidytableone with checkbox + strata + no plain categorical does not duplicate rows", {
+  set.seed(42)
+  n <- 200
+  dat <- tibble::tibble(
+    treatment = sample(c("Drug", "Placebo"), n, replace = TRUE),
+    age       = round(rnorm(n, 55, 12)),
+    race___1  = sample(c("Checked", "Unchecked"), n, replace = TRUE),
+    race___2  = sample(c("Checked", "Unchecked"), n, replace = TRUE),
+    race___3  = sample(c("Checked", "Unchecked"), n, replace = TRUE)
+  )
+  spec <- tibble::tribble(
+    ~var,        ~overall_lbl, ~checkbox_lbl,
+    "race___1",  "Race",       "White",
+    "race___2",  "Race",       "Black",
+    "race___3",  "Race",       "Other"
+  )
+  tab <- create_tidytableone(
+    data     = dat,
+    strata   = "treatment",
+    vars     = c("age", "race___1", "race___2", "race___3"),
+    checkbox = spec
+  )
+
+  # Every (strata, var, level) triple should occur at most once
+  dup_check <- dplyr::count(tab, strata, var, level, name = "n_rows")
+  expect_true(all(dup_check$n_rows == 1L))
+})
+
 # ---------------------------------------------------------------------------
 # No strata, checkbox present (REDCap-style)
 # ---------------------------------------------------------------------------

@@ -100,7 +100,7 @@ library(tibble)
 library(dplyr)
 
 set.seed(42)
-n <- 200
+n <- 200 
 
 cb_data <- tibble(
   treatment = sample(c("Drug", "Placebo"), n, replace = TRUE),
@@ -128,21 +128,6 @@ create_tidytableone(
   adorn_tidytableone()
 #> Warning: Chi-squared assumptions may be violated for: race___98. Consider
 #> Fisher's exact test (returned in `fisher_test`).
-#> Warning: Values from `glue_formula2` are not uniquely identified; output will contain
-#> list-cols.
-#> • Use `values_fn = list` to suppress this warning.
-#> • Use `values_fn = {summary_fun}` to summarise duplicates.
-#> • Use the following dplyr code to identify duplicates.
-#>   {data} |>
-#>   dplyr::summarise(n = dplyr::n(), .by = c(var, level, var_type, glue_formula,
-#>   strata)) |>
-#>   dplyr::filter(n > 1L)
-#> Warning in stri_split_fixed(string, pattern, n = n, simplify = simplify, :
-#> argument is not an atomic vector; coercing
-#> Warning in stri_split_fixed(string, pattern, n = n, simplify = simplify, :
-#> argument is not an atomic vector; coercing
-#> Warning in stri_split_fixed(string, pattern, n = n, simplify = simplify, :
-#> argument is not an atomic vector; coercing
 #> # A tibble: 12 × 6
 #>    var                                num_not_miss Overall Drug  Placebo p_value
 #>    <chr>                              <chr>        <chr>   <chr> <chr>   <chr>  
@@ -153,10 +138,10 @@ create_tidytableone(
 #>  5 "  Median [Min. – Max.]"           ""           "54.5 … "54.… "55.0 … ""     
 #>  6 "  "                               ""           ""      ""    ""      ""     
 #>  7 "Race, n (%)  "                    "200"        ""      ""    ""      ""     
-#>  8 "  White"                          ""           "c(\"1… "c(\… "c(\" … "0.724"
-#>  9 "  Black or African-American"      ""           "c(\" … "c(\… "c(\" … ">0.99…
-#> 10 "  American Indian or Alaska Nati… ""           "c(\" … "c(\… "c(\" … ">0.99…
-#> 11 "  Prefer not to answer"           ""           "c(\" … "c(\… "c(\" … "0.509"
+#>  8 "  White"                          ""           "114 (… " 49… " 65 (… "0.724"
+#>  9 "  Black or African-American"      ""           " 38 (… " 17… " 21 (… ">0.99…
+#> 10 "  American Indian or Alaska Nati… ""           " 22 (… " 10… " 12 (… ">0.99…
+#> 11 "  Prefer not to answer"           ""           "  5 (… "  1… "  4 (… "0.509"
 #> 12 "  "                               ""           ""      ""    ""      ""
 ```
 

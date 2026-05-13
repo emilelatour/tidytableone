@@ -366,10 +366,19 @@ arrange_results <- function(res_stats,
                     -.base_max_num, -.base_max_int) %>%
       dplyr::relocate(class, var_type, label, .after = dplyr::everything())
   } else {
-    sort_vars <- var_info %>% dplyr::select(var, sort1, sort2)
-    
+    # var_info can have multiple rows per categorical variable (one per
+    # level), so we deduplicate to one (sort1, sort2) per var here. Without
+    # this, the by="var" left_join below explodes res_stats rows when
+    # checkbox blocks are present alongside no plain-categorical variables
+    # (cat_vars empty -> we fall into this branch -> checkbox rows in
+    # res_stats get duplicated once per categorical level recorded in
+    # var_info for their underlying column).
+    sort_vars <- var_info %>%
+      dplyr::distinct(var, .keep_all = TRUE) %>%
+      dplyr::select(var, sort1, sort2)
+
     res_stats <- res_stats %>%
-      dplyr::left_join(sort_vars, by = "var", relationship = "many-to-many") %>%
+      dplyr::left_join(sort_vars, by = "var") %>%
       dplyr::group_by(var) %>%
       dplyr::mutate(
         sort1 = dplyr::coalesce(sort1, dplyr::first(stats::na.omit(sort1))),

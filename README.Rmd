@@ -68,7 +68,7 @@ library(tibble)
 library(dplyr)
 
 set.seed(42)
-n <- 200
+n <- 200 
 
 cb_data <- tibble(
   treatment = sample(c("Drug", "Placebo"), n, replace = TRUE),
