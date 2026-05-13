@@ -118,6 +118,31 @@ checkbox_spec <- tribble(
   "race___3",  "Race",       "American Indian or Alaska Native",
   "race___98", "Race",       "Prefer not to answer"
 )
+
+create_tidytableone(
+  data     = cb_data,
+  strata   = "treatment",
+  vars     = c("age", "race___1", "race___2", "race___3", "race___98"),
+  checkbox = checkbox_spec
+) |>
+  adorn_tidytableone()
+#> Warning: Chi-squared assumptions may be violated for: race___98. Consider
+#> Fisher's exact test (returned in `fisher_test`).
+#> # A tibble: 12 × 6
+#>    var                                num_not_miss Overall Drug  Placebo p_value
+#>    <chr>                              <chr>        <chr>   <chr> <chr>   <chr>  
+#>  1 "n"                                ""           "200"   " 89" "111"   ""     
+#>  2 ""                                 ""           ""      ""    ""      ""     
+#>  3 "age  "                            "200"        ""      ""    ""      "0.719"
+#>  4 "  Mean (SD)"                      ""           "54.4 … "54.… "54.7 … ""     
+#>  5 "  Median [Min. – Max.]"           ""           "54.5 … "54.… "55.0 … ""     
+#>  6 "  "                               ""           ""      ""    ""      ""     
+#>  7 "Race, More than one response all… "200"        ""      ""    ""      ""     
+#>  8 "  White"                          ""           "114 (… " 49… " 65 (… "0.724"
+#>  9 "  Black or African-American"      ""           " 38 (… " 17… " 21 (… ">0.99…
+#> 10 "  American Indian or Alaska Nati… ""           " 22 (… " 10… " 12 (… ">0.99…
+#> 11 "  Prefer not to answer"           ""           "  5 (… "  1… "  4 (… "0.509"
+#> 12 "  "                               ""           ""      ""    ""      ""
 ```
 
 The block renders with a single labeled header (“Race, More than one

@@ -87,6 +87,14 @@ checkbox_spec <- tribble(
   "race___98", "Race",       "Prefer not to answer"
 )
 
+create_tidytableone(
+  data     = cb_data,
+  strata   = "treatment",
+  vars     = c("age", "race___1", "race___2", "race___3", "race___98"),
+  checkbox = checkbox_spec
+) |>
+  adorn_tidytableone()
+
 ```
 
 The block renders with a single labeled header ("Race, More than one response allowed") followed by indented per-option rows, with group-based percentages (denominator = stratum N) and per-level p-values. Multiple blocks per table are supported, including blocks whose member variables don't share a common stem.
