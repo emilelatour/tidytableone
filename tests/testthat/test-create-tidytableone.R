@@ -152,6 +152,79 @@ test_that("create_tidytableone with checkbox + strata + no plain categorical doe
   expect_true(all(dup_check$n_rows == 1L))
 })
 
+# Regression test for an attribute-preservation bug: checkbox_opts is
+# attached as an attribute on the result tibble so that adorn_tidytableone()
+# can append the block's `note` to the header label. But dplyr operations
+# drop non-standard attributes, so attaching the attribute in the middle
+# of the pipeline (as a former version did) lost it before return. The
+# fix attaches at the very last step, after all dplyr ops are done.
+test_that("checkbox_opts attribute survives to the final tibble", {
+  set.seed(42)
+  n <- 100
+  dat <- tibble::tibble(
+    treatment = sample(c("Drug", "Placebo"), n, replace = TRUE),
+    age       = round(rnorm(n, 55, 12)),
+    race___1  = sample(c("Checked", "Unchecked"), n, replace = TRUE),
+    race___2  = sample(c("Checked", "Unchecked"), n, replace = TRUE)
+  )
+  spec <- tibble::tribble(
+    ~var,        ~overall_lbl, ~checkbox_lbl,
+    "race___1",  "Race",       "White",
+    "race___2",  "Race",       "Black"
+  )
+
+  # With strata
+  tab_s <- create_tidytableone(
+    data     = dat,
+    strata   = "treatment",
+    vars     = c("age", "race___1", "race___2"),
+    checkbox = spec
+  )
+  expect_false(is.null(attr(tab_s, "checkbox_opts")))
+  expect_false(is.null(attr(tab_s, "checkbox_blocks")))
+  expect_equal(attr(tab_s, "checkbox_opts")$note,
+               "More than one response allowed")
+
+  # Without strata
+  tab_n <- create_tidytableone(
+    data     = dat,
+    strata   = NULL,
+    vars     = c("age", "race___1", "race___2"),
+    checkbox = spec
+  )
+  expect_false(is.null(attr(tab_n, "checkbox_opts")))
+  expect_false(is.null(attr(tab_n, "checkbox_blocks")))
+})
+
+test_that("adorn_tidytableone appends the checkbox note to the header label", {
+  set.seed(42)
+  n <- 100
+  dat <- tibble::tibble(
+    treatment = sample(c("Drug", "Placebo"), n, replace = TRUE),
+    age       = round(rnorm(n, 55, 12)),
+    race___1  = sample(c("Checked", "Unchecked"), n, replace = TRUE),
+    race___2  = sample(c("Checked", "Unchecked"), n, replace = TRUE)
+  )
+  spec <- tibble::tribble(
+    ~var,        ~overall_lbl, ~checkbox_lbl,
+    "race___1",  "Race",       "White",
+    "race___2",  "Race",       "Black"
+  )
+
+  tab <- create_tidytableone(
+    data     = dat,
+    strata   = "treatment",
+    vars     = c("age", "race___1", "race___2"),
+    checkbox = spec
+  )
+  adorned <- adorn_tidytableone(tab)
+
+  # The "Race" header row's var column should contain the note suffix
+  expect_true(
+    any(grepl("Race, More than one response allowed", adorned$var))
+  )
+})
+
 # ---------------------------------------------------------------------------
 # No strata, checkbox present (REDCap-style)
 # ---------------------------------------------------------------------------

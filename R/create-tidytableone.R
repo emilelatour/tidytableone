@@ -478,10 +478,6 @@
       dplyr::mutate(var_type = "categorical", class = "checkbox")
     
     res_stats <- dplyr::bind_rows(res_stats, res_checkbox)
-    
-    # Attach footnote attrs so adorn_* can indent, print note, etc.
-    attr(res_stats, "checkbox_blocks") <- cb_blocks
-    attr(res_stats, "checkbox_opts")   <- checkbox_opts
   }
   
   
@@ -489,14 +485,18 @@
   
   if (!has_strata) {
     return(
-      .assemble_no_strata(
-        res_stats     = res_stats,
-        data          = data,
-        vars          = vars,
-        var_info      = var_info,
-        var_lbls      = var_lbls,
-        cb_blocks     = cb_blocks,
-        checkbox_opts = checkbox_opts
+      .attach_checkbox_attrs(
+        .assemble_no_strata(
+          res_stats     = res_stats,
+          data          = data,
+          vars          = vars,
+          var_info      = var_info,
+          var_lbls      = var_lbls,
+          cb_blocks     = cb_blocks,
+          checkbox_opts = checkbox_opts
+        ),
+        cb_blocks,
+        checkbox_opts
       )
     )
   }
@@ -685,8 +685,23 @@
   
   #### Return results --------------------------------
   
-  return(res_stats)
+  return(.attach_checkbox_attrs(res_stats, cb_blocks, checkbox_opts))
   
+}
+
+
+# Attach checkbox metadata as attributes on the result tibble so that
+# adorn_tidytableone() can read them later (e.g., the block note appended
+# to the header label).  Called at the *final* return point of each path
+# because dplyr operations drop non-standard attributes -- setting these
+# in the middle of the pipeline is futile.
+#
+# When there are no checkbox blocks, returns x unchanged (no attrs added).
+.attach_checkbox_attrs <- function(x, cb_blocks, checkbox_opts) {
+  if (length(cb_blocks) == 0L) return(x)
+  attr(x, "checkbox_blocks") <- cb_blocks
+  attr(x, "checkbox_opts")   <- checkbox_opts
+  x
 }
 
 
